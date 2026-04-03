@@ -582,33 +582,44 @@ function analyzeChannel() {
             updateProgress(pct, steps[stepIdx].msg);
             stepIdx++;
         } else {
-            clearInterval(analyzeInterval);
+            // Keep showing "processing" animation after all steps
+            updateProgress(96, '&#9881; Processando... aguarde (pode levar 1-3 min)');
         }
     }, stepDelay);
 
     apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, nlm_sop: nlmSop.trim()})
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) {
+            return r.text().then(txt => {
+                try { return JSON.parse(txt); } catch(e) { throw new Error('Servidor retornou erro ' + r.status + ': ' + txt.substring(0, 200)); }
+            });
+        }
+        return r.json();
+    })
     .then(data => {
         clearInterval(analyzeInterval);
         if (data.ok) {
             const source = data.sop_source || 'AI';
-            updateProgress(100, 'Concluido! SOP via ' + source + ' + ' + data.niches_generated + ' nichos + ' + data.titles_generated + ' titulos');
+            updateProgress(100, '&#10003; Concluido! SOP via ' + source + ' + ' + data.niches_generated + ' nichos + ' + data.titles_generated + ' titulos');
             showToast('Projeto "' + data.niche_name + '" criado! SOP via ' + source, 'success', 5000);
             setTimeout(() => {
                 closeProgressModal();
                 window.location.href = '/?project=' + encodeURIComponent(data.project_id);
-            }, 2000);
+            }, 2500);
         } else {
+            updateProgress(0, '&#10007; Erro');
             closeProgressModal();
-            showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            showToast('Erro: ' + (data.error || JSON.stringify(data).substring(0, 200)), 'error', 8000);
             btn.disabled = false;
             btn.innerHTML = '&#128269; Analisar Canal';
         }
     })
     .catch(e => {
         clearInterval(analyzeInterval);
+        updateProgress(0, '&#10007; Erro');
         closeProgressModal();
-        showToast('Erro: ' + e.message, 'error');
+        showToast('Erro na analise: ' + (e.message || 'timeout/rede'), 'error', 8000);
+        console.error('Analyze error:', e);
         btn.disabled = false;
         btn.innerHTML = '&#128269; Analisar Canal';
     });
