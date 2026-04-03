@@ -272,8 +272,18 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
     mindmap_path = ""
     if current_project:
         mm = OUTPUT_DIR / f"mindmap_{current_project['id']}.html"
+        fname = f"mindmap_{current_project['id']}.html"
         if mm.exists():
-            mindmap_path = f"/output-file?name=mindmap_{current_project['id']}.html"
+            mindmap_path = f"/output-file?name={fname}"
+        else:
+            # Check DB fallback (file content saved there)
+            try:
+                with get_db() as conn:
+                    row = conn.execute("SELECT filename FROM files WHERE project_id=? AND category='visual' AND content != '' LIMIT 1", (current_project['id'],)).fetchone()
+                    if row:
+                        mindmap_path = f"/output-file?name={row[0]}"
+            except Exception:
+                pass
 
     # Drive links from project
     drive_links = []
@@ -524,21 +534,53 @@ async def api_score_all(
 
     from protocols.title_scorer import score_title
 
-    for idea in ideas:
-        if idea.get("score", 0) > 0 and not force_rescore:
-            results.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea["rating"], "skipped": True})
-            continue
+    # Try AI-based batch scoring first (more reliable than pytrends/yt-dlp)
+    unscored = [i for i in ideas if (i.get("score", 0) == 0 or force_rescore)]
+    scored_cache = [i for i in ideas if i.get("score", 0) > 0 and not force_rescore]
+
+    for i in scored_cache:
+        results.append({"id": i["id"], "title": i["title"], "score": i["score"], "rating": i["rating"], "skipped": True})
+
+    if unscored:
+        # Try batch AI scoring
         try:
-            score_result = score_title(idea["title"], country_list)
-            update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
-            results.append({
-                "id": idea["id"],
-                "title": idea["title"],
-                "score": score_result["final_score"],
-                "rating": score_result["rating"],
-            })
+            from protocols.ai_client import chat
+            titles_block = "\n".join([f'{idx+1}. {i["title"]}' for idx, i in enumerate(unscored[:30])])
+            ai_prompt = f"""Pontue estes {len(unscored[:30])} titulos de videos para YouTube de 0-100.
+Criterios: CTR potencial (40%), curiosidade/gancho (30%), especificidade (20%), SEO (10%).
+
+{titles_block}
+
+Retorne APENAS JSON: [{{"index":1,"score":75,"rating":"BOM"}}, ...]
+Ratings: EXCELENTE (80-100), BOM (60-79), MEDIO (40-59), BAIXO (0-39)
+Retorne APENAS o JSON array."""
+
+            ai_response = chat(ai_prompt, system="Voce e um especialista em YouTube SEO e CTR optimization.", max_tokens=2000, temperature=0.3)
+            ai_json = re.search(r'\[.*\]', ai_response, re.DOTALL)
+            if ai_json:
+                ai_scores = json.loads(ai_json.group())
+                for s in ai_scores:
+                    idx = s.get("index", 0) - 1
+                    if 0 <= idx < len(unscored):
+                        idea = unscored[idx]
+                        score = max(0, min(100, int(s.get("score", 50))))
+                        rating = s.get("rating", "MEDIO")
+                        update_idea_score(idea["id"], score, rating, {"method": "ai", "score": score})
+                        results.append({"id": idea["id"], "title": idea["title"], "score": score, "rating": rating})
+                logger.info(f"AI scored {len(ai_scores)} titles")
+            else:
+                raise ValueError("No JSON in AI response")
         except Exception as e:
-            results.append({"id": idea["id"], "title": idea["title"], "error": "Falha no scoring"})
+            logger.warning(f"AI scoring failed: {e}. Falling back to pytrends/yt-dlp")
+            # Fallback: traditional scoring
+            for idea in unscored:
+                try:
+                    score_result = score_title(idea["title"], country_list)
+                    update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
+                    results.append({"id": idea["id"], "title": idea["title"], "score": score_result["final_score"], "rating": score_result["rating"]})
+                except Exception:
+                    update_idea_score(idea["id"], 50, "MEDIO", {"error": "scoring failed"})
+                    results.append({"id": idea["id"], "title": idea["title"], "score": 50, "rating": "MEDIO"})
 
     return JSONResponse({"ok": True, "scored": len(results), "results": results})
 
