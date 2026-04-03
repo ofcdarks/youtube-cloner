@@ -208,17 +208,18 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
 
     stats = get_stats()
 
-    # Build categories from DB files (primary source)
+    # Build categories from DB files ONLY (per-project, not global)
     categories = {}
+    cat_config = {
+        "analise": {"label": "Analise / SOP", "icon": "&#128200;", "color": "#7c3aed"},
+        "seo": {"label": "SEO Pack", "icon": "&#128269;", "color": "#06b6d4"},
+        "roteiro": {"label": "Roteiros", "icon": "&#128221;", "color": "#eab308"},
+        "roteiros": {"label": "Roteiros", "icon": "&#128221;", "color": "#eab308"},
+        "narracao": {"label": "Narracoes", "icon": "&#127908;", "color": "#ff6e40"},
+        "visual": {"label": "Mind Map / Visual", "icon": "&#127912;", "color": "#e040fb"},
+        "outro": {"label": "Outros", "icon": "&#128196;", "color": "#64748b"},
+    }
     if files:
-        cat_config = {
-            "analise": {"label": "Analise / SOP", "icon": "&#128200;", "color": "#7c3aed"},
-            "seo": {"label": "SEO Pack", "icon": "&#128269;", "color": "#06b6d4"},
-            "roteiros": {"label": "Roteiros", "icon": "&#128221;", "color": "#eab308"},
-            "visual": {"label": "Mind Map / Visual", "icon": "&#127912;", "color": "#e040fb"},
-            "musica": {"label": "Musica", "icon": "&#127925;", "color": "#22c55e"},
-            "outro": {"label": "Outros", "icon": "&#128196;", "color": "#64748b"},
-        }
         for f in files:
             cat_key = f.get("category", "outro")
             if cat_key not in categories:
@@ -229,26 +230,8 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
                 "path": f.get("filename", ""),
                 "size": len(f.get("content", "") or ""),
                 "label": f.get("label", f.get("filename", "")),
+                "id": f.get("id", 0),
             })
-
-    # Also add legacy filesystem files
-    output_files = get_output_files()
-    cat_config = {
-        "analise": {"label": "Analise / SOP", "icon": "&#128200;", "color": "#7c3aed"},
-        "seo": {"label": "SEO Pack", "icon": "&#128269;", "color": "#06b6d4"},
-        "roteiro": {"label": "Roteiros", "icon": "&#128221;", "color": "#eab308"},
-        "narracao": {"label": "Narracoes", "icon": "&#127908;", "color": "#ff6e40"},
-        "visual": {"label": "Mind Map / Visual", "icon": "&#127912;", "color": "#e040fb"},
-        "outro": {"label": "Outros", "icon": "&#128196;", "color": "#64748b"},
-    }
-    for f in output_files:
-        cat_key = f.get("category", "outro")
-        if cat_key not in categories:
-            cfg = cat_config.get(cat_key, cat_config["outro"])
-            categories[cat_key] = {"label": cfg["label"], "icon": cfg["icon"], "color": cfg["color"], "files": []}
-        existing_names = {ff.get("name", "") for ff in categories[cat_key]["files"]}
-        if f.get("name", "") not in existing_names:
-            categories[cat_key]["files"].append(f)
 
     # Mind map path
     mindmap_path = ""
@@ -348,7 +331,7 @@ async def serve_output_file(request: Request, name: str = "", user=Depends(requi
         return JSONResponse({"error": "nome obrigatorio"}, status_code=400)
 
     # Block sensitive files
-    blocked = [".db", ".db-wal", ".db-shm", ".json", ".key", ".pem"]
+    blocked = [".db", ".db-wal", ".db-shm", ".key", ".pem"]
     if any(name.lower().endswith(ext) for ext in blocked):
         return JSONResponse({"error": "Acesso negado"}, status_code=403)
 
@@ -362,7 +345,6 @@ async def serve_output_file(request: Request, name: str = "", user=Depends(requi
         ".html": "text/html",
         ".md": "text/plain",
         ".txt": "text/plain",
-        ".json": "application/json",
     }
     ct = content_types.get(suffix, "text/plain")
 
@@ -371,6 +353,13 @@ async def serve_output_file(request: Request, name: str = "", user=Depends(requi
         return PlainTextResponse(content, media_type=ct)
     except Exception:
         return JSONResponse({"error": "Erro ao ler arquivo"}, status_code=500)
+
+
+@app.get("/output/{filename}")
+async def serve_output_legacy(request: Request, filename: str, user=Depends(require_auth)):
+    """Legacy route — redirect /output/filename to /output-file?name=filename."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(f"/output-file?name={filename}")
 
 
 @app.get("/file")
