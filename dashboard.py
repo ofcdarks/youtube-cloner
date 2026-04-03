@@ -233,16 +233,22 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
 
     # Also add legacy filesystem files
     output_files = get_output_files()
-    fs_categories = build_categories(output_files)
-    for key, cat in fs_categories.items():
-        if key not in categories:
-            categories[key] = cat
-        else:
-            # Merge files, avoiding duplicates
-            existing_names = {ff["name"] for ff in categories[key]["files"]}
-            for ff in cat.get("files", []):
-                if ff["name"] not in existing_names:
-                    categories[key]["files"].append(ff)
+    cat_config = {
+        "analise": {"label": "Analise / SOP", "icon": "&#128200;", "color": "#7c3aed"},
+        "seo": {"label": "SEO Pack", "icon": "&#128269;", "color": "#06b6d4"},
+        "roteiro": {"label": "Roteiros", "icon": "&#128221;", "color": "#eab308"},
+        "narracao": {"label": "Narracoes", "icon": "&#127908;", "color": "#ff6e40"},
+        "visual": {"label": "Mind Map / Visual", "icon": "&#127912;", "color": "#e040fb"},
+        "outro": {"label": "Outros", "icon": "&#128196;", "color": "#64748b"},
+    }
+    for f in output_files:
+        cat_key = f.get("category", "outro")
+        if cat_key not in categories:
+            cfg = cat_config.get(cat_key, cat_config["outro"])
+            categories[cat_key] = {"label": cfg["label"], "icon": cfg["icon"], "color": cfg["color"], "files": []}
+        existing_names = {ff.get("name", "") for ff in categories[cat_key]["files"]}
+        if f.get("name", "") not in existing_names:
+            categories[cat_key]["files"].append(f)
 
     # Mind map path
     mindmap_path = ""
