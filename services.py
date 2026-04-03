@@ -193,18 +193,24 @@ def validate_project_id(project_id: str) -> bool:
 # ── Channel Analysis ─────────────────────────────────────
 
 def analyze_via_notebooklm(notebook_id: str, niche_name: str) -> str:
-    """Analyze channel using NotebookLM — comprehensive prompt extracts everything needed to clone."""
-    try:
+    """Analyze channel using NotebookLM — correct async API from notebooklm-py docs.
+    
+    API: NotebookLMClient.from_storage() → async context manager → client.chat.ask()
+    Auth: ~/.notebooklm/storage_state.json OR NOTEBOOKLM_AUTH_JSON env var
+    Requires SID cookie (httpOnly) — must use 'notebooklm login' CLI, not bookmarklet.
+    """
+    import asyncio
+
+    async def _run():
         from notebooklm import NotebookLMClient
 
         storage_path = Path.home() / ".notebooklm" / "storage_state.json"
-        if not storage_path.exists():
-            logger.error("NotebookLM: storage_state.json not found")
-            return ""
+        path_arg = str(storage_path) if storage_path.exists() else None
 
-        nlm = NotebookLMClient(auth=str(storage_path))
+        async with await NotebookLMClient.from_storage(path=path_arg) as client:
+            logger.info(f"NotebookLM client connected. Sending prompt to notebook {notebook_id[:12]}...")
 
-        prompt = f"""Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("{niche_name}").
+            prompt = f"""Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("{niche_name}").
 
 ═══════════════════════════════════════════
 PARTE 1 — DNA DO CANAL
@@ -238,152 +244,95 @@ PARTE 2 — ENGENHARIA DE ROTEIRO
 - CLIMAX: Onde fica o ponto alto? Como constroem ate la?
 - RESOLUCAO: Como terminam a historia?
 - CTA: Como pedem like/subscribe/comentario sem ser chato?
-- Cite exemplos REAIS de cada secao de videos especificos.
+- Cite exemplos REAIS de cada secao.
 
 4. PLAYBOOK DE HOOKS (todos os tipos usados)
 Para cada tipo, de 3 exemplos reais:
-- Hook de CHOQUE ("Ele perdeu $200 milhoes em 3 horas")
-- Hook de CURIOSIDADE ("O que acontece quando...")
-- Hook de PERGUNTA IMPOSSIVEL ("Como um estagiario hackeou o Pentagon?")
-- Hook de NUMERO IMPACTANTE ("$1.7 bilhao desapareceu")
-- Hook de CONTRASTE ("De morador de rua a bilionario em 18 meses")
-- Hook de URGENCIA ("Isso esta acontecendo AGORA e ninguem percebeu")
-- Hook de SEGREDO ("O metodo que bancos nao querem que voce saiba")
+- Choque, Curiosidade, Pergunta impossivel, Numero impactante, Contraste, Urgencia, Segredo
 - Outros tipos que o canal usa
 
 5. TECNICAS DE STORYTELLING (com exemplos concretos)
-- OPEN LOOPS: Misterios plantados que so se resolvem depois. Cite 5 exemplos.
-- PATTERN INTERRUPTS: Quebras de expectativa que reativam atencao. Cite 5 exemplos.
-- SPECIFIC SPIKES: Momentos de pico de tensao/emocao/surpresa. Cite 5 exemplos.
-- CLIFFHANGERS: Ganchos entre secoes que impedem o espectador de sair. Cite 5 exemplos.
-- ARCO EMOCIONAL: Como a emocao do espectador muda durante o video (curiosidade → tensao → choque → reflexao?)
-- RITMO NARRATIVO: Quando acelera? Quando desacelera? Quando faz pausa dramatica?
+- OPEN LOOPS, PATTERN INTERRUPTS, SPECIFIC SPIKES, CLIFFHANGERS — 5 exemplos de cada
+- ARCO EMOCIONAL: Como a emocao muda durante o video
+- RITMO NARRATIVO: Quando acelera/desacelera/faz pausa dramatica
 
 6. REGRAS DE OURO (minimo 15 regras)
-O que este canal SEMPRE faz e NUNCA quebra:
-- Regras de abertura
-- Regras de meio
-- Regras de fechamento
-- Regras de linguagem/vocabulario
-- Regras de visual
-- O que NUNCA fazem (anti-patterns)
+O que este canal SEMPRE faz e NUNCA quebra.
 
 ═══════════════════════════════════════════
 PARTE 3 — ESTRATEGIA DE CONTEUDO
 ═══════════════════════════════════════════
 
-7. PILARES DE CONTEUDO
-Liste 5-7 categorias de videos com:
-- Nome do pilar
-- Descricao
-- % estimada do canal
-- 3 exemplos de videos reais
-- Qual pilar gera mais views?
-- Qual gera mais engajamento?
+7. PILARES DE CONTEUDO (5-7 categorias com % e exemplos)
 
-8. FORMULA DE TITULOS
-- Padroes repetidos (estrutura gramatical, palavras-chave, numeros)
-- Gatilhos emocionais mais usados
-- Comprimento ideal
-- 10 exemplos reais dos melhores titulos
-- Template: "Como transformar qualquer tema neste estilo de titulo"
+8. FORMULA DE TITULOS (padroes + 10 exemplos reais + template)
 
-9. ESTILO DE THUMBNAIL
-- Cores dominantes (palette exata se possivel)
-- Tipografia (fontes, tamanho, cor do texto)
-- Elementos graficos recorrentes (setas, circulos, emojis, icones?)
-- Expressoes faciais (se aplicavel)
-- Composicao (tercos, foco central, fundo?)
-- Contraste e legibilidade
-- O que NUNCA aparece nas thumbnails
-- Template: "Como criar uma thumbnail neste estilo"
+9. ESTILO DE THUMBNAIL (cores, tipografia, composicao, template)
 
-10. SEO E ALGORITMO
-- Estrategia de tags (que tipo de tags usam?)
-- Estrategia de descricao (template)
-- Uso de hashtags
-- Estrategia de end screens
-- Estrategia de playlists/series
-- Otimizacao para CTR (click-through rate)
+10. SEO E ALGORITMO (tags, descricao, hashtags, end screens, playlists)
 
 ═══════════════════════════════════════════
 PARTE 4 — MANUAL DE REPLICACAO
 ═══════════════════════════════════════════
 
-11. VERSAO IA — INSTRUCOES DE REPLICACAO
-Escreva instrucoes DETALHADAS para uma IA gerar roteiros IDENTICOS a este canal:
-- System prompt ideal (com exemplos de "faca" e "nao faca")
-- Vocabulario tipico (liste 30 palavras/expressoes que o canal usa muito)
-- Vocabulario proibido (palavras que NUNCA usam)
-- Ritmo das frases (curtas? longas? mix?)
-- Como formatar numeros e valores monetarios
-- Como usar pausas dramaticas
-- Como criar transicoes entre secoes
-- Exemplo de paragrafo NO ESTILO EXATO do canal
+11. VERSAO IA — System prompt, 30 palavras do vocabulario, vocabulario proibido, exemplo no estilo exato
 
-12. CHECKLIST DE QUALIDADE
-10 perguntas para verificar se um roteiro esta "no padrao" deste canal:
-- [ ] O hook prende nos primeiros 5 segundos?
-- [ ] Tem pelo menos 3 open loops?
-- [ ] ...etc
+12. CHECKLIST DE QUALIDADE — 10 perguntas de verificacao
 
-Seja EXTREMAMENTE detalhado. Use exemplos REAIS dos videos. Nao generalize — cite trechos especificos.
-O resultado deve funcionar como um SOP (Standard Operating Procedure) completo para o nicho "{niche_name}"."""
+Seja EXTREMAMENTE detalhado. Use exemplos REAIS. O resultado e um SOP para o nicho "{niche_name}"."""
 
-        logger.info(f"Sending comprehensive analysis prompt to NotebookLM (notebook={notebook_id[:12]}...)")
-        
-        # nlm.chat is a ChatAPI object — try different method signatures
-        response = None
+            result = await client.chat.ask(notebook_id, prompt)
+            answer = result.answer if hasattr(result, 'answer') else str(result)
+            logger.info(f"NotebookLM response: {len(answer)} chars")
+            return answer
+
+    try:
+        # Run async function — handle existing event loop in FastAPI
         try:
-            # Try: nlm.chat.send(notebook_id, message)
-            response = nlm.chat.send(notebook_id=notebook_id, message=prompt)
-        except (TypeError, AttributeError):
-            pass
-        if response is None:
-            try:
-                # Try: nlm.chat.send(notebook_id, prompt)
-                response = nlm.chat.send(notebook_id, prompt)
-            except (TypeError, AttributeError):
-                pass
-        if response is None:
-            try:
-                # Try: nlm.send_message or similar
-                response = nlm.send_message(notebook_id=notebook_id, message=prompt)
-            except (TypeError, AttributeError):
-                pass
-        if response is None:
-            # Log available methods on chat object
-            chat_methods = [m for m in dir(nlm.chat) if not m.startswith("_")]
-            logger.error(f"NotebookLM chat API methods: {chat_methods}")
-            nlm_methods = [m for m in dir(nlm) if not m.startswith("_")]
-            logger.error(f"NotebookLM client methods: {nlm_methods}")
-            return ""
-
-        result = response.text if hasattr(response, "text") else str(response)
-        logger.info(f"NotebookLM response: {len(result)} chars")
-        return result
+            loop = asyncio.get_running_loop()
+            # Already in async context (FastAPI) — create task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                result = loop.run_in_executor(pool, lambda: asyncio.run(_run()))
+                # Can't await from sync function, use thread
+                import threading
+                container = [None, None]
+                def run_in_thread():
+                    try:
+                        container[0] = asyncio.run(_run())
+                    except Exception as e:
+                        container[1] = e
+                t = threading.Thread(target=run_in_thread)
+                t.start()
+                t.join(timeout=120)  # 2 min timeout
+                if container[1]:
+                    raise container[1]
+                return container[0] or ""
+        except RuntimeError:
+            # No running loop — run directly
+            return asyncio.run(_run())
 
     except Exception as e:
         import traceback
         logger.error(f"NotebookLM analysis failed: {type(e).__name__}: {e}")
         logger.error(f"NotebookLM traceback: {traceback.format_exc()}")
-        
-        # Check if storage state exists and has cookies
+
         try:
             _sp = Path.home() / ".notebooklm" / "storage_state.json"
             if _sp.exists():
                 import json as _json
                 state = _json.loads(_sp.read_text())
                 cookie_count = len(state.get("cookies", []))
-                origin_count = len(state.get("origins", []))
-                logger.error(f"NotebookLM storage state: {cookie_count} cookies, {origin_count} origins")
-                if cookie_count < 5:
-                    logger.error("NotebookLM: Very few cookies — bookmarklet cannot capture httpOnly cookies. Consider using notebooklm-py CLI locally to get full storage state.")
+                cookie_names = [c.get("name", "?") for c in state.get("cookies", [])]
+                has_sid = any(c.get("name") == "SID" for c in state.get("cookies", []))
+                logger.error(f"Storage state: {cookie_count} cookies, names={cookie_names}")
+                if not has_sid:
+                    logger.error("MISSING SID cookie! Bookmarklet cannot capture httpOnly cookies. Use 'notebooklm login' CLI on your PC to generate proper storage_state.json, then upload it.")
             else:
-                logger.error("NotebookLM: storage_state.json not found")
+                logger.error("storage_state.json not found")
         except Exception:
             pass
-        
+
         return ""
 
 
