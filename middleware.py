@@ -19,7 +19,7 @@ logger = logging.getLogger("ytcloner.middleware")
 # ── CSRF ─────────────────────────────────────────────────
 
 CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
-CSRF_EXEMPT_PATHS = {"/login", "/api/health"}
+CSRF_EXEMPT_PATHS = {"/login", "/api/health", "/api/admin/nlm-save-credentials"}
 
 
 def generate_csrf_token(session_token: str) -> str:
