@@ -237,15 +237,15 @@
                     <span class="sc-medium">&#9679; 40-59</span>
                     <span class="sc-low">&#9679; 1-39</span>
                     <span class="sc-none">&#9679; N/A</span>
-                    <span class="legend-auto">Ordenado por score</span>
+                    <span class="legend-auto" id="sort-indicator">Ordenado por score &#9660;</span>
                 </div>
                 <div class="ideas-col-header">
                     <span class="col-check">&#10003;</span>
                     <span class="col-num">#</span>
                     <span class="col-title">Titulo</span>
                     <span>Pilar</span>
-                    <span class="col-score">Score</span>
-                    <span class="col-priority">Prior.</span>
+                    <span class="col-score" onclick="sortIdeas('score')" style="cursor:pointer;user-select:none;" title="Clique para ordenar">Score &#8645;</span>
+                    <span class="col-priority" onclick="sortIdeas('priority')" style="cursor:pointer;user-select:none;" title="Clique para ordenar">Prior. &#8645;</span>
                 </div>
                 {% for idea in ideas %}
                 {% set pri = idea.priority|default("MEDIA") %}
@@ -271,7 +271,7 @@
                 {% set check_style = "opacity:.4;text-decoration:line-through" if used else "" %}
                 {% set check_icon = "&#9745;" if used else "&#9744;" %}
 
-                <div class="idea-row-wrap" id="idea-{{ idea_id }}">
+                <div class="idea-row-wrap" id="idea-{{ idea_id }}" data-score="{{ score }}" data-priority="{{ pri }}">
                     <div class="idea-row" style="{{ check_style }}">
                         <div class="idea-check" onclick="toggleUsed({{ idea_id }})" title="Marcar como usado" role="button" tabindex="0" aria-label="Marcar como usado">{{ check_icon|safe }}</div>
                         <div class="idea-num">{{ num }}</div>
@@ -365,6 +365,44 @@ function regenerateMindmap() {
 function switchProject(projectId) {
     if (projectId) {
         window.location.href = '/?project=' + encodeURIComponent(projectId);
+    }
+}
+
+var _sortState = {field: 'score', dir: 'desc'};
+
+function sortIdeas(field) {
+    if (_sortState.field === field) {
+        _sortState.dir = _sortState.dir === 'desc' ? 'asc' : 'desc';
+    } else {
+        _sortState.field = field;
+        _sortState.dir = 'desc';
+    }
+
+    var container = document.querySelector('.ideas-col-header');
+    if (!container) return;
+    var parent = container.parentElement;
+    var rows = Array.from(parent.querySelectorAll('.idea-row-wrap'));
+
+    rows.sort(function(a, b) {
+        var va, vb;
+        if (field === 'score') {
+            va = parseInt(a.dataset.score) || 0;
+            vb = parseInt(b.dataset.score) || 0;
+        } else if (field === 'priority') {
+            var priOrder = {'ALTA': 3, 'MEDIA': 2, 'BAIXA': 1};
+            va = priOrder[a.dataset.priority] || 0;
+            vb = priOrder[b.dataset.priority] || 0;
+        }
+        return _sortState.dir === 'desc' ? vb - va : va - vb;
+    });
+
+    rows.forEach(function(r) { parent.appendChild(r); });
+
+    var indicator = document.getElementById('sort-indicator');
+    if (indicator) {
+        var arrow = _sortState.dir === 'desc' ? ' \u25BC' : ' \u25B2';
+        var label = field === 'score' ? 'Score' : 'Prioridade';
+        indicator.textContent = 'Ordenado por ' + label + arrow;
     }
 }
 
