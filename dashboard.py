@@ -282,6 +282,13 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
                 pass
         sop_source = meta.get("sop_source", "") if isinstance(meta, dict) else ""
 
+    # NotebookLM status
+    nlm_connected = False
+    try:
+        nlm_connected = (Path.home() / ".notebooklm" / "storage_state.json").exists()
+    except Exception:
+        pass
+
     return render(request, "dashboard.html", {
         "user": user,
         "all_projects": projects,
@@ -298,6 +305,7 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
         "mindmap_path": mindmap_path,
         "drive_links": drive_links,
         "sop_source": sop_source,
+        "nlm_connected": nlm_connected,
     })
 
 
