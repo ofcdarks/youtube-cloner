@@ -195,15 +195,14 @@ def validate_project_id(project_id: str) -> bool:
 def analyze_via_notebooklm(notebook_id: str, niche_name: str) -> str:
     """Analyze channel using NotebookLM — comprehensive prompt extracts everything needed to clone."""
     try:
-        # Import the client
         from notebooklm import NotebookLMClient
 
-        # Auth = path to storage_state.json
-        if not STORAGE_PATH.exists():
+        storage_path = Path.home() / ".notebooklm" / "storage_state.json"
+        if not storage_path.exists():
             logger.error("NotebookLM: storage_state.json not found")
             return ""
 
-        nlm = NotebookLMClient(auth=str(STORAGE_PATH))
+        nlm = NotebookLMClient(auth=str(storage_path))
 
         prompt = f"""Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("{niche_name}").
 
@@ -345,9 +344,10 @@ O resultado deve funcionar como um SOP (Standard Operating Procedure) completo p
         
         # Check if storage state exists and has cookies
         try:
-            if STORAGE_PATH.exists():
+            _sp = Path.home() / ".notebooklm" / "storage_state.json"
+            if _sp.exists():
                 import json as _json
-                state = _json.loads(STORAGE_PATH.read_text())
+                state = _json.loads(_sp.read_text())
                 cookie_count = len(state.get("cookies", []))
                 origin_count = len(state.get("origins", []))
                 logger.error(f"NotebookLM storage state: {cookie_count} cookies, {origin_count} origins")
