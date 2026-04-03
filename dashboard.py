@@ -907,7 +907,7 @@ Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15
                     seo_generated = 10
                     log_activity(project_id, "seo_generated", f"SEO Pack para {seo_generated} videos")
             except Exception as e:
-                logger.debug(f"SEO: {e}")
+                logger.error(f"SEO generation failed: {e}")
 
         # ── Step 7: Generate Mind Map HTML ──
         mindmap_generated = False
@@ -925,7 +925,7 @@ Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15
             log_activity(project_id, "mindmap_generated", "Mind Map gerado")
             mindmap_generated = True
         except Exception as e:
-            logger.debug(f"Mindmap: {e}")
+            logger.error(f"Mindmap generation failed: {type(e).__name__}: {e}")
 
         return JSONResponse({
             "ok": True,
