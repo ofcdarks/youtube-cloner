@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps from stage 1
 COPY --from=deps /install /usr/local
 
-# Install Playwright browser (must run as root before switching to appuser)
-RUN python -m playwright install chromium --with-deps 2>&1 || echo "Playwright install skipped — install manually if needed"
+# Install Playwright Chromium browser (MUST succeed — required for NotebookLM auth)
+RUN python -m playwright install --with-deps chromium
 
 # Application code
 COPY . .
