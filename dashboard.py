@@ -208,9 +208,41 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
 
     stats = get_stats()
 
-    # Legacy filesystem files
+    # Build categories from DB files (primary source)
+    categories = {}
+    if files:
+        cat_config = {
+            "analise": {"label": "Analise / SOP", "icon": "&#128200;", "color": "#7c3aed"},
+            "seo": {"label": "SEO Pack", "icon": "&#128269;", "color": "#06b6d4"},
+            "roteiros": {"label": "Roteiros", "icon": "&#128221;", "color": "#eab308"},
+            "visual": {"label": "Mind Map / Visual", "icon": "&#127912;", "color": "#e040fb"},
+            "musica": {"label": "Musica", "icon": "&#127925;", "color": "#22c55e"},
+            "outro": {"label": "Outros", "icon": "&#128196;", "color": "#64748b"},
+        }
+        for f in files:
+            cat_key = f.get("category", "outro")
+            if cat_key not in categories:
+                cfg = cat_config.get(cat_key, cat_config["outro"])
+                categories[cat_key] = {"label": cfg["label"], "icon": cfg["icon"], "color": cfg["color"], "files": []}
+            categories[cat_key]["files"].append({
+                "name": f.get("label", f.get("filename", "")),
+                "path": f.get("filename", ""),
+                "size": len(f.get("content", "") or ""),
+                "label": f.get("label", f.get("filename", "")),
+            })
+
+    # Also add legacy filesystem files
     output_files = get_output_files()
-    categories = build_categories(output_files)
+    fs_categories = build_categories(output_files)
+    for key, cat in fs_categories.items():
+        if key not in categories:
+            categories[key] = cat
+        else:
+            # Merge files, avoiding duplicates
+            existing_names = {ff["name"] for ff in categories[key]["files"]}
+            for ff in cat.get("files", []):
+                if ff["name"] not in existing_names:
+                    categories[key]["files"].append(ff)
 
     # Mind map path
     mindmap_path = ""
