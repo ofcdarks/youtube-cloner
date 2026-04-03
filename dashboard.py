@@ -970,7 +970,106 @@ Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15
             except Exception as e:
                 logger.error(f"SEO generation failed: {e}")
 
-        # ── Step 7: Generate Mind Map HTML ──
+        # ── Step 7: Thumbnail Prompts (Midjourney / DALL-E) ──
+        try:
+            top5 = json.loads(titles_json_match.group())[:5] if titles_json_match else []
+            titles_for_thumb = "\n".join([f'{i+1}. {t.get("title","")}' for i, t in enumerate(top5)])
+            thumb_prompt = f"""Crie prompts de thumbnail para Midjourney e DALL-E para estes 5 videos do canal "{niche_name}":
+{titles_for_thumb}
+
+SOP resumido: {sop_content[:1500]}
+
+Para CADA video gere:
+- 1 prompt Midjourney (estilo cinematografico, dark, POV)
+- 1 prompt DALL-E (mesmo conceito, adaptado)
+- Paleta de cores sugerida (hex)
+- Texto overlay sugerido (1-2 palavras max)
+- Composicao (descricao do layout)"""
+            thumb_content = chat(thumb_prompt, system="Especialista em thumbnails virais do YouTube.", max_tokens=4000, temperature=0.7)
+            if thumb_content and len(thumb_content) > 100:
+                save_file(project_id, "outros", "Thumbnail Prompts - Midjourney DALL-E", f"thumbnail_prompts_{project_id}.md", thumb_content)
+                log_activity(project_id, "thumbnail_prompts", "Thumbnail Prompts gerados")
+        except Exception as e:
+            logger.error(f"Thumbnail prompts failed: {e}")
+
+        # ── Step 8: Music Prompts (Suno / Udio / MusicGPT) ──
+        try:
+            music_prompt = f"""Crie prompts de musica de fundo para videos do canal "{niche_name}" para plataformas Suno AI, Udio e MusicGPT.
+
+SOP resumido: {sop_content[:1500]}
+
+Gere:
+- 5 prompts para Suno AI (dark ambient, cinematic tension, suspense)
+- 3 prompts para Udio (atmospheric, moody, dramatic)
+- Tags de estilo: genero, mood, instrumentos, BPM
+- Quando usar cada tipo de musica no video (hook, tensao, climax, reflexao)
+- Efeitos sonoros sugeridos (SFX) para momentos-chave"""
+            music_content = chat(music_prompt, system="Compositor de trilha sonora para YouTube.", max_tokens=3000, temperature=0.7)
+            if music_content and len(music_content) > 100:
+                save_file(project_id, "outros", "Music Prompts - Suno Udio MusicGPT", f"music_prompts_{project_id}.md", music_content)
+                log_activity(project_id, "music_prompts", "Music Prompts gerados")
+        except Exception as e:
+            logger.error(f"Music prompts failed: {e}")
+
+        # ── Step 9: Teaser Prompts (Shorts / Reels / TikTok) ──
+        try:
+            teaser_prompt = f"""Crie scripts de Teaser/Shorts para YouTube Shorts, Instagram Reels e TikTok para o canal "{niche_name}".
+
+SOP resumido: {sop_content[:1500]}
+Top 5 titulos: {titles_for_thumb if titles_json_match else niche_name}
+
+Para CADA um dos 5 videos:
+- Hook de 3 segundos (primeira frase que para o scroll)
+- Script completo de 30-60 segundos (150-200 palavras)
+- CTA para o video completo ("Video completo no canal")
+- Hashtags sugeridas (10)
+- Melhor horario para postar
+- Formato: vertical 9:16"""
+            teaser_content = chat(teaser_prompt, system="Especialista em conteudo short-form viral.", max_tokens=4000, temperature=0.7)
+            if teaser_content and len(teaser_content) > 100:
+                save_file(project_id, "outros", "Teaser Prompts - Shorts Reels TikTok", f"teaser_prompts_{project_id}.md", teaser_content)
+                log_activity(project_id, "teaser_prompts", "Teaser Prompts gerados")
+        except Exception as e:
+            logger.error(f"Teaser prompts failed: {e}")
+
+        # ── Step 10: Generate 3 Roteiros for top titles ──
+        roteiros_count = 0
+        try:
+            top3 = json.loads(titles_json_match.group())[:3] if titles_json_match else []
+            for i, title_data in enumerate(top3):
+                t = title_data.get("title", "")
+                if not t:
+                    continue
+                roteiro_prompt = f"""Escreva um roteiro COMPLETO para o video "{t}" do canal "{niche_name}".
+
+SOP DO CANAL:
+{sop_content[:3000]}
+
+INSTRUCOES:
+- Siga EXATAMENTE o estilo, tom e estrutura do SOP
+- Duracao: 15-20 minutos de narracao (~2500-3500 palavras)
+- Estrutura em Levels (gamificacao)
+- Hook nos primeiros 5 segundos
+- Open loops, pattern interrupts, specific spikes
+- Sem CTA explicito (imersao total)
+- Inclua marcacoes: [MUSICA: tipo], [SFX: descricao], [B-ROLL: descricao]
+- Fechamento fatalista e ciclico"""
+                roteiro = chat(roteiro_prompt, system="Roteirista de elite para YouTube faceless.", max_tokens=MAX_TOKENS_LARGE, temperature=0.8)
+                if roteiro and len(roteiro) > 500:
+                    save_file(project_id, "roteiro", f"Roteiro - {t[:50]}", f"roteiro_{project_id}_{i+1}.md", roteiro)
+
+                    # Also generate narration version (clean, no markers)
+                    narracao = re.sub(r'\[.*?\]', '', roteiro)  # Remove [MUSICA:], [SFX:], [B-ROLL:] markers
+                    narracao = re.sub(r'\n{3,}', '\n\n', narracao).strip()
+                    if narracao:
+                        save_file(project_id, "narracao", f"Narracao - {t[:50]}", f"narracao_{project_id}_{i+1}.md", narracao)
+
+                    roteiros_count += 1
+                    log_activity(project_id, "roteiro_generated", f"Roteiro {i+1}: {t[:40]}")
+        except Exception as e:
+            logger.error(f"Roteiros generation failed: {e}")
+
+        # ── Step 11: Generate Mind Map HTML ──
         mindmap_generated = False
         try:
             mindmap_html = generate_mindmap_html(
