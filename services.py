@@ -331,7 +331,33 @@ Seja EXTREMAMENTE detalhado. Use exemplos REAIS dos videos. Nao generalize — c
 O resultado deve funcionar como um SOP (Standard Operating Procedure) completo para o nicho "{niche_name}"."""
 
         logger.info(f"Sending comprehensive analysis prompt to NotebookLM (notebook={notebook_id[:12]}...)")
-        response = nlm.chat(notebook_id=notebook_id, message=prompt)
+        
+        # nlm.chat is a ChatAPI object — try different method signatures
+        response = None
+        try:
+            # Try: nlm.chat.send(notebook_id, message)
+            response = nlm.chat.send(notebook_id=notebook_id, message=prompt)
+        except (TypeError, AttributeError):
+            pass
+        if response is None:
+            try:
+                # Try: nlm.chat.send(notebook_id, prompt)
+                response = nlm.chat.send(notebook_id, prompt)
+            except (TypeError, AttributeError):
+                pass
+        if response is None:
+            try:
+                # Try: nlm.send_message or similar
+                response = nlm.send_message(notebook_id=notebook_id, message=prompt)
+            except (TypeError, AttributeError):
+                pass
+        if response is None:
+            # Log available methods on chat object
+            chat_methods = [m for m in dir(nlm.chat) if not m.startswith("_")]
+            logger.error(f"NotebookLM chat API methods: {chat_methods}")
+            nlm_methods = [m for m in dir(nlm) if not m.startswith("_")]
+            logger.error(f"NotebookLM client methods: {nlm_methods}")
+            return ""
 
         result = response.text if hasattr(response, "text") else str(response)
         logger.info(f"NotebookLM response: {len(result)} chars")
