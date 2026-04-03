@@ -132,18 +132,16 @@
                 <div class="form-group grow-1">
                     <label for="notebook-id">
                         {% if nlm_connected %}
-                        &#128214; Notebook
+                        &#128214; Notebook{% if nlm_notebook_title %} <span style="color:var(--fg-dim);font-weight:400;font-size:11px;">({{ nlm_notebook_title[:35] }}...)</span>{% endif %}
                         {% else %}
                         ID do Notebook <span class="optional">requer conexao</span>
                         {% endif %}
                     </label>
-                    {% if nlm_connected %}
-                    <select id="notebook-id" class="form-input" style="cursor:pointer;">
-                        <option value="">Carregando notebooks...</option>
-                    </select>
-                    <span id="nlm-notebook-status" style="font-size:10px;color:var(--fg-dim);margin-top:3px;display:block;">Buscando notebooks do NotebookLM...</span>
-                    {% else %}
-                    <input type="text" id="notebook-id" class="form-input" placeholder="Conecte o NotebookLM primeiro" disabled style="opacity:.5">
+                    <input type="text" id="notebook-id" class="form-input" value="{{ nlm_notebook_id }}" placeholder="{% if nlm_connected %}Cole o ID do notebook{% else %}Conecte primeiro{% endif %}" {% if not nlm_connected %}disabled style="opacity:.5"{% endif %}>
+                    {% if nlm_connected and nlm_notebook_id %}
+                    <span style="font-size:10px;color:#22c55e;margin-top:3px;display:block;">&#10003; Notebook detectado do NOTEBOOKLM_CONTEXT</span>
+                    {% elif nlm_connected %}
+                    <span style="font-size:10px;color:var(--fg-dim);margin-top:3px;display:block;">Copie o ID da URL do NotebookLM (apos /notebook/)</span>
                     {% endif %}
                 </div>
                 <div>
@@ -530,37 +528,6 @@ function renderYoutubeStats(data) {
 document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('yt-analytics')) {
         refreshYoutubeStats();
-    }
-
-    // Load NotebookLM notebooks dropdown
-    var nbSelect = document.getElementById('notebook-id');
-    var nbStatus = document.getElementById('nlm-notebook-status');
-    if (nbSelect && nbSelect.tagName === 'SELECT') {
-        fetch('/api/admin/nlm-notebooks', {credentials: 'include'})
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.ok && data.notebooks && data.notebooks.length > 0) {
-                nbSelect.innerHTML = '<option value="">Selecione um notebook...</option>';
-                data.notebooks.forEach(function(nb) {
-                    var opt = document.createElement('option');
-                    opt.value = nb.id;
-                    opt.textContent = nb.title || nb.id;
-                    nbSelect.appendChild(opt);
-                });
-                // Auto-select the first (most recent) notebook
-                if (data.notebooks.length > 0) {
-                    nbSelect.value = data.notebooks[0].id;
-                }
-                if (nbStatus) nbStatus.innerHTML = '<span style="color:#22c55e">&#10003; ' + data.notebooks.length + ' notebooks encontrados</span>';
-            } else {
-                nbSelect.innerHTML = '<option value="">Nenhum notebook encontrado</option>';
-                if (nbStatus) nbStatus.textContent = data.error || 'Nenhum notebook';
-            }
-        })
-        .catch(function(e) {
-            nbSelect.innerHTML = '<option value="{{ nlm_notebook_id }}">{{ nlm_notebook_title or nlm_notebook_id }}</option>';
-            if (nbStatus) nbStatus.textContent = 'Usando notebook do env';
-        });
     }
 });
 </script>

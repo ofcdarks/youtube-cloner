@@ -1278,15 +1278,43 @@ async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)
     try:
         import base64
 
-        # Save to file FIRST (most reliable — appuser owns home dir)
+        # Save to file — but DON'T overwrite if existing one has more cookies (is more complete)
         nlm_dir = Path.home() / ".notebooklm"
         nlm_dir.mkdir(parents=True, exist_ok=True)
-        (nlm_dir / "storage_state.json").write_text(storage_state, encoding="utf-8")
-        logger.info(f"NotebookLM credentials saved to file: {len(storage_state)} chars")
+        nlm_file = nlm_dir / "storage_state.json"
 
-        # Backup to volume (survives container restart)
+        # Check if new state is better than existing
+        should_write = True
+        if nlm_file.exists():
+            try:
+                existing = json.loads(nlm_file.read_text(encoding="utf-8"))
+                new_parsed = json.loads(storage_state) if isinstance(storage_state, str) else storage_state
+                existing_cookies = len(existing.get("cookies", []))
+                new_cookies = len(new_parsed.get("cookies", []))
+                has_sid_new = any(c.get("name") == "SID" for c in new_parsed.get("cookies", []))
+                has_sid_existing = any(c.get("name") == "SID" for c in existing.get("cookies", []))
+
+                # Don't overwrite complete auth with incomplete bookmarklet cookies
+                if has_sid_existing and not has_sid_new:
+                    logger.warning(f"NLM save: keeping existing ({existing_cookies} cookies with SID) — new has {new_cookies} cookies WITHOUT SID (bookmarklet limitation)")
+                    should_write = False
+                elif existing_cookies > new_cookies * 2 and has_sid_existing:
+                    logger.warning(f"NLM save: keeping existing ({existing_cookies} cookies) — new only has {new_cookies}")
+                    should_write = False
+            except Exception:
+                pass
+
+        if should_write:
+            nlm_file.write_text(storage_state, encoding="utf-8")
+            logger.info(f"NotebookLM credentials saved to file: {len(storage_state)} chars")
+        else:
+            logger.info("NotebookLM: kept existing credentials (more complete)")
+
+        # Backup to volume
         try:
-            (OUTPUT_DIR / ".nlm_storage_state.json").write_text(storage_state, encoding="utf-8")
+            backup_file = OUTPUT_DIR / ".nlm_storage_state.json"
+            best_content = nlm_file.read_text(encoding="utf-8") if nlm_file.exists() else storage_state
+            backup_file.write_text(best_content, encoding="utf-8")
         except Exception:
             pass
 
