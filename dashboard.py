@@ -126,22 +126,57 @@ async def startup():
     except Exception as e:
         logger.debug(f"Seed: {e}")
 
-    # NotebookLM credentials from env
+    # NotebookLM credentials: restore from env → DB → volume backup
     try:
         import base64
+        nlm_dir = Path.home() / ".notebooklm"
+        nlm_file = nlm_dir / "storage_state.json"
+        nlm_backup = OUTPUT_DIR / ".nlm_storage_state.json"
+
+        restored = False
+
+        # 1. From NOTEBOOKLM_CREDENTIALS env var
         nlm_creds = os.environ.get("NOTEBOOKLM_CREDENTIALS", "")
-        if nlm_creds:
-            nlm_dir = Path.home() / ".notebooklm"
+        if nlm_creds and not nlm_file.exists():
             nlm_dir.mkdir(parents=True, exist_ok=True)
-            (nlm_dir / "storage_state.json").write_text(
-                base64.b64decode(nlm_creds.encode()).decode(), encoding="utf-8"
-            )
-            ctx = os.environ.get("NOTEBOOKLM_CONTEXT", "")
-            if ctx:
-                (nlm_dir / "context.json").write_text(
-                    base64.b64decode(ctx.encode()).decode(), encoding="utf-8"
-                )
-            logger.info("NotebookLM credentials loaded from env")
+            nlm_file.write_text(base64.b64decode(nlm_creds.encode()).decode(), encoding="utf-8")
+            restored = True
+
+        # 2. From DB setting (saved by bookmarklet)
+        if not nlm_file.exists():
+            try:
+                from database import get_setting
+                b64 = get_setting("notebooklm_storage_state")
+                if b64:
+                    nlm_dir.mkdir(parents=True, exist_ok=True)
+                    nlm_file.write_text(base64.b64decode(b64.encode()).decode(), encoding="utf-8")
+                    restored = True
+            except Exception:
+                pass
+
+        # 3. From volume backup
+        if not nlm_file.exists() and nlm_backup.exists():
+            nlm_dir.mkdir(parents=True, exist_ok=True)
+            nlm_file.write_text(nlm_backup.read_text(encoding="utf-8"), encoding="utf-8")
+            restored = True
+
+        # Save backup to volume (survives container restart)
+        if nlm_file.exists():
+            try:
+                nlm_backup.write_text(nlm_file.read_text(encoding="utf-8"), encoding="utf-8")
+            except Exception:
+                pass
+
+        # Restore context.json from env
+        ctx = os.environ.get("NOTEBOOKLM_CONTEXT", "")
+        if ctx:
+            nlm_dir.mkdir(parents=True, exist_ok=True)
+            (nlm_dir / "context.json").write_text(base64.b64decode(ctx.encode()).decode(), encoding="utf-8")
+
+        if nlm_file.exists():
+            logger.info(f"NotebookLM: credentials ready {'(restored)' if restored else '(existing)'}")
+        else:
+            logger.info("NotebookLM: no credentials (set NOTEBOOKLM_CREDENTIALS env var)")
     except Exception as e:
         logger.debug(f"NotebookLM setup: {e}")
 
@@ -1201,6 +1236,12 @@ async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)
         nlm_dir.mkdir(parents=True, exist_ok=True)
         (nlm_dir / "storage_state.json").write_text(storage_state, encoding="utf-8")
         logger.info(f"NotebookLM credentials saved to file: {len(storage_state)} chars")
+
+        # Backup to volume (survives container restart)
+        try:
+            (OUTPUT_DIR / ".nlm_storage_state.json").write_text(storage_state, encoding="utf-8")
+        except Exception:
+            pass
 
         # Also try saving to DB (may fail if DB is readonly — that's OK)
         try:

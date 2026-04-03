@@ -347,10 +347,22 @@ def update_project(project_id: str, **kwargs):
 
 
 def delete_project(project_id: str):
-    """Delete a project and all related data."""
+    """Delete a project and all related data (cascade through assignments)."""
     with get_db() as conn:
-        for table in ["progress", "assignments", "seo_packs", "scripts", "niches", "ideas", "files", "activity_log"]:
-            conn.execute(f"DELETE FROM {table} WHERE project_id=?", (project_id,))
+        # First delete progress via assignments (progress has no project_id column)
+        assignment_ids = [r[0] for r in conn.execute(
+            "SELECT id FROM assignments WHERE project_id=?", (project_id,)
+        ).fetchall()]
+        if assignment_ids:
+            placeholders = ",".join("?" * len(assignment_ids))
+            conn.execute(f"DELETE FROM progress WHERE assignment_id IN ({placeholders})", assignment_ids)
+
+        # Delete other tables that have project_id
+        for table in ["assignments", "seo_packs", "scripts", "niches", "ideas", "files", "activity_log"]:
+            try:
+                conn.execute(f"DELETE FROM {table} WHERE project_id=?", (project_id,))
+            except Exception:
+                pass
         conn.execute("DELETE FROM projects WHERE id=?", (project_id,))
 
 
