@@ -388,18 +388,31 @@ function analyzeChannel() {
     btn.innerHTML = '&#9881; Analisando...';
 
     showProgressModal('Analisando Canal');
-    updateProgress(10, 'Criando projeto...');
+    updateProgress(5, 'Criando projeto...');
 
-    // Simulate progress while waiting for API
-    let pct = 10;
-    const steps = [
-        {at: 15, msg: 'Gerando SOP do canal...'},
-        {at: 35, msg: 'Analisando conceito e estrategia...'},
+    // Different progress steps based on NotebookLM usage
+    let pct = 5;
+    const hasNlm = !!notebookId;
+    const steps = hasNlm ? [
+        {at: 8, msg: '&#129302; Conectando ao NotebookLM...'},
+        {at: 15, msg: '&#129302; Enviando prompt para NotebookLM...'},
+        {at: 25, msg: '&#129302; NotebookLM analisando canal (pode levar 1-2 min)...'},
+        {at: 40, msg: '&#129302; Recebendo SOP do NotebookLM...'},
         {at: 55, msg: 'Gerando nichos derivados...'},
+        {at: 70, msg: 'Gerando 30 titulos virais...'},
+        {at: 85, msg: 'Gerando SEO Pack + Mind Map...'},
+        {at: 95, msg: 'Salvando no banco de dados...'},
+    ] : [
+        {at: 10, msg: 'Baixando transcricoes do canal...'},
+        {at: 25, msg: 'Gerando SOP via AI...'},
+        {at: 45, msg: 'Analisando conceito e estrategia...'},
+        {at: 60, msg: 'Gerando nichos derivados...'},
         {at: 75, msg: 'Gerando 30 titulos virais...'},
-        {at: 90, msg: 'Salvando no banco de dados...'},
+        {at: 85, msg: 'Gerando SEO Pack + Mind Map...'},
+        {at: 95, msg: 'Salvando no banco de dados...'},
     ];
     let stepIdx = 0;
+    const stepDelay = hasNlm ? 8000 : 5000; // NotebookLM takes longer
     const analyzeInterval = setInterval(() => {
         if (stepIdx < steps.length) {
             pct = steps[stepIdx].at;
@@ -408,7 +421,7 @@ function analyzeChannel() {
         } else {
             clearInterval(analyzeInterval);
         }
-    }, 5000);
+    }, stepDelay);
 
     apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, notebook_id: notebookId})
     .then(r => r.json())
