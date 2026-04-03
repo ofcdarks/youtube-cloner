@@ -38,41 +38,48 @@ a{color:#7c3aed;text-decoration:none}
 <script>
 (function() {
     var hash = window.location.hash.substring(1);
-    if (!hash) { showError('Nenhum dado recebido. Clique no bookmarklet estando na pagina do NotebookLM.'); return; }
+    if (!hash) {
+        showError('Nenhum dado recebido. Clique no bookmarklet estando na pagina do NotebookLM.');
+        return;
+    }
 
     var json;
     try {
         json = decodeURIComponent(escape(atob(hash)));
         JSON.parse(json);
-    } catch(e) { showError('Dados invalidos: ' + e.message); return; }
+    } catch(e) {
+        showError('Dados invalidos: ' + e.message);
+        return;
+    }
 
-    // Get session from cookie
-    var session = '';
-    document.cookie.split(';').forEach(function(c) {
-        var p = c.trim().split('=');
-        if (p[0] === 'session') session = p.slice(1).join('=');
-    });
-    if (!session) { showError('Sessao expirada. <a href="/login">Faca login</a> e tente novamente.'); return; }
-
-    // Save directly — endpoint is CSRF-exempt for bookmarklet flow
+    // Send with credentials:include — browser sends httpOnly session cookie automatically
     fetch('/api/admin/nlm-save-credentials', {
         method: 'POST',
         credentials: 'include',
-        headers: {'Content-Type': 'application/json', 'X-Session': session},
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({storage_state: json})
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (r.status === 401) {
+            showError('Sessao expirada. <a href="/login">Faca login</a>, depois volte ao NotebookLM e clique no bookmarklet novamente.');
+            return null;
+        }
+        return r.json();
+    })
     .then(function(data) {
+        if (!data) return;
         if (data.ok) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('success').style.display = '';
             try { sessionStorage.setItem('nlm_saved', 'ok'); } catch(e) {}
             setTimeout(function() { window.location.href = '/admin/notebooklm'; }, 1500);
         } else {
-            showError(data.error || 'Falha ao salvar');
+            showError(data.error || 'Falha ao salvar credenciais');
         }
     })
-    .catch(function(e) { showError('Erro: ' + e.message); });
+    .catch(function(e) {
+        showError('Erro de conexao: ' + e.message);
+    });
 
     function showError(msg) {
         document.getElementById('loading').style.display = 'none';
