@@ -333,7 +333,25 @@ O resultado deve funcionar como um SOP (Standard Operating Procedure) completo p
         return result
 
     except Exception as e:
-        logger.error(f"NotebookLM analysis failed: {e}")
+        import traceback
+        logger.error(f"NotebookLM analysis failed: {type(e).__name__}: {e}")
+        logger.error(f"NotebookLM traceback: {traceback.format_exc()}")
+        
+        # Check if storage state exists and has cookies
+        try:
+            if STORAGE_PATH.exists():
+                import json as _json
+                state = _json.loads(STORAGE_PATH.read_text())
+                cookie_count = len(state.get("cookies", []))
+                origin_count = len(state.get("origins", []))
+                logger.error(f"NotebookLM storage state: {cookie_count} cookies, {origin_count} origins")
+                if cookie_count < 5:
+                    logger.error("NotebookLM: Very few cookies — bookmarklet cannot capture httpOnly cookies. Consider using notebooklm-py CLI locally to get full storage state.")
+            else:
+                logger.error("NotebookLM: storage_state.json not found")
+        except Exception:
+            pass
+        
         return ""
 
 

@@ -789,16 +789,24 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
         # Step 2: Generate SOP (NotebookLM → Transcripts → AI fallback)
         sop_content = ""
         sop_source = "AI"
+        nlm_error = ""
 
         if notebook_id:
+            logger.info(f"[ANALYZE] Attempting NotebookLM analysis (notebook={notebook_id[:12]}...)")
             sop_content = analyze_via_notebooklm(notebook_id, niche_name)
             if sop_content and len(sop_content) > 200:
                 sop_source = "NotebookLM"
+                logger.info(f"[ANALYZE] NotebookLM SOP: {len(sop_content)} chars")
+            else:
+                nlm_error = "NotebookLM retornou vazio ou erro"
+                logger.warning(f"[ANALYZE] NotebookLM failed or empty ({len(sop_content) if sop_content else 0} chars). Falling back.")
 
         if not sop_content:
+            logger.info(f"[ANALYZE] Trying transcript analysis for {url}")
             sop_content = analyze_via_transcripts(url, niche_name)
             if sop_content and len(sop_content) > 200:
                 sop_source = "Transcricoes"
+                logger.info(f"[ANALYZE] Transcript SOP: {len(sop_content)} chars")
 
         if not sop_content:
             sop_prompt = f"""Analise o conceito deste canal do YouTube e crie um SOP completo e detalhado.
