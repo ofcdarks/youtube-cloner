@@ -964,11 +964,22 @@ async def admin_projects(request: Request, user=Depends(require_admin)):
 async def api_delete_project(request: Request, user=Depends(require_admin)):
     body = await request.json()
     project_id = body.get("project_id", "")
-    if not project_id or not validate_project_id(project_id):
-        return JSONResponse({"error": "project_id invalido"}, status_code=400)
-    from database import delete_project
-    delete_project(project_id)
-    return JSONResponse({"ok": True})
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+    try:
+        from database import delete_project
+        delete_project(str(project_id))
+        # Also delete mindmap file
+        try:
+            mm = OUTPUT_DIR / f"mindmap_{project_id}.html"
+            if mm.exists():
+                mm.unlink()
+        except Exception:
+            pass
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.error(f"Delete project error: {e}")
+        return JSONResponse({"error": f"Erro ao excluir: {str(e)[:100]}"}, status_code=500)
 
 
 @app.post("/api/admin/remove-title")
