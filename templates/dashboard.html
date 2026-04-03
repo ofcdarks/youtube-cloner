@@ -146,10 +146,10 @@
                 <div class="niche-name">{{ n.name }}
                     {% if n.chosen %}<span class="chosen-badge">ESCOLHIDO</span>{% endif %}
                 </div>
-                <div class="niche-desc">{{ n.desc }}</div>
+                <div class="niche-desc">{{ n.description }}</div>
                 <div class="niche-stats">
-                    <span class="niche-rpm">RPM: {{ n.rpm }}</span>
-                    <span class="niche-comp">Comp: {{ n.comp }}</span>
+                    <span class="niche-rpm">RPM: {{ n.rpm_range }}</span>
+                    <span class="niche-comp">Comp: {{ n.competition }}</span>
                 </div>
                 {% if n.countries %}
                 <div class="niche-countries">

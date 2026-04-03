@@ -223,21 +223,26 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
     drive_links = []
     sop_source = ""
     if current_project:
-        drive_url = current_project.get("drive_folder_url", "")
+        drive_url = current_project.get("drive_folder_url", "") or ""
         if drive_url:
             drive_links.append({"url": drive_url, "label": "Pasta do Projeto", "type": "Folder", "icon": "&#128193;"})
-        # Add file-specific drive links
         for f in files:
-            if f.get("drive_url"):
-                drive_links.append({"url": f["drive_url"], "label": f.get("label", f["filename"]), "type": f.get("category", ""), "icon": "&#128196;"})
-        # SOP source from meta
-        meta = current_project.get("meta", "{}")
-        if isinstance(meta, str):
+            fu = f.get("drive_url", "") or ""
+            if fu:
+                drive_links.append({"url": fu, "label": f.get("label", f.get("filename", "")), "type": f.get("category", ""), "icon": "&#128196;"})
+        # SOP source from meta (safely parse — old DB may have unexpected formats)
+        raw_meta = current_project.get("meta", None)
+        meta = {}
+        if isinstance(raw_meta, dict):
+            meta = raw_meta
+        elif isinstance(raw_meta, str) and raw_meta:
             try:
-                meta = json.loads(meta)
-            except Exception:
-                meta = {}
-        sop_source = meta.get("sop_source", "")
+                parsed = json.loads(raw_meta)
+                if isinstance(parsed, dict):
+                    meta = parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+        sop_source = meta.get("sop_source", "") if isinstance(meta, dict) else ""
 
     return render(request, "dashboard.html", {
         "user": user,
