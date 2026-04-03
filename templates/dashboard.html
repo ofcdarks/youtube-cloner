@@ -132,13 +132,15 @@
                 <div class="form-group grow-1">
                     <label for="notebook-id">
                         {% if nlm_connected %}
-                        &#128214; Notebook
+                        &#128214; Notebook{% if nlm_notebook_title %} <span style="color:var(--fg-dim);font-weight:400;font-size:11px;">({{ nlm_notebook_title[:30] }}{% if nlm_notebook_title|length > 30 %}...{% endif %})</span>{% endif %}
                         {% else %}
                         ID do Notebook <span class="optional">requer conexao</span>
                         {% endif %}
                     </label>
-                    <input type="text" id="notebook-id" class="form-input" placeholder="{% if nlm_connected %}Cole o ID do notebook (da URL do NotebookLM){% else %}Conecte o NotebookLM primeiro{% endif %}" {% if not nlm_connected %}disabled style="opacity:.5"{% endif %}>
-                    {% if nlm_connected %}
+                    <input type="text" id="notebook-id" class="form-input" value="{{ nlm_notebook_id }}" placeholder="{% if nlm_connected %}Cole o ID do notebook (da URL do NotebookLM){% else %}Conecte o NotebookLM primeiro{% endif %}" {% if not nlm_connected %}disabled style="opacity:.5"{% endif %}>
+                    {% if nlm_connected and nlm_notebook_id %}
+                    <span style="font-size:10px;color:#22c55e;margin-top:3px;display:block;">&#10003; Notebook detectado automaticamente</span>
+                    {% elif nlm_connected %}
                     <span style="font-size:10px;color:var(--fg-dim);margin-top:3px;display:block;">Abra o notebook no NotebookLM → copie o ID da URL (apos /notebook/)</span>
                     {% endif %}
                 </div>

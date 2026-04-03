@@ -282,12 +282,42 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
                 pass
         sop_source = meta.get("sop_source", "") if isinstance(meta, dict) else ""
 
-    # NotebookLM status
+    # NotebookLM status + last notebook ID
     nlm_connected = False
+    nlm_notebook_id = ""
+    nlm_notebook_title = ""
     try:
         nlm_connected = (Path.home() / ".notebooklm" / "storage_state.json").exists()
     except Exception:
         pass
+
+    # Get notebook ID from: 1) DB setting, 2) NOTEBOOKLM_CONTEXT env var, 3) context.json file
+    try:
+        from database import get_setting
+        nlm_notebook_id = get_setting("notebooklm_notebook_id") or ""
+    except Exception:
+        pass
+
+    if not nlm_notebook_id:
+        try:
+            import base64
+            ctx_b64 = os.environ.get("NOTEBOOKLM_CONTEXT", "")
+            if ctx_b64:
+                ctx_data = json.loads(base64.b64decode(ctx_b64).decode())
+                nlm_notebook_id = ctx_data.get("notebook_id", "")
+                nlm_notebook_title = ctx_data.get("title", "")
+        except Exception:
+            pass
+
+    if not nlm_notebook_id:
+        try:
+            ctx_file = Path.home() / ".notebooklm" / "context.json"
+            if ctx_file.exists():
+                ctx_data = json.loads(ctx_file.read_text(encoding="utf-8"))
+                nlm_notebook_id = ctx_data.get("notebook_id", "")
+                nlm_notebook_title = ctx_data.get("title", "")
+        except Exception:
+            pass
 
     return render(request, "dashboard.html", {
         "user": user,
@@ -306,6 +336,8 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
         "drive_links": drive_links,
         "sop_source": sop_source,
         "nlm_connected": nlm_connected,
+        "nlm_notebook_id": nlm_notebook_id,
+        "nlm_notebook_title": nlm_notebook_title,
     })
 
 
