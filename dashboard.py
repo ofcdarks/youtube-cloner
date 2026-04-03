@@ -361,33 +361,40 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
 
 @app.get("/output-file")
 async def serve_output_file(request: Request, name: str = "", user=Depends(require_auth)):
-    """Serve files from output directory safely — blocks DB and sensitive files."""
+    """Serve files from output directory — checks disk first, then DB."""
     if not name:
         return JSONResponse({"error": "nome obrigatorio"}, status_code=400)
 
-    # Block sensitive files
     blocked = [".db", ".db-wal", ".db-shm", ".key", ".pem"]
     if any(name.lower().endswith(ext) for ext in blocked):
         return JSONResponse({"error": "Acesso negado"}, status_code=403)
 
-    resolved = validate_file_path(name)
-    if not resolved:
-        return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
-
     # Determine content type
-    suffix = resolved.suffix.lower()
-    content_types = {
-        ".html": "text/html",
-        ".md": "text/plain",
-        ".txt": "text/plain",
-    }
+    suffix = Path(name).suffix.lower()
+    content_types = {".html": "text/html", ".md": "text/plain", ".txt": "text/plain"}
     ct = content_types.get(suffix, "text/plain")
 
+    # Try filesystem first
+    resolved = validate_file_path(name)
+    if resolved:
+        try:
+            content = resolved.read_text(encoding="utf-8")
+            return PlainTextResponse(content, media_type=ct)
+        except Exception:
+            pass
+
+    # Fallback: try DB by filename
     try:
-        content = resolved.read_text(encoding="utf-8")
-        return PlainTextResponse(content, media_type=ct)
+        from database import get_db
+        filename = Path(name).name
+        with get_db() as conn:
+            row = conn.execute("SELECT content FROM files WHERE filename=? AND content != '' ORDER BY created_at DESC LIMIT 1", (filename,)).fetchone()
+            if row and row[0]:
+                return PlainTextResponse(row[0], media_type=ct)
     except Exception:
-        return JSONResponse({"error": "Erro ao ler arquivo"}, status_code=500)
+        pass
+
+    return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
 
 
 @app.get("/output/{filename}")
@@ -954,9 +961,17 @@ Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15
                 scripts_count=0,
             )
             mindmap_filename = f"mindmap_{project_id}.html"
-            mindmap_path = OUTPUT_DIR / mindmap_filename
-            mindmap_path.write_text(mindmap_html, encoding="utf-8")
-            save_file(project_id, "visual", f"Mind Map - {niche_name}", mindmap_filename, "")
+
+            # Save to disk
+            try:
+                mindmap_path = OUTPUT_DIR / mindmap_filename
+                mindmap_path.write_text(mindmap_html, encoding="utf-8")
+                logger.info(f"Mindmap saved to disk: {mindmap_path} ({len(mindmap_html)} chars)")
+            except Exception as disk_err:
+                logger.warning(f"Mindmap disk write failed: {disk_err}")
+
+            # Always save to DB (reliable — serves as fallback)
+            save_file(project_id, "visual", f"Mind Map - {niche_name}", mindmap_filename, mindmap_html)
             log_activity(project_id, "mindmap_generated", "Mind Map gerado")
             mindmap_generated = True
         except Exception as e:
