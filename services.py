@@ -193,35 +193,139 @@ def validate_project_id(project_id: str) -> bool:
 # ── Channel Analysis ─────────────────────────────────────
 
 def analyze_via_notebooklm(notebook_id: str, niche_name: str) -> str:
-    """Analyze channel using NotebookLM — sends detailed prompt, gets comprehensive SOP back."""
+    """Analyze channel using NotebookLM — comprehensive prompt extracts everything needed to clone."""
     try:
         from notebooklm import NotebookLM
 
         nlm = NotebookLM()
 
-        prompt = f"""Faca uma analise COMPLETA e DETALHADA da estrutura dos roteiros deste canal em portugues. Inclua:
+        prompt = f"""Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("{niche_name}").
 
-1. VISAO GERAL DO CANAL: Nicho exato, publico-alvo, estilo visual, formato dos videos, duracao media
+═══════════════════════════════════════════
+PARTE 1 — DNA DO CANAL
+═══════════════════════════════════════════
 
-2. FORMULA DE TITULOS: Padroes encontrados nos titulos com exemplos reais. Quais palavras-chave, numeros, e gatilhos emocionais sao usados repetidamente?
+1. IDENTIDADE DO CANAL
+- Nicho exato e sub-nicho
+- Publico-alvo (idade, genero, interesses, dores, desejos)
+- Proposta de valor unica (por que alguem assistiria ESTE canal e nao outro?)
+- Tom de voz (serio, sarcastico, dramatico, educativo, misterioso?)
+- Nivel de linguagem (formal, coloquial, tecnico?)
+- Persona do narrador (quem "fala"? expert, investigador, contador de historias?)
 
-3. ESTRUTURA DE ROTEIRO: Como comecam (hook dos primeiros 30 segundos), como mantem atencao ao longo do video, como terminam. Qual e a estrutura de atos?
+2. FORMATO E PRODUCAO
+- Tipo de canal (faceless, talking head, animacao, misto?)
+- Duracao media dos videos (curtos, medios, longos)
+- Frequencia de upload ideal
+- Estilo visual (dark, colorido, minimalista, cinematico?)
+- Tipo de B-roll usado (stock footage, animacao, screen recording, fotos?)
+- Estilo de edicao (cortes rapidos, transicoes suaves, jump cuts?)
+- Musica e sound design (que tipo de musica? quando muda? efeitos sonoros?)
 
-4. PLAYBOOK DE HOOKS: Liste TODOS os tipos de ganchos usados com exemplos reais dos videos. Classifique por tipo (curiosidade, choque, pergunta, afirmacao ousada, etc.)
+═══════════════════════════════════════════
+PARTE 2 — ENGENHARIA DE ROTEIRO
+═══════════════════════════════════════════
 
-5. TECNICAS DE STORYTELLING: Open loops (misterios que so se resolvem depois), pattern interrupts (quebras de expectativa), cliffhangers, specific spikes (momentos de pico) — com exemplos concretos de cada video
+3. ESTRUTURA DE ROTEIRO (anatomia completa)
+- HOOK (0:00-0:30): Como capturam atencao nos PRIMEIROS 5 SEGUNDOS? E nos primeiros 30?
+- CONTEXTO (0:30-2:30): Como fazem o setup sem perder o espectador?
+- DESENVOLVIMENTO: Quantos "atos" tem? Como e a progressao da tensao?
+- CLIMAX: Onde fica o ponto alto? Como constroem ate la?
+- RESOLUCAO: Como terminam a historia?
+- CTA: Como pedem like/subscribe/comentario sem ser chato?
+- Cite exemplos REAIS de cada secao de videos especificos.
 
-6. REGRAS DE OURO: 10 regras que NUNCA sao quebradas nesses roteiros. O que o canal SEMPRE faz e o que NUNCA faz?
+4. PLAYBOOK DE HOOKS (todos os tipos usados)
+Para cada tipo, de 3 exemplos reais:
+- Hook de CHOQUE ("Ele perdeu $200 milhoes em 3 horas")
+- Hook de CURIOSIDADE ("O que acontece quando...")
+- Hook de PERGUNTA IMPOSSIVEL ("Como um estagiario hackeou o Pentagon?")
+- Hook de NUMERO IMPACTANTE ("$1.7 bilhao desapareceu")
+- Hook de CONTRASTE ("De morador de rua a bilionario em 18 meses")
+- Hook de URGENCIA ("Isso esta acontecendo AGORA e ninguem percebeu")
+- Hook de SEGREDO ("O metodo que bancos nao querem que voce saiba")
+- Outros tipos que o canal usa
 
-7. PILARES DE CONTEUDO: 5 categorias principais de videos com exemplos de cada. Qual pilar tem mais views? Qual tem mais engajamento?
+5. TECNICAS DE STORYTELLING (com exemplos concretos)
+- OPEN LOOPS: Misterios plantados que so se resolvem depois. Cite 5 exemplos.
+- PATTERN INTERRUPTS: Quebras de expectativa que reativam atencao. Cite 5 exemplos.
+- SPECIFIC SPIKES: Momentos de pico de tensao/emocao/surpresa. Cite 5 exemplos.
+- CLIFFHANGERS: Ganchos entre secoes que impedem o espectador de sair. Cite 5 exemplos.
+- ARCO EMOCIONAL: Como a emocao do espectador muda durante o video (curiosidade → tensao → choque → reflexao?)
+- RITMO NARRATIVO: Quando acelera? Quando desacelera? Quando faz pausa dramatica?
 
-8. ESTILO DE THUMBNAIL: Analise o padrao visual das thumbnails - cores dominantes, tipografia, expressoes faciais, elementos graficos, composicao. Como replicar o estilo?
+6. REGRAS DE OURO (minimo 15 regras)
+O que este canal SEMPRE faz e NUNCA quebra:
+- Regras de abertura
+- Regras de meio
+- Regras de fechamento
+- Regras de linguagem/vocabulario
+- Regras de visual
+- O que NUNCA fazem (anti-patterns)
 
-9. VERSAO IA: Instrucoes formatadas para uma IA replicar EXATAMENTE este estilo de escrita. Inclua tom de voz, vocabulario tipico, ritmo das frases, nivel de formalidade, e exemplos de "faca isso" vs "nao faca isso".
+═══════════════════════════════════════════
+PARTE 3 — ESTRATEGIA DE CONTEUDO
+═══════════════════════════════════════════
 
-Seja EXTREMAMENTE detalhado com exemplos reais extraidos dos videos. O objetivo e criar um SOP (Standard Operating Procedure) que permita replicar a formula deste canal em um nicho diferente ("{niche_name}")."""
+7. PILARES DE CONTEUDO
+Liste 5-7 categorias de videos com:
+- Nome do pilar
+- Descricao
+- % estimada do canal
+- 3 exemplos de videos reais
+- Qual pilar gera mais views?
+- Qual gera mais engajamento?
 
-        logger.info(f"Sending analysis prompt to NotebookLM (notebook={notebook_id[:12]}...)")
+8. FORMULA DE TITULOS
+- Padroes repetidos (estrutura gramatical, palavras-chave, numeros)
+- Gatilhos emocionais mais usados
+- Comprimento ideal
+- 10 exemplos reais dos melhores titulos
+- Template: "Como transformar qualquer tema neste estilo de titulo"
+
+9. ESTILO DE THUMBNAIL
+- Cores dominantes (palette exata se possivel)
+- Tipografia (fontes, tamanho, cor do texto)
+- Elementos graficos recorrentes (setas, circulos, emojis, icones?)
+- Expressoes faciais (se aplicavel)
+- Composicao (tercos, foco central, fundo?)
+- Contraste e legibilidade
+- O que NUNCA aparece nas thumbnails
+- Template: "Como criar uma thumbnail neste estilo"
+
+10. SEO E ALGORITMO
+- Estrategia de tags (que tipo de tags usam?)
+- Estrategia de descricao (template)
+- Uso de hashtags
+- Estrategia de end screens
+- Estrategia de playlists/series
+- Otimizacao para CTR (click-through rate)
+
+═══════════════════════════════════════════
+PARTE 4 — MANUAL DE REPLICACAO
+═══════════════════════════════════════════
+
+11. VERSAO IA — INSTRUCOES DE REPLICACAO
+Escreva instrucoes DETALHADAS para uma IA gerar roteiros IDENTICOS a este canal:
+- System prompt ideal (com exemplos de "faca" e "nao faca")
+- Vocabulario tipico (liste 30 palavras/expressoes que o canal usa muito)
+- Vocabulario proibido (palavras que NUNCA usam)
+- Ritmo das frases (curtas? longas? mix?)
+- Como formatar numeros e valores monetarios
+- Como usar pausas dramaticas
+- Como criar transicoes entre secoes
+- Exemplo de paragrafo NO ESTILO EXATO do canal
+
+12. CHECKLIST DE QUALIDADE
+10 perguntas para verificar se um roteiro esta "no padrao" deste canal:
+- [ ] O hook prende nos primeiros 5 segundos?
+- [ ] Tem pelo menos 3 open loops?
+- [ ] ...etc
+
+Seja EXTREMAMENTE detalhado. Use exemplos REAIS dos videos. Nao generalize — cite trechos especificos.
+O resultado deve funcionar como um SOP (Standard Operating Procedure) completo para o nicho "{niche_name}"."""
+
+        logger.info(f"Sending comprehensive analysis prompt to NotebookLM (notebook={notebook_id[:12]}...)")
         response = nlm.chat(notebook_id=notebook_id, message=prompt)
 
         result = response.text if hasattr(response, "text") else str(response)
