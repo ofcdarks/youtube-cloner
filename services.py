@@ -438,251 +438,200 @@ def generate_mindmap_html(
     top_ideas: list[dict],
     scripts_count: int = 0,
 ) -> str:
-    """Generate a visual HTML mind map for a project."""
+    """Generate a visual HTML mind map matching the System Breakers design."""
     import html as html_mod
     from datetime import date
 
-    def esc(text):
-        return html_mod.escape(str(text)) if text else ""
+    def esc(t):
+        return html_mod.escape(str(t)) if t else ""
 
-    # Extract data from niches
-    chosen_niche = niches[0] if niches else {"name": niche_name, "description": "", "rpm_range": "", "competition": ""}
+    today = date.today().isoformat()
+    chosen = niches[0] if niches else {"name": niche_name, "description": "", "rpm_range": "$5-15", "competition": "Media", "pillars": []}
     alt_niches = niches[1:5] if len(niches) > 1 else []
+    chosen_name = esc(chosen.get("name", niche_name))
+    chosen_desc = esc(chosen.get("description", ""))
+    chosen_rpm = esc(chosen.get("rpm_range", "$5-15"))
+    chosen_comp = esc(chosen.get("competition", "Media"))
+    pillars = chosen.get("pillars", [])[:5]
 
-    chosen_name = esc(chosen_niche.get("name", niche_name))
-    chosen_desc = esc(chosen_niche.get("description", ""))
-    chosen_rpm = esc(chosen_niche.get("rpm_range", "$5-15"))
-    chosen_comp = esc(chosen_niche.get("competition", "Media"))
-    chosen_pillars = chosen_niche.get("pillars", [])
-
-    # Extract key SOP points
+    # Extract SOP data
     sop_text = sop or ""
-    sop_lines = [line.strip() for line in sop_text.split('\n') if line.strip() and len(line.strip()) > 10]
+    sop_lines = [l.strip() for l in sop_text.split('\n') if l.strip() and len(l.strip()) > 10]
 
-    production_lines = []
+    # Channel info
+    canal_info = []
+    for line in sop_lines[:60]:
+        lo = line.lower()
+        clean = line.lstrip('-*#0123456789. ').strip()
+        if any(k in lo for k in ['nicho:', 'estilo:', 'formato:', 'hook', 'storytelling', 'duracao', 'frequen', 'views', 'videos']):
+            if clean and len(clean) < 100:
+                canal_info.append(clean)
+    canal_info = canal_info[:6] or [f"Nicho: {niche_name}", f"Canal: {channel_url[:40]}"]
+
+    # Production info
+    prod_info = []
     for line in sop_lines[:80]:
-        lower = line.lower()
-        if any(kw in lower for kw in ['frequen', 'custo', 'animac', 'producao', 'freelanc', 'pipeline', 'receita', 'ferramenta']):
-            clean = line.lstrip('-').lstrip('*').lstrip('#').lstrip(' ').lstrip('0123456789.').strip()
-            if clean and len(clean) < 120:
-                production_lines.append(clean)
-    production_lines = production_lines[:5] or [
+        lo = line.lower()
+        clean = line.lstrip('-*#0123456789. ').strip()
+        if any(k in lo for k in ['roteirista', 'animac', 'freelanc', 'custo', 'frequen', 'pipeline', 'receita', 'ferramenta', 'ia ', 'claude', 'automatiz']):
+            if clean and len(clean) < 100:
+                prod_info.append(clean)
+    prod_info = prod_info[:5] or [
         "Roteirista: IA (Claude) + SOP automatizado",
         "Animacao: Freelancers Upwork ($80-300/video)",
         "Frequencia: 2-3 videos/semana",
+        "Receita estimada: $5K-15K/mes (apos 10 videos)",
         "Pipeline: 100% automatizado com Claude Code",
     ]
 
-    canal_lines = []
-    for line in sop_lines[:60]:
-        lower = line.lower()
-        stripped = line.strip().lstrip('-').lstrip('*').lstrip('#').lstrip(' ').lstrip('0123456789.)').strip()
-        if not stripped or len(stripped) < 20 or stripped.isupper():
-            continue
-        if any(kw in lower for kw in ['estilo do canal', 'formato dos video', 'tom do canal', 'duracao media',
-                                       'publico-alvo', 'publico alvo', 'audiencia', 'nicho principal',
-                                       'frequencia de upload', 'tipo de conteudo']):
-            if len(stripped) < 120:
-                canal_lines.append(stripped)
-    canal_lines = canal_lines[:6] or [
-        f"Canal: {esc(channel_url[:80])}",
-        f"Nicho: {esc(niche_name)}",
-        chosen_desc[:100] if chosen_desc else "Analise de conteudo via IA",
-    ]
+    # Roteiros info
+    roteiros_html = ""
+    for i, idea in enumerate(top_ideas[:3]):
+        t = esc(idea.get("title", f"Titulo {i+1}"))[:45]
+        dur = f"{8 + i*2}-{10 + i*2} min"
+        roteiros_html += f'<div class="roteiro-item"><span class="r-num">{i+1}.</span> {t} <span class="r-dur">{dur}</span></div>'
+    if not roteiros_html:
+        roteiros_html = '<div class="roteiro-item">Nenhum roteiro gerado ainda</div>'
+    roteiros_html += '<div class="roteiro-meta">Estrutura: Hook → Contexto → 3 Atos → Climax → CTA</div>'
+    roteiros_html += '<div class="roteiro-meta">Tecnicas: Open Loops, Pattern Interrupts, Specific Spikes</div>'
 
-    num_ideas = len(top_ideas)
-    num_niches = len(niches)
+    # Pillars HTML
+    pillars_html = ""
+    for i, p in enumerate(pillars):
+        pillars_html += f'<div class="pillar-item"><span class="p-num">{i+1}.</span> {esc(p)}</div>'
+    if not pillars_html:
+        pillars_html = '<div class="pillar-item">Definidos no SOP</div>'
 
-    # Build stats
-    stats_html = f'''
-    <div class="stat-card"><div class="number">{num_ideas}</div><div class="label">Ideias de Videos</div></div>
-    <div class="stat-card"><div class="number">{esc(chosen_rpm)}</div><div class="label">RPM Estimado</div></div>
-    <div class="stat-card"><div class="number">{scripts_count}</div><div class="label">Roteiros Prontos</div></div>
-    <div class="stat-card"><div class="number">{num_niches}</div><div class="label">Nichos Gerados</div></div>
-    <div class="stat-card"><div class="number">$80-300</div><div class="label">Custo por Video</div></div>'''
+    # Alt niches HTML
+    alt_html = ""
+    comp_colors = {"Baixa": "#22c55e", "Media": "#eab308", "Alta": "#ef4444", "Muito Alta": "#dc2626"}
+    for n in alt_niches:
+        nm = esc(n.get("name", ""))
+        desc = esc(n.get("description", ""))[:50]
+        rpm = esc(n.get("rpm_range", ""))
+        comp = n.get("competition", "Media")
+        cc = comp_colors.get(comp, "#eab308")
+        alt_html += f'<div class="alt-niche"><b>{nm}</b> - {desc} <span class="rpm-badge" style="background:{cc}">{rpm} {comp}</span></div>'
 
-    # Pipeline
-    pipeline_html = f'''
-    <div class="pipe-step active"><h4>Protocol Clerk</h4><p>Analise de concorrencia</p></div>
-    <div class="pipe-arrow">&#10132;</div>
-    <div class="pipe-step active"><h4>Niche Bending</h4><p>{num_niches} nichos derivados</p></div>
-    <div class="pipe-arrow">&#10132;</div>
-    <div class="pipe-step active"><h4>Script Stealing</h4><p>{num_ideas} ideias + {scripts_count} roteiros</p></div>
-    <div class="pipe-arrow">&#10132;</div>
-    <div class="pipe-step active"><h4>Google Export</h4><p>Drive / Docs / Sheets</p></div>'''
+    # Canal info HTML
+    canal_html = "".join(f'<div class="info-item">{esc(c)}</div>' for c in canal_info)
+    prod_html = "".join(f'<div class="info-item">{esc(p)}</div>' for p in prod_info)
 
-    # Branches
-    canal_leaves = "".join(f'\n          <div class="leaf">{esc(line)}</div>' for line in canal_lines[:6])
-
-    comp_tag = ""
-    if chosen_comp:
-        comp_lower = chosen_comp.lower()
-        if "baixa" in comp_lower:
-            comp_tag = '<span class="tag tag-success">OPORTUNIDADE</span>'
-        elif "media" in comp_lower:
-            comp_tag = '<span class="tag tag-warning">COMPETITIVO</span>'
-        else:
-            comp_tag = '<span class="tag tag-danger">SATURADO</span>'
-
-    nicho_leaves = f'''
-          <div class="leaf">Nome: {chosen_name}</div>
-          <div class="leaf">Descricao: {chosen_desc}</div>
-          <div class="leaf">RPM: {chosen_rpm}</div>
-          <div class="leaf">Competicao: {esc(chosen_comp)} {comp_tag}</div>'''
-
-    pilares_leaves = ""
-    if chosen_pillars:
-        for i, p in enumerate(chosen_pillars[:5], 1):
-            pilares_leaves += f'\n          <div class="leaf">{i}. {esc(p)}</div>'
-    else:
-        pillar_lines = []
-        for line in sop_lines[:100]:
-            lower = line.lower()
-            if any(kw in lower for kw in ['pilar', 'categoria', 'tipo de video', 'serie']):
-                clean = line.lstrip('-').lstrip('*').lstrip('#').lstrip(' ').lstrip('0123456789.').strip()
-                if clean and len(clean) < 120:
-                    pillar_lines.append(clean)
-        for i, p in enumerate(pillar_lines[:5], 1):
-            pilares_leaves += f'\n          <div class="leaf">{i}. {esc(p)}</div>'
-        if not pilares_leaves:
-            pilares_leaves = '\n          <div class="leaf">Pilares serao definidos com base no SOP</div>'
-
-    roteiros_leaves = ""
-    if scripts_count > 0:
-        roteiros_leaves += f'\n          <div class="leaf">{scripts_count} roteiros prontos para producao</div>'
-    high_priority = [idea for idea in top_ideas[:10] if idea.get("priority", "").upper() == "ALTA"]
-    for i, idea in enumerate(high_priority[:3], 1):
-        title = esc(idea.get("title", f"Roteiro {i}"))
-        roteiros_leaves += f'\n          <div class="leaf">{i}. {title} <span class="tag tag-warning">PRONTO</span></div>'
-    roteiros_leaves += '\n          <div class="leaf">Estrutura: Hook > Contexto > 3 Atos > Climax > CTA</div>'
-    roteiros_leaves += '\n          <div class="leaf">Tecnicas: Open Loops, Pattern Interrupts, Specific Spikes</div>'
-
-    producao_leaves = "".join(f'\n          <div class="leaf">{esc(line)}</div>' for line in production_lines[:5])
-
-    alt_leaves = ""
-    for n in alt_niches[:4]:
-        n_name = esc(n.get("name", ""))
-        n_desc = esc(n.get("description", ""))
-        alt_leaves += f'\n          <div class="leaf">{n_name} - {n_desc}</div>'
-    if not alt_leaves:
-        alt_leaves = '\n          <div class="leaf">Nichos alternativos serao gerados pela IA</div>'
-
-    # Ideas
+    # Top ideas (up to 15)
     ideas_html = ""
-    for i, idea in enumerate(top_ideas[:15], 1):
-        title = esc(idea.get("title", f"Ideia {i}"))
-        summary = esc(idea.get("summary", idea.get("hook", "")))
-        priority = idea.get("priority", "MEDIA").upper()
-        pcls = {"ALTA": "alta", "MEDIA": "media"}.get(priority, "baixa")
-        ideas_html += f'''
-      <div class="idea-card">
-        <div class="idea-num">{i}</div>
-        <div class="idea-content">
-          <h4>{title}</h4>
-          <p>{summary}</p>
-          <span class="priority {pcls}">{priority}</span>
-        </div>
-      </div>'''
+    for i, idea in enumerate(top_ideas[:15]):
+        t = esc(idea.get("title", ""))[:60]
+        desc = esc(idea.get("description", ""))[:80]
+        pri = idea.get("priority", "MEDIA")
+        pri_c = {"ALTA": "#ef4444", "MEDIA": "#eab308", "BAIXA": "#22c55e"}.get(pri, "#eab308")
+        ideas_html += f'''<div class="idea-card"><div class="idea-num">{i+1}</div><div class="idea-body"><b>{t}</b><p>{desc}</p><span class="pri-badge" style="background:{pri_c}">{pri}</span></div></div>'''
 
-    today = date.today().strftime("%Y-%m-%d")
+    num_ideas = min(15, len(top_ideas))
+    sc = scripts_count or min(3, len(top_ideas))
 
-    return _MINDMAP_TEMPLATE.format(
-        niche_upper=esc(niche_name).upper(),
-        niche_esc=esc(niche_name),
-        chosen_desc=chosen_desc,
-        stats_html=stats_html,
-        pipeline_html=pipeline_html,
-        canal_leaves=canal_leaves,
-        nicho_leaves=nicho_leaves,
-        pilares_leaves=pilares_leaves,
-        scripts_count=scripts_count,
-        roteiros_leaves=roteiros_leaves,
-        producao_leaves=producao_leaves,
-        alt_leaves=alt_leaves,
-        num_ideas=min(len(top_ideas), 15),
-        ideas_html=ideas_html,
-        today=today,
-    )
-
-
-_MINDMAP_TEMPLATE = '''<!DOCTYPE html>
+    return f'''<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mind Map - {niche_esc}</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{esc(niche_name)} - Mind Map</title>
 <style>
-  :root {{--bg-deep:#020617;--bg-base:#0a0f1e;--bg-elevated:#0e1223;--bg-surface:#131a2e;--border:#1e293b;--border-hover:#334155;--fg-primary:#f8fafc;--fg-secondary:#94a3b8;--fg-muted:#64748b;--fg-dim:#475569;--accent:#7c3aed;--success:#22c55e;--danger:#ef4444;--info:#3b82f6;--warning:#eab308;--cyan:#06b6d4;--font-ui:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono',monospace;--ease:cubic-bezier(.16,1,.3,1)}}
-  *{{margin:0;padding:0;box-sizing:border-box}}
-  body{{background:var(--bg-deep);font-family:var(--font-ui);color:var(--fg-secondary);overflow-x:hidden;-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}}
-  ::selection{{background:rgba(124,58,237,.2);color:#fff}}
-  .header{{text-align:center;padding:36px 20px;background:var(--bg-deep);border-bottom:1px solid var(--border)}}
-  .header h1{{font-size:2em;font-weight:700;color:var(--fg-primary);letter-spacing:-.5px;margin-bottom:6px}}
-  .header p{{color:var(--fg-muted);font-size:14px}}
-  .container{{max-width:1400px;margin:0 auto;padding:32px 24px}}
-  .mindmap{{display:flex;flex-direction:column;gap:28px}}
-  .level-0{{background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:24px;text-align:center}}
-  .level-0 h2{{font-size:1.5em;color:var(--fg-primary);font-weight:700;letter-spacing:-.3px}}
-  .level-0 .subtitle{{color:var(--fg-muted);margin-top:8px;font-size:13px;max-width:800px;margin-left:auto;margin-right:auto}}
-  .branches{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}}
-  .branch{{background:var(--bg-elevated);border-radius:10px;overflow:hidden;border:1px solid var(--border);transition:all 180ms var(--ease)}}
-  .branch:hover{{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3);border-color:var(--border-hover)}}
-  .branch-header{{padding:14px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:.5px}}
-  .branch-header .icon{{font-size:16px;opacity:.7}}
-  .branch-body{{padding:0 16px 16px}}
-  .leaf{{padding:10px 14px;margin:6px 0;background:var(--bg-surface);border-radius:6px;border-left:3px solid;font-size:13px;line-height:1.5;color:var(--fg-secondary)}}
-  .leaf .tag{{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;letter-spacing:.3px}}
-  .tag-success{{background:rgba(34,197,94,.1);color:#22c55e}}.tag-warning{{background:rgba(234,179,8,.1);color:#eab308}}.tag-danger{{background:rgba(239,68,68,.1);color:#ef4444}}.tag-info{{background:rgba(6,182,212,.1);color:#06b6d4}}
-  .b-original .branch-header{{background:rgba(34,197,94,.08);color:var(--success);border-bottom:1px solid rgba(34,197,94,.15)}}.b-original .leaf{{border-color:rgba(34,197,94,.4)}}
-  .b-nicho .branch-header{{background:rgba(124,58,237,.08);color:#a78bfa;border-bottom:1px solid rgba(124,58,237,.15)}}.b-nicho .leaf{{border-color:rgba(124,58,237,.4)}}
-  .b-pilares .branch-header{{background:rgba(59,130,246,.08);color:var(--info);border-bottom:1px solid rgba(59,130,246,.15)}}.b-pilares .leaf{{border-color:rgba(59,130,246,.4)}}
-  .b-roteiros .branch-header{{background:rgba(234,179,8,.08);color:var(--warning);border-bottom:1px solid rgba(234,179,8,.15)}}.b-roteiros .leaf{{border-color:rgba(234,179,8,.4)}}
-  .b-producao .branch-header{{background:rgba(239,68,68,.08);color:var(--danger);border-bottom:1px solid rgba(239,68,68,.15)}}.b-producao .leaf{{border-color:rgba(239,68,68,.4)}}
-  .b-alternativas .branch-header{{background:rgba(6,182,212,.08);color:var(--cyan);border-bottom:1px solid rgba(6,182,212,.15)}}.b-alternativas .leaf{{border-color:rgba(6,182,212,.4)}}
-  .stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px}}
-  .stat-card{{background:var(--bg-elevated);border-radius:10px;padding:20px;text-align:center;border:1px solid var(--border);transition:border-color 180ms var(--ease)}}
-  .stat-card:hover{{border-color:var(--border-hover)}}
-  .stat-card .number{{font-family:var(--font-mono);font-size:1.8em;font-weight:700;color:var(--fg-primary);letter-spacing:-1px}}
-  .stat-card .label{{color:var(--fg-muted);margin-top:4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}}
-  .ideas-section{{margin-top:40px}}.ideas-section h2{{font-size:16px;font-weight:600;color:var(--fg-primary);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}}
-  .ideas-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:10px}}
-  .idea-card{{background:var(--bg-elevated);border-radius:8px;padding:14px 16px;border:1px solid var(--border);display:flex;gap:14px;align-items:flex-start;transition:border-color 180ms var(--ease)}}
-  .idea-card:hover{{border-color:var(--border-hover)}}
-  .idea-num{{background:var(--accent);color:white;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:var(--font-mono);flex-shrink:0}}
-  .idea-content h4{{color:var(--fg-primary);font-size:13px;font-weight:600;margin-bottom:4px}}
-  .idea-content p{{color:var(--fg-muted);font-size:12px;line-height:1.4}}
-  .idea-content .priority{{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-top:6px;letter-spacing:.3px}}
-  .priority.alta{{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.25)}}
-  .priority.media{{background:rgba(234,179,8,.1);color:var(--warning);border:1px solid rgba(234,179,8,.25)}}
-  .priority.baixa{{background:rgba(34,197,94,.1);color:var(--success);border:1px solid rgba(34,197,94,.25)}}
-  .pipeline{{display:flex;justify-content:center;align-items:center;gap:0;margin:28px 0;flex-wrap:wrap}}
-  .pipe-step{{background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:14px 24px;text-align:center;min-width:170px;transition:all 180ms var(--ease)}}
-  .pipe-step.active{{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)}}
-  .pipe-step h4{{color:var(--fg-primary);font-size:13px;font-weight:600}}.pipe-step p{{color:var(--fg-muted);font-size:12px;margin-top:3px}}
-  .pipe-arrow{{font-size:14px;color:var(--fg-dim);padding:0 8px}}
-  .footer{{text-align:center;padding:28px;color:var(--fg-dim);font-size:12px;border-top:1px solid var(--border);margin-top:40px}}
-  @media(max-width:900px){{.branches{{grid-template-columns:1fr}}.ideas-grid{{grid-template-columns:1fr}}.stats{{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}}.container{{padding:20px 16px}}}}
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{background:#0f0f14;color:#e4e4e7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;min-height:100vh}}
+.container{{max-width:1200px;margin:0 auto}}
+h1{{font-size:28px;text-align:center;text-transform:uppercase;letter-spacing:3px;margin-bottom:4px}}
+.subtitle{{text-align:center;color:#a1a1aa;font-size:13px;margin-bottom:28px}}
+.stats{{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}}
+.stat{{background:#1a1a24;border-radius:8px;padding:16px 12px;text-align:center;border-top:3px solid #22c55e}}
+.stat-val{{font-size:22px;font-weight:700;color:#fff}}
+.stat-label{{font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:1px;margin-top:4px}}
+.pipeline{{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:28px;flex-wrap:wrap}}
+.pipe-box{{background:#1a1a24;border:1px solid #27272a;border-radius:8px;padding:10px 18px;text-align:center}}
+.pipe-box b{{display:block;font-size:13px;color:#a78bfa}}
+.pipe-box span{{font-size:10px;color:#71717a}}
+.pipe-arrow{{color:#3f3f46;font-size:20px}}
+.grid4{{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}}
+.grid2{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px}}
+.card{{background:#1a1a24;border-radius:8px;padding:16px;border-left:3px solid #3f3f46}}
+.card.c-canal{{border-color:#3b82f6}}
+.card.c-nicho{{border-color:#22c55e}}
+.card.c-pilares{{border-color:#f59e0b}}
+.card.c-roteiros{{border-color:#ef4444}}
+.card.c-prod{{border-color:#f59e0b}}
+.card.c-alt{{border-color:#a78bfa}}
+.card-title{{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}}
+.card.c-canal .card-title{{color:#3b82f6}}
+.card.c-nicho .card-title{{color:#22c55e}}
+.card.c-pilares .card-title{{color:#f59e0b}}
+.card.c-roteiros .card-title{{color:#ef4444}}
+.card.c-prod .card-title{{color:#f59e0b}}
+.card.c-alt .card-title{{color:#a78bfa}}
+.info-item{{font-size:12px;color:#d4d4d8;margin-bottom:6px;padding-left:8px;border-left:2px solid #27272a}}
+.pillar-item{{font-size:12px;color:#d4d4d8;margin-bottom:6px}}
+.p-num{{color:#f59e0b;font-weight:700}}
+.roteiro-item{{font-size:12px;color:#d4d4d8;margin-bottom:6px}}
+.r-num{{color:#ef4444;font-weight:700}}
+.r-dur{{font-size:10px;color:#71717a;background:#27272a;padding:2px 6px;border-radius:3px;margin-left:4px}}
+.roteiro-meta{{font-size:10px;color:#71717a;margin-top:8px;padding-top:6px;border-top:1px solid #27272a}}
+.alt-niche{{font-size:12px;margin-bottom:8px}}
+.rpm-badge{{font-size:9px;padding:2px 6px;border-radius:3px;color:#000;font-weight:600;margin-left:4px}}
+.ideas-section{{margin-top:8px}}
+.ideas-section h2{{font-size:16px;margin-bottom:14px;text-align:center}}
+.ideas-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
+.idea-card{{background:#1a1a24;border-radius:8px;padding:12px;display:flex;gap:10px;align-items:flex-start}}
+.idea-num{{background:#7c3aed;color:#fff;font-size:11px;font-weight:700;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
+.idea-body b{{font-size:12px;display:block;margin-bottom:4px}}
+.idea-body p{{font-size:10px;color:#a1a1aa;margin-bottom:4px}}
+.pri-badge{{font-size:9px;padding:2px 8px;border-radius:3px;color:#fff;font-weight:600}}
+.footer{{text-align:center;color:#3f3f46;font-size:11px;margin-top:24px;padding-top:12px;border-top:1px solid #1a1a24}}
+@media(max-width:900px){{.grid4,.stats{{grid-template-columns:repeat(2,1fr)}}.ideas-grid{{grid-template-columns:1fr 1fr}}.grid2{{grid-template-columns:1fr}}}}
+@media(max-width:500px){{.stats,.ideas-grid{{grid-template-columns:1fr}}}}
 </style>
 </head>
 <body>
-<div class="header"><h1>{niche_upper}</h1><p>YouTube Channel Blueprint - Clonado via AI Protocols</p></div>
 <div class="container">
-  <div class="stats">{stats_html}</div>
-  <div class="pipeline">{pipeline_html}</div>
-  <div class="mindmap">
-    <div class="level-0"><h2>{niche_upper}</h2><div class="subtitle">{chosen_desc}</div></div>
-    <div class="branches">
-      <div class="branch b-original"><div class="branch-header"><span class="icon">&#127922;</span> Canal Original</div><div class="branch-body">{canal_leaves}</div></div>
-      <div class="branch b-nicho"><div class="branch-header"><span class="icon">&#128161;</span> Nicho Escolhido</div><div class="branch-body">{nicho_leaves}</div></div>
-      <div class="branch b-pilares"><div class="branch-header"><span class="icon">&#127919;</span> 5 Pilares de Conteudo</div><div class="branch-body">{pilares_leaves}</div></div>
-      <div class="branch b-roteiros"><div class="branch-header"><span class="icon">&#127916;</span> {scripts_count} Roteiros Prontos</div><div class="branch-body">{roteiros_leaves}</div></div>
-      <div class="branch b-producao"><div class="branch-header"><span class="icon">&#9881;</span> Producao</div><div class="branch-body">{producao_leaves}</div></div>
-      <div class="branch b-alternativas"><div class="branch-header"><span class="icon">&#128640;</span> Nichos Alternativos</div><div class="branch-body">{alt_leaves}</div></div>
-    </div>
+  <h1>{esc(niche_name)}</h1>
+  <p class="subtitle">YouTube Channel Blueprint - Clonado de {esc(channel_url[:50])} via AI Protocols</p>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val">{chosen_rpm}</div><div class="stat-label">RPM Estimado</div></div>
+    <div class="stat" style="border-color:#3b82f6"><div class="stat-val">{len(top_ideas)}</div><div class="stat-label">Ideias de Videos</div></div>
+    <div class="stat" style="border-color:#ef4444"><div class="stat-val">{sc}</div><div class="stat-label">Roteiros Prontos</div></div>
+    <div class="stat" style="border-color:#a78bfa"><div class="stat-val">{len(niches)}</div><div class="stat-label">Nichos Gerados</div></div>
+    <div class="stat" style="border-color:#f59e0b"><div class="stat-val">{len(pillars)}</div><div class="stat-label">Pilares</div></div>
+    <div class="stat" style="border-color:#ec4899"><div class="stat-val">$80-300</div><div class="stat-label">Custo por Video</div></div>
   </div>
-  <div class="ideas-section"><h2>Top {num_ideas} Ideias de Videos</h2><div class="ideas-grid">{ideas_html}</div></div>
+
+  <div class="pipeline">
+    <div class="pipe-box"><b>Protocol Clerk</b><span>Analise de concorrencia</span></div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-box"><b>Niche Bending</b><span>5 nichos derivados</span></div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-box"><b>Script Stealing</b><span>{len(top_ideas)} ideias + {sc} roteiros</span></div>
+    <span class="pipe-arrow">→</span>
+    <div class="pipe-box"><b>Google Export</b><span>Drive / Docs / Sheets</span></div>
+  </div>
+
+  <div class="grid4">
+    <div class="card c-canal"><div class="card-title">&#128308; Canal Original</div>{canal_html}</div>
+    <div class="card c-nicho"><div class="card-title">&#128994; Nicho Escolhido</div>
+      <div class="info-item"><b>Nome:</b> {chosen_name}</div>
+      <div class="info-item"><b>Desc:</b> {chosen_desc[:80]}</div>
+      <div class="info-item"><b>RPM:</b> {chosen_rpm} <b style="color:{'#22c55e' if 'Baixa' in chosen_comp else '#eab308'}">{chosen_comp}</b></div>
+    </div>
+    <div class="card c-pilares"><div class="card-title">&#127919; {len(pillars)} Pilares de Conteudo</div>{pillars_html}</div>
+    <div class="card c-roteiros"><div class="card-title">&#128196; {sc} Roteiros Prontos</div>{roteiros_html}</div>
+  </div>
+
+  <div class="grid2">
+    <div class="card c-prod"><div class="card-title">&#9881; Producao</div>{prod_html}</div>
+    <div class="card c-alt"><div class="card-title">&#128640; Nichos Alternativos</div>{alt_html if alt_html else '<div class="info-item">Nenhum nicho alternativo</div>'}</div>
+  </div>
+
+  <div class="ideas-section">
+    <h2>Top {num_ideas} Ideias de Videos (por potencial viral)</h2>
+    <div class="ideas-grid">{ideas_html}</div>
+  </div>
 </div>
-<div class="footer">Gerado por YouTube Channel Cloner | {today}</div>
+<div class="footer">Gerado por YouTube Channel Cloner | Claude Code + NotebookLM | {today}</div>
 </body>
 </html>'''
