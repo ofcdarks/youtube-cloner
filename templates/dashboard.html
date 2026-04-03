@@ -132,14 +132,18 @@
                 <div class="form-group grow-1">
                     <label for="notebook-id">
                         {% if nlm_connected %}
-                        &#128214; Notebook{% if nlm_notebook_title %} <span style="color:var(--fg-dim);font-weight:400;font-size:11px;">({{ nlm_notebook_title[:35] }}...)</span>{% endif %}
+                        &#128214; Notebook
                         {% else %}
                         ID do Notebook <span class="optional">requer conexao</span>
                         {% endif %}
                     </label>
-                    <input type="text" id="notebook-id" class="form-input" value="{{ nlm_notebook_id }}" placeholder="{% if nlm_connected %}Cole o ID do notebook{% else %}Conecte primeiro{% endif %}" {% if not nlm_connected %}disabled style="opacity:.5"{% endif %}>
-                    {% if nlm_connected and nlm_notebook_id %}
-                    <span style="font-size:10px;color:#22c55e;margin-top:3px;display:block;">&#10003; Notebook detectado do NOTEBOOKLM_CONTEXT</span>
+                    <input type="text" id="notebook-id" class="form-input" value="{{ nlm_notebook_id }}" placeholder="{% if nlm_connected %}Cole o ID do notebook{% else %}Conecte primeiro{% endif %}" {% if not nlm_connected %}disabled style="opacity:.5"{% endif %} style="{% if nlm_notebook_id %}display:none{% endif %}">
+                    {% if nlm_notebook_id and nlm_notebook_title %}
+                    <div id="notebook-display" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;" onclick="document.getElementById('notebook-id').style.display='';this.style.display='none';" title="Clique para editar o ID">
+                        <span style="font-size:13px;color:var(--fg-primary);">&#128214; {{ nlm_notebook_title[:40] }}{% if nlm_notebook_title|length > 40 %}...{% endif %}</span>
+                        <span style="font-size:10px;color:var(--fg-dim);margin-left:auto;">&#9998;</span>
+                    </div>
+                    <span style="font-size:10px;color:#22c55e;margin-top:3px;display:block;">&#10003; Notebook detectado automaticamente</span>
                     {% elif nlm_connected %}
                     <span style="font-size:10px;color:var(--fg-dim);margin-top:3px;display:block;">Copie o ID da URL do NotebookLM (apos /notebook/)</span>
                     {% endif %}
