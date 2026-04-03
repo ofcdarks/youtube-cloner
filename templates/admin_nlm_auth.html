@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}YT Cloner - Conectar NotebookLM{% endblock %}
+
+{% block extra_style %}
+.nlm-container { max-width: 1320px; margin: 0 auto; padding: 20px; }
+.nlm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.nlm-header h2 { font-size: 16px; font-weight: 600; color: var(--fg-primary); display: flex; align-items: center; gap: 8px; }
+.nlm-status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.nlm-status .dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-active { background: #22c55e; box-shadow: 0 0 6px #22c55e80; }
+.dot-inactive { background: #64748b; }
+.dot-auth { background: #7c3aed; box-shadow: 0 0 6px #7c3aed80; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+.nlm-viewer {
+    position: relative;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: crosshair;
+}
+.nlm-viewer img {
+    display: block;
+    width: 100%;
+    height: auto;
+    image-rendering: auto;
+}
+.nlm-viewer .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.8);
+    color: var(--fg-secondary);
+    font-size: 14px;
+}
+.nlm-toolbar {
+    display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center;
+}
+.nlm-toolbar button {
+    padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border); background: var(--bg-surface);
+    color: var(--fg-secondary); transition: all .15s;
+}
+.nlm-toolbar button:hover { background: var(--bg-hover); color: var(--fg-primary); }
+.nlm-toolbar .btn-start { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.nlm-toolbar .btn-start:hover { background: #6d28d9; }
+.nlm-toolbar .btn-stop { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); color: #ef4444; }
+.nlm-toolbar .btn-stop:hover { background: rgba(239,68,68,.2); }
+.nlm-toolbar .btn-done { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.3); color: #22c55e; }
+
+.nlm-input-row {
+    display: flex; gap: 6px; margin-top: 10px; align-items: center;
+}
+.nlm-input-row input {
+    flex: 1; padding: 8px 12px; background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--fg-primary); font-size: 13px; outline: none;
+}
+.nlm-input-row input:focus { border-color: #7c3aed; }
+
+.nlm-instructions {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px; margin-top: 16px; font-size: 13px; color: var(--fg-secondary); line-height: 1.7;
+}
+.nlm-instructions h4 { color: var(--fg-primary); font-size: 14px; margin-bottom: 8px; }
+.nlm-instructions ol { padding-left: 20px; }
+.nlm-instructions li { margin-bottom: 4px; }
+
+.nlm-success {
+    background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.3);
+    border-radius: 10px; padding: 20px; text-align: center; margin-top: 16px;
+}
+.nlm-success h3 { color: #22c55e; font-size: 16px; margin-bottom: 6px; }
+{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/students" style="color:#b388ff">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="nlm-container">
+    <div class="nlm-header">
+        <h2>&#129302; Conectar NotebookLM</h2>
+        <div class="nlm-status">
+            <div class="dot" id="status-dot"></div>
+            <span id="status-text">Aguardando...</span>
+        </div>
+    </div>
+
+    <!-- Browser Viewer -->
+    <div class="nlm-viewer" id="viewer" onclick="handleClick(event)" style="display:none;">
+        <img id="screenshot" alt="Browser" draggable="false">
+        <div class="loading-overlay" id="viewer-loading">Iniciando navegador...</div>
+    </div>
+
+    <!-- Not started state -->
+    <div id="start-panel">
+        {% if has_credentials %}
+        <div class="nlm-success">
+            <h3>&#10003; NotebookLM ja esta conectado</h3>
+            <p style="color:var(--fg-secondary);font-size:13px;margin-top:4px">Credenciais salvas. Voce pode reconectar se a sessao expirar.</p>
+        </div>
+        {% endif %}
+
+        <div class="nlm-instructions">
+            <h4>Como funciona</h4>
+            <ol>
+                <li>Clique em <strong>"Iniciar Conexao"</strong> abaixo</li>
+                <li>Um navegador Chrome sera aberto no servidor</li>
+                <li>Voce vera a tela de login do Google — faca login normalmente</li>
+                <li>Clique na imagem para interagir e use o campo de texto para digitar</li>
+                <li>Apos o login, as credenciais serao salvas automaticamente</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Auth success state -->
+    <div id="success-panel" style="display:none;">
+        <div class="nlm-success">
+            <h3>&#10003; NotebookLM conectado com sucesso!</h3>
+            <p style="color:var(--fg-secondary);font-size:13px;margin-top:4px">As credenciais foram salvas. A analise de canais agora pode usar o NotebookLM.</p>
+            <a href="/" style="display:inline-block;margin-top:12px;padding:8px 20px;background:#7c3aed;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;">Voltar ao Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="nlm-toolbar">
+        <button class="btn-start" id="btn-start" onclick="startAuth()">&#9654; Iniciar Conexao</button>
+        <button class="btn-stop" id="btn-stop" onclick="stopAuth()" style="display:none;">&#9724; Parar</button>
+        <button onclick="refreshScreenshot()" id="btn-refresh" style="display:none;">&#8635; Atualizar</button>
+        <button onclick="goBack()" id="btn-back" style="display:none;">&#10094; Voltar</button>
+        <button onclick="pressEnter()" id="btn-enter" style="display:none;">Enter &#8629;</button>
+        <button onclick="pressTab()" id="btn-tab" style="display:none;">Tab &#8677;</button>
+    </div>
+
+    <!-- Text input -->
+    <div class="nlm-input-row" id="input-row" style="display:none;">
+        <input type="text" id="text-input" placeholder="Digite aqui e pressione Enter para enviar ao navegador..." autocomplete="off">
+        <button onclick="sendText()" style="padding:8px 16px;background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">Enviar</button>
+        <button onclick="sendPassword()" style="padding:8px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;color:var(--fg-secondary);font-size:12px;cursor:pointer;" title="Envia como senha (sem mostrar)">&#128274; Senha</button>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+<script>
+let polling = null;
+let isActive = false;
+
+function startAuth() {
+    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-start').textContent = 'Iniciando...';
+    updateStatus('connecting', 'Iniciando navegador...');
+
+    apiFetch('/api/admin/nlm-start', {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            isActive = true;
+            showViewer();
+            startPolling();
+            showToast('Navegador iniciado!', 'success');
+        } else {
+            showToast('Erro: ' + (data.error || 'falha ao iniciar'), 'error', 6000);
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-start').textContent = '▶ Iniciar Conexao';
+            updateStatus('inactive', data.error || 'Erro');
+        }
+    })
+    .catch(e => {
+        showToast('Erro: ' + e.message, 'error');
+        document.getElementById('btn-start').disabled = false;
+        document.getElementById('btn-start').textContent = '▶ Iniciar Conexao';
+    });
+}
+
+function stopAuth() {
+    apiFetch('/api/admin/nlm-stop', {method: 'POST'}).then(r => r.json());
+    stopPolling();
+    hideViewer();
+    updateStatus('inactive', 'Sessao encerrada');
+    isActive = false;
+}
+
+function showViewer() {
+    document.getElementById('viewer').style.display = 'block';
+    document.getElementById('start-panel').style.display = 'none';
+    document.getElementById('btn-start').style.display = 'none';
+    document.getElementById('btn-stop').style.display = '';
+    document.getElementById('btn-refresh').style.display = '';
+    document.getElementById('btn-back').style.display = '';
+    document.getElementById('btn-enter').style.display = '';
+    document.getElementById('btn-tab').style.display = '';
+    document.getElementById('input-row').style.display = 'flex';
+}
+
+function hideViewer() {
+    document.getElementById('viewer').style.display = 'none';
+    document.getElementById('start-panel').style.display = '';
+    document.getElementById('btn-start').style.display = '';
+    document.getElementById('btn-start').disabled = false;
+    document.getElementById('btn-start').textContent = '▶ Iniciar Conexao';
+    document.getElementById('btn-stop').style.display = 'none';
+    document.getElementById('btn-refresh').style.display = 'none';
+    document.getElementById('btn-back').style.display = 'none';
+    document.getElementById('btn-enter').style.display = 'none';
+    document.getElementById('btn-tab').style.display = 'none';
+    document.getElementById('input-row').style.display = 'none';
+}
+
+function startPolling() {
+    if (polling) clearInterval(polling);
+    polling = setInterval(refreshScreenshot, 600);
+    refreshScreenshot();
+}
+
+function stopPolling() {
+    if (polling) { clearInterval(polling); polling = null; }
+}
+
+function refreshScreenshot() {
+    if (!isActive) return;
+    const img = document.getElementById('screenshot');
+    // Use timestamp to bust cache
+    const url = '/api/admin/nlm-screenshot?t=' + Date.now();
+    fetch(url, {credentials: 'include', headers: {'X-Session': window.SESSION_TOKEN}})
+    .then(r => {
+        if (r.ok) return r.blob();
+        throw new Error('Failed');
+    })
+    .then(blob => {
+        if (blob.size > 0) {
+            img.src = URL.createObjectURL(blob);
+            document.getElementById('viewer-loading').style.display = 'none';
+        }
+    })
+    .catch(() => {});
+
+    // Also check status
+    fetch('/api/admin/nlm-status', {credentials: 'include', headers: {'X-Session': window.SESSION_TOKEN}})
+    .then(r => r.json())
+    .then(data => {
+        updateStatus(
+            data.authenticated ? 'auth' : (data.active ? 'active' : 'inactive'),
+            data.message
+        );
+        if (data.authenticated) {
+            stopPolling();
+            setTimeout(() => {
+                hideViewer();
+                document.getElementById('success-panel').style.display = '';
+                showToast('NotebookLM conectado com sucesso!', 'success', 5000);
+            }, 2000);
+        }
+    })
+    .catch(() => {});
+}
+
+function handleClick(event) {
+    if (!isActive) return;
+    const img = document.getElementById('screenshot');
+    const rect = img.getBoundingClientRect();
+    // Map click coordinates to actual browser viewport
+    const scaleX = 1280 / rect.width;
+    const scaleY = 800 / rect.height;
+    const x = Math.round((event.clientX - rect.left) * scaleX);
+    const y = Math.round((event.clientY - rect.top) * scaleY);
+
+    apiFetch('/api/admin/nlm-click', {method: 'POST', body: JSON.stringify({x, y})})
+    .then(() => setTimeout(refreshScreenshot, 400));
+
+    // Visual feedback
+    const dot = document.createElement('div');
+    dot.style.cssText = 'position:absolute;width:12px;height:12px;border-radius:50%;background:#7c3aed;opacity:.7;pointer-events:none;transform:translate(-50%,-50%);transition:opacity .5s;';
+    dot.style.left = (event.clientX - rect.left) + 'px';
+    dot.style.top = (event.clientY - rect.top) + 'px';
+    document.getElementById('viewer').appendChild(dot);
+    setTimeout(() => dot.remove(), 500);
+}
+
+function sendText() {
+    const input = document.getElementById('text-input');
+    const text = input.value;
+    if (!text) return;
+    apiFetch('/api/admin/nlm-type', {method: 'POST', body: JSON.stringify({text})})
+    .then(() => { input.value = ''; setTimeout(refreshScreenshot, 500); });
+}
+
+function sendPassword() {
+    const text = prompt('Digite a senha (nao sera mostrada no campo):');
+    if (!text) return;
+    apiFetch('/api/admin/nlm-type', {method: 'POST', body: JSON.stringify({text})})
+    .then(() => setTimeout(refreshScreenshot, 500));
+}
+
+function pressEnter() {
+    apiFetch('/api/admin/nlm-key', {method: 'POST', body: JSON.stringify({key: 'Enter'})})
+    .then(() => setTimeout(refreshScreenshot, 500));
+}
+
+function pressTab() {
+    apiFetch('/api/admin/nlm-key', {method: 'POST', body: JSON.stringify({key: 'Tab'})})
+    .then(() => setTimeout(refreshScreenshot, 500));
+}
+
+function goBack() {
+    apiFetch('/api/admin/nlm-key', {method: 'POST', body: JSON.stringify({key: 'Alt+ArrowLeft'})})
+    .then(() => setTimeout(refreshScreenshot, 800));
+}
+
+function updateStatus(state, message) {
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    dot.className = 'dot ' + ({active: 'dot-active', auth: 'dot-auth', connecting: 'dot-auth', inactive: 'dot-inactive'}[state] || 'dot-inactive');
+    text.textContent = message || state;
+}
+
+// Allow Enter key in text input
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('text-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendText();
+            // Also press Enter in the browser
+            setTimeout(pressEnter, 300);
+        }
+    });
+});
+</script>
+{% endblock %}

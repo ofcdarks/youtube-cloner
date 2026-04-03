@@ -7,43 +7,53 @@ FROM python:3.11-slim AS deps
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Install Playwright separately (large)
+RUN pip install --no-cache-dir --prefix=/install playwright
 
 # ── Stage 2: Runtime ──────────────────────────────────────
 FROM python:3.11-slim
 
 LABEL maintainer="YT Cloner Team"
 LABEL description="YouTube Channel Cloner - AI-powered channel analysis and content generation"
-LABEL version="3.0"
+LABEL version="3.3"
 
 WORKDIR /app
 
-# System deps
+# System deps + Playwright browser deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg curl ca-certificates && \
-    curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    ffmpeg curl ca-certificates \
+    # Playwright Chromium deps
+    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
+    libpango-1.0-0 libcairo2 libasound2 libxshmfence1 \
+    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+    && chmod a+rx /usr/local/bin/yt-dlp \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Python deps from stage 1
 COPY --from=deps /install /usr/local
 
+# Install Playwright browser
+RUN playwright install chromium 2>/dev/null || true
+
 # Application code
 COPY . .
 
-# Remove sensitive files that should NEVER be in the image
+# Remove sensitive files
 RUN rm -f credentials.json token.json service_account.json .env 2>/dev/null || true
 
-# Copy initial DB and mind maps as seed data
+# Seed data
 RUN cp -r output/ /app/seed_output/ 2>/dev/null || true
 
-# Create non-root user
-RUN useradd -m -r appuser && \
-    chown -R appuser:appuser /app
+# Create non-root user with home dir for Playwright storage
+RUN useradd -m -r appuser && chown -R appuser:appuser /app
 USER appuser
+
+# Create .notebooklm dir
+RUN mkdir -p /home/appuser/.notebooklm
 
 EXPOSE 8888
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8888/api/health || exit 1
 

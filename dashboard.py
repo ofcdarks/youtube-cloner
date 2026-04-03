@@ -1022,6 +1022,91 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
 
 
 # ══════════════════════════════════════════════════════════
+# NOTEBOOKLM AUTH ROUTES
+# ══════════════════════════════════════════════════════════
+
+@app.get("/admin/notebooklm", response_class=HTMLResponse)
+async def admin_nlm_auth_page(request: Request, user=Depends(require_admin)):
+    """NotebookLM authentication page with remote browser viewer."""
+    from pathlib import Path
+    has_credentials = (Path.home() / ".notebooklm" / "storage_state.json").exists()
+    return render(request, "admin_nlm_auth.html", {"user": user, "has_credentials": has_credentials})
+
+
+@app.post("/api/admin/nlm-start")
+@limiter.limit("3/minute")
+async def api_nlm_start(request: Request, user=Depends(require_admin)):
+    """Start NotebookLM browser auth session."""
+    import notebooklm_auth
+    result = await notebooklm_auth.start_session()
+    return JSONResponse(result)
+
+
+@app.post("/api/admin/nlm-stop")
+async def api_nlm_stop(request: Request, user=Depends(require_admin)):
+    """Stop NotebookLM browser auth session."""
+    import notebooklm_auth
+    result = await notebooklm_auth.stop_session()
+    return JSONResponse(result)
+
+
+@app.get("/api/admin/nlm-status")
+async def api_nlm_status(request: Request, user=Depends(require_admin)):
+    """Get NotebookLM auth session status."""
+    import notebooklm_auth
+    return JSONResponse(notebooklm_auth.get_status())
+
+
+@app.get("/api/admin/nlm-screenshot")
+async def api_nlm_screenshot(request: Request, user=Depends(require_admin)):
+    """Get current browser screenshot as JPEG."""
+    import notebooklm_auth
+    from fastapi.responses import Response
+    screenshot = await notebooklm_auth.take_screenshot()
+    if not screenshot:
+        # Return 1x1 transparent pixel
+        return Response(content=b"", media_type="image/jpeg", status_code=204)
+    return Response(content=screenshot, media_type="image/jpeg")
+
+
+@app.post("/api/admin/nlm-click")
+async def api_nlm_click(request: Request, user=Depends(require_admin)):
+    """Send click event to browser."""
+    body = await request.json()
+    x = int(body.get("x", 0))
+    y = int(body.get("y", 0))
+    import notebooklm_auth
+    result = await notebooklm_auth.click(x, y)
+    return JSONResponse(result)
+
+
+@app.post("/api/admin/nlm-type")
+async def api_nlm_type(request: Request, user=Depends(require_admin)):
+    """Send text input to browser."""
+    body = await request.json()
+    text = body.get("text", "")
+    if not text or len(text) > 500:
+        return JSONResponse({"error": "Texto invalido"}, status_code=400)
+    import notebooklm_auth
+    result = await notebooklm_auth.type_text(text)
+    return JSONResponse(result)
+
+
+@app.post("/api/admin/nlm-key")
+async def api_nlm_key(request: Request, user=Depends(require_admin)):
+    """Send special key press to browser."""
+    body = await request.json()
+    key = body.get("key", "")
+    allowed_keys = {"Enter", "Tab", "Backspace", "Escape", "ArrowUp", "ArrowDown",
+                    "ArrowLeft", "ArrowRight", "Alt+ArrowLeft", "Alt+ArrowRight", "F5"}
+    if key not in allowed_keys:
+        return JSONResponse({"error": "Tecla nao permitida"}, status_code=400)
+    import notebooklm_auth
+    result = await notebooklm_auth.press_key(key)
+    return JSONResponse(result)
+
+
+# ══════════════════════════════════════════════════════════
 # STUDENT ROUTES
 # ══════════════════════════════════════════════════════════
 
