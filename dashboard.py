@@ -1133,6 +1133,66 @@ async def admin_projects(request: Request, user=Depends(require_admin)):
     return render(request, "admin_projects.html", {"user": user, "projects": projects})
 
 
+@app.get("/admin/panel", response_class=HTMLResponse)
+async def admin_panel(request: Request, user=Depends(require_admin)):
+    """Admin control panel with stats, API status, users, and activity."""
+    from database import get_db, get_projects as db_projects
+
+    with get_db() as conn:
+        stats = {
+            "projects": conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0],
+            "users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+            "files": conn.execute("SELECT COUNT(*) FROM files").fetchone()[0],
+            "ideas": conn.execute("SELECT COUNT(*) FROM ideas").fetchone()[0],
+            "scripts": conn.execute("SELECT COUNT(*) FROM scripts").fetchone()[0],
+            "db_size_mb": round(os.path.getsize(OUTPUT_DIR / "ytcloner.db") / 1024 / 1024, 1) if (OUTPUT_DIR / "ytcloner.db").exists() else 0,
+        }
+
+        users = [dict(r) for r in conn.execute("SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC").fetchall()]
+
+        projects = db_projects()
+        for p in projects:
+            pid = p["id"]
+            p["niches_count"] = conn.execute("SELECT COUNT(*) FROM niches WHERE project_id=?", (pid,)).fetchone()[0]
+            p["ideas_count"] = conn.execute("SELECT COUNT(*) FROM ideas WHERE project_id=?", (pid,)).fetchone()[0]
+            p["scripts_count"] = conn.execute("SELECT COUNT(*) FROM scripts WHERE project_id=?", (pid,)).fetchone()[0]
+            p["files_count"] = conn.execute("SELECT COUNT(*) FROM files WHERE project_id=?", (pid,)).fetchone()[0]
+
+        activity = [dict(r) for r in conn.execute(
+            "SELECT action, details, created_at FROM activity_log ORDER BY created_at DESC LIMIT 30"
+        ).fetchall()]
+
+    # API keys status
+    nlm_file = Path.home() / ".notebooklm" / "storage_state.json"
+    api_keys = {
+        "laozhang": bool(os.environ.get("LAOZHANG_API_KEY")),
+        "laozhang_masked": (os.environ.get("LAOZHANG_API_KEY", "")[:8] + "...") if os.environ.get("LAOZHANG_API_KEY") else "",
+        "youtube": False,
+        "youtube_masked": "",
+        "nlm": nlm_file.exists(),
+        "nlm_status": f"{nlm_file.stat().st_size} bytes" if nlm_file.exists() else "Nao configurado",
+        "gdrive": bool(os.environ.get("GOOGLE_OAUTH_CLIENT_ID")),
+        "gdrive_status": "OAuth configurado" if os.environ.get("GOOGLE_OAUTH_CLIENT_ID") else "Nao configurado",
+    }
+    # Check YouTube API key from DB
+    try:
+        from database import get_setting
+        yt_key = get_setting("youtube_api_key") or ""
+        api_keys["youtube"] = bool(yt_key)
+        api_keys["youtube_masked"] = (yt_key[:8] + "...") if yt_key else ""
+    except Exception:
+        pass
+
+    return render(request, "admin_panel.html", {
+        "user": user,
+        "stats": stats,
+        "users": users,
+        "projects": projects[:10],
+        "activity": activity,
+        "api_keys": api_keys,
+    })
+
+
 @app.post("/api/admin/delete-project")
 async def api_delete_project(request: Request, user=Depends(require_admin)):
     body = await request.json()
