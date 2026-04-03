@@ -69,7 +69,9 @@ async def start_session() -> dict:
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-dev-shm-usage",
-                    "--disable-gpu",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-infobars",
+                    "--window-size=1280,800",
                 ],
             )
         except Exception as e:
@@ -92,14 +94,27 @@ async def start_session() -> dict:
             viewport={"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT},
             storage_state=storage_state,
             locale="pt-BR",
-            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            java_script_enabled=True,
+            bypass_csp=True,
+            ignore_https_errors=True,
         )
+
+        # Remove webdriver flag that Google detects
+        await _context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US', 'en'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            window.chrome = { runtime: {} };
+        """)
 
         _page = await _context.new_page()
         _session_active = True
 
-        _status_message = "Navegando para NotebookLM..."
-        await _page.goto(NOTEBOOKLM_URL, wait_until="domcontentloaded", timeout=30000)
+        # Navigate to Google first (less suspicious than direct NotebookLM redirect)
+        _status_message = "Abrindo Google..."
+        await _page.goto("https://accounts.google.com/", wait_until="domcontentloaded", timeout=30000)
+        await asyncio.sleep(2)
 
         # Wait a bit for redirects
         await asyncio.sleep(2)
