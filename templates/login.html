@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Cloner - Login</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020617;font-family:'Inter',system-ui,-apple-system,sans-serif;color:#e4e4e7;display:flex;justify-content:center;align-items:center;min-height:100vh;-webkit-font-smoothing:antialiased}
+.login-box{background:#0e1223;border:1px solid #1e293b;border-radius:12px;padding:40px;width:380px;text-align:center}
+.login-box h1{font-size:1.5em;color:#f8fafc;font-weight:700;letter-spacing:-.3px;margin-bottom:8px}
+.login-box p{color:#64748b;font-size:13px;margin-bottom:24px}
+.login-box input{width:100%;padding:10px 14px;background:#020617;border:1px solid #1e293b;border-radius:6px;color:#f8fafc;font-size:13px;margin-bottom:12px;outline:none;font-family:inherit;transition:border-color .18s}
+.login-box input:focus{border-color:#7c3aed}
+.login-box button{width:100%;padding:10px;background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit}
+.login-box button:hover{background:#6d28d9}
+.login-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#ef4444;padding:10px;border-radius:6px;margin-bottom:14px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="login-box">
+    <h1>YT Channel Cloner</h1>
+    <p>Acesso restrito. Faca login para continuar.</p>
+    {% if error %}
+    <div class="login-error" role="alert">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="/login">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <input type="text" name="email" placeholder="Email" required autocomplete="username" aria-label="Email">
+        <input type="password" name="pass" placeholder="Senha" required autocomplete="current-password" aria-label="Senha">
+        <button type="submit">Entrar</button>
+    </form>
+</div>
+</body>
+</html>

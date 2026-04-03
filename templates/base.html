@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>{% block title %}YT Cloner{% endblock %}</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+{% block extra_style %}{% endblock %}
+</style>
+<meta name="csrf-token" content="{{ csrf_token|default('') }}">
+<script>
+// CSRF helper for all fetch/AJAX calls
+window.CSRF_TOKEN = '{{ csrf_token|default("") }}';
+window.SESSION_TOKEN = '{{ session_token|default("") }}';
+window.apiFetch = function(url, options) {
+  options = options || {};
+  options.headers = options.headers || {};
+  options.headers['Content-Type'] = options.headers['Content-Type'] || 'application/json';
+  options.headers['X-CSRF-Token'] = window.CSRF_TOKEN;
+  options.headers['X-Session'] = window.SESSION_TOKEN;
+  options.credentials = 'same-origin';
+  return fetch(url, options).then(function(r) {
+    if (r.status === 401) { window.location.href = '/login'; }
+    if (r.status === 403) {
+      return r.json().then(function(d) {
+        if (d.error && d.error.indexOf('CSRF') >= 0) {
+          alert('Sessao expirada. Recarregue a pagina.');
+          window.location.reload();
+        }
+        throw new Error(d.error || 'Acesso negado');
+      });
+    }
+    return r;
+  });
+};
+// Convenience helpers used throughout the templates
+window.api = function(url) {
+  return window.apiFetch(url, {method: 'GET'}).then(function(r){ return r.json(); });
+};
+window.apiPost = function(url, data) {
+  return window.apiFetch(url, {method: 'POST', body: JSON.stringify(data || {})}).then(function(r){ return r.json(); });
+};
+window.showConfirm = window.showConfirm || function(title, msg, cb) {
+  if (confirm(title + '\n\n' + msg)) { cb(); }
+};
+window.showToast = window.showToast || function(msg, type) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:8px;color:#fff;font-size:13px;z-index:9999;animation:fadeIn .3s;background:' + (type==='error'?'#ef4444':type==='warning'?'#eab308':'#22c55e');
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+};
+</script>
+</head>
+<body>
+{% block body %}{% endblock %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

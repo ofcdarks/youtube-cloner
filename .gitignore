@@ -1,0 +1,54 @@
+# Credentials & Secrets
+credentials.json
+token.json
+service_account.json
+*.pem
+*.key
+.env
+
+# Database
+output/*.db
+output/*.db-wal
+output/*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output files (generated at runtime)
+output/mindmap_*.html
+output/roteiro_*.md
+output/narration_*.txt
+output/loaded_dice_*.md
+output/projects/
+
+# NotebookLM
+.notebooklm/
+
+# Docker
+.dockerenv
+
+# Misc
+*.log
+*.bak
+seed_output/

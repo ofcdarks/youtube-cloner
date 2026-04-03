@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}YT Cloner - {{ student.name }}{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/students" style="color:#b388ff">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="page">
+
+    <!-- STUDENT INFO -->
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span><span class="sec-icon">&#128100;</span> {{ student.name }}</span>
+            <a href="/student?view_as={{ student.id }}" style="background:#7c3aed;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                &#128065; Ver como aluno
+            </a>
+        </div>
+        <div class="grid-3">
+            <div class="stat-card">
+                <div style="font-size:.85em;color:#888;margin-bottom:4px">Email</div>
+                <div style="font-size:1em;color:#e0e0e0">{{ student.email }}</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:.85em;color:#888;margin-bottom:4px">API Configurada</div>
+                <div>
+                    {% if has_api %}
+                    <span class="badge badge-api">{{ student.api_provider|upper }}</span>
+                    {% else %}
+                    <span class="badge badge-no-api">Nao configurada</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size:.85em;color:#888;margin-bottom:4px">Cadastrado em</div>
+                <div style="font-size:.9em;color:#e0e0e0">{{ student.created_at[:10] }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ASSIGNMENTS -->
+    {% for a in assignments %}
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span>
+                <span class="sec-icon">&#128218;</span>
+                Nicho: <span style="color:#00d4ff">{{ a.niche }}</span>
+                <span style="font-size:.75em;color:#666;margin-left:8px">({{ a.total_titles }} titulos atribuidos, {{ a.completed_titles }} publicados)</span>
+            </span>
+            <button class="btn-success" onclick="releaseMoreTitles({{ a.id }}, 5)">+ Liberar 5 Titulos</button>
+        </div>
+
+        {% set pct = ((a.completed_titles / a.total_titles * 100) if a.total_titles > 0 else 0)|int %}
+        <div style="margin-bottom:16px">
+            <div class="progress-bar" style="height:12px;border-radius:6px">
+                <div class="progress-bar-fill" style="width:{{ pct }}%;background:linear-gradient(90deg,#6c3ce0,#00d4ff)"></div>
+            </div>
+            <span style="font-size:.75em;color:#666">{{ pct }}% concluido</span>
+        </div>
+
+        {% set ideas = a.ideas if a.ideas is defined else [] %}
+        {% if ideas %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Titulo</th>
+                    <th scope="col">Pilar</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Roteiro</th>
+                    <th scope="col">Video</th>
+                    <th scope="col">Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for idea in ideas %}
+                {% set status_colors = {"pending": "#ffd740", "writing": "#448aff", "recording": "#e040fb", "editing": "#ff6e40", "published": "#4caf50"} %}
+                {% set status_labels = {"pending": "Pendente", "writing": "Escrevendo", "recording": "Gravando", "editing": "Editando", "published": "Publicado"} %}
+                <tr>
+                    <td>{{ idea.num }}</td>
+                    <td style="font-weight:bold;max-width:300px">{{ idea.title }}</td>
+                    <td><span style="color:#888;font-size:.8em">{{ idea.pillar }}</span></td>
+                    <td>
+                        {% if idea.score and idea.score > 0 %}
+                        <span style="font-weight:bold;color:{% if idea.score >= 80 %}#4caf50{% elif idea.score >= 60 %}#448aff{% elif idea.score >= 40 %}#ffd740{% else %}#ff5252{% endif %}">{{ idea.score }}</span>
+                        {% else %}
+                        <span style="color:#333">-</span>
+                        {% endif %}
+                    </td>
+                    <td><span style="color:{{ status_colors.get(idea.status, '#666') }};font-weight:bold;font-size:.82em">{{ status_labels.get(idea.status, idea.status) }}</span></td>
+                    <td>
+                        {% if idea.script_generated %}
+                        <span style="color:#4caf50">&#10003;</span>
+                        {% else %}
+                        <span style="color:#333">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if idea.video_url %}
+                        <a href="{{ idea.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.82em">&#127909; Assistir</a>
+                        {% else %}
+                        <span style="color:#333">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button type="button" class="delete-file-btn" onclick="removeTitle({{ idea.id }}, '{{ idea.title|replace("'", "") }}')" title="Remover titulo" aria-label="Remover titulo {{ idea.title }}">&#128465;</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:20px;color:#555">Nenhum titulo atribuido ainda.</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if not assignments %}
+    <div class="section">
+        <div style="text-align:center;padding:40px;color:#555">
+            Nenhum nicho atribuido a este aluno ainda.
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script src="/static/js/app.js?v=20260406"></script>
+<script>
+function removeTitle(progressId, title) {
+    showConfirm('Remover Titulo', 'Remover titulo do aluno:<br><br><strong>"' + title + '"</strong><br><br>O titulo volta a ficar disponivel para atribuicao.', function() {
+        apiPost('/api/admin/remove-title', {progress_id: progressId})
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                showToast('Titulo removido!', 'success', 2000);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(e => showToast('Erro: ' + e.message, 'error'));
+    });
+}
+
+function releaseMoreTitles(assignmentId, count) {
+    showConfirm('Liberar Titulos', 'Liberar mais ' + count + ' titulos para este aluno?', function() {
+        const loading = showToast('Liberando titulos...', 'loading');
+        apiFetch('/api/admin/release-titles', {
+            method: 'POST',
+            body: JSON.stringify({assignment_id: assignmentId, count: count})
+        })
+        .then(r => r.json())
+        .then(data => {
+            removeToast(loading);
+            if (data.ok) {
+                showToast(data.added + ' titulos liberados!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(e => {
+            removeToast(loading);
+            showToast('Erro: ' + e.message, 'error');
+        });
+    });
+}
+</script>
+{% endblock %}

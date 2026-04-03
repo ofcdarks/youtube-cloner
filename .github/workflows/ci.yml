@@ -1,0 +1,181 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+  DASH_USER: testadmin
+  DASH_PASS: ci-test-pass-secure123!
+  DASH_EMAIL: ci@ytcloner.test
+  LAOZHANG_API_KEY: sk-ci-dummy-key
+  ENCRYPTION_KEY: yMbnpT-MVjeYR5l2JEXMpbsG_CB5fJ71mb5LqZ1Sx9Y=
+  CSRF_SECRET: ci-csrf-secret-0123456789abcdef0123456789abcdef
+  COOKIE_SECURE: "false"
+
+jobs:
+  # ── Lint & Type Check ──────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff mypy
+
+      - name: Ruff lint
+        run: ruff check . --select E,W,F,I --ignore E501
+
+      - name: Ruff format check
+        run: ruff format --check . || true
+
+      - name: MyPy type check (non-blocking)
+        run: mypy --ignore-missing-imports --no-error-summary config.py auth.py middleware.py database.py || true
+
+  # ── Unit & Integration Tests ───────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit & integration tests
+        run: python test_app.py
+
+      - name: Verify no credential files
+        run: |
+          echo "Checking for leaked credentials..."
+          for f in credentials.json token.json service_account.json; do
+            if [ -f "$f" ]; then
+              echo "FAIL: $f found in repo!"
+              exit 1
+            fi
+          done
+          echo "OK: No credential files found"
+
+      - name: Check .env not committed
+        run: |
+          if [ -f ".env" ]; then
+            echo "FAIL: .env found in repo!"
+            exit 1
+          fi
+          echo "OK: .env not in repo"
+
+  # ── Security Scan ──────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install bandit safety
+
+      - name: Bandit security scan
+        run: bandit -r . -x ./tests,./test_app.py --severity-level medium -f json -o bandit-report.json || true
+
+      - name: Check dependencies for vulnerabilities
+        run: safety check -r requirements.txt --output json || true
+
+      - name: Grep for hardcoded secrets
+        run: |
+          echo "Scanning for potential hardcoded secrets..."
+          # Check for common secret patterns (base64 keys, API keys, passwords)
+          if grep -rn "GOCSPX-\|sk-[a-zA-Z0-9]\{20,\}\|ya29\.\|AIza" --include="*.py" --include="*.json" --include="*.html" . 2>/dev/null | grep -v ".example" | grep -v "test" | grep -v "dummy"; then
+            echo "WARNING: Potential hardcoded secrets found"
+            exit 1
+          fi
+          echo "OK: No hardcoded secrets detected"
+
+  # ── Docker Build ───────────────────────────────────────
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t ytcloner:ci .
+
+      - name: Test Docker health check
+        run: |
+          docker run -d --name ytcloner-test \
+            -e DASH_USER=admin \
+            -e DASH_PASS=dockertest123! \
+            -e DASH_EMAIL=docker@test.com \
+            -e ENCRYPTION_KEY=yMbnpT-MVjeYR5l2JEXMpbsG_CB5fJ71mb5LqZ1Sx9Y= \
+            -e CSRF_SECRET=docker-csrf-test \
+            -e COOKIE_SECURE=false \
+            -p 8888:8888 \
+            ytcloner:ci
+
+          echo "Waiting for app to start..."
+          sleep 10
+
+          echo "Testing health endpoint..."
+          curl -f http://localhost:8888/api/health || exit 1
+
+          echo "Testing login page..."
+          curl -f http://localhost:8888/login || exit 1
+
+          docker stop ytcloner-test
+          docker rm ytcloner-test
+          echo "Docker tests passed"
+
+  # ── E2E Tests (on main only) ───────────────────────────
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install playwright
+          playwright install chromium
+
+      - name: Start server
+        run: |
+          python dashboard.py &
+          sleep 5
+
+      - name: Run E2E tests
+        run: python tests/test_e2e.py
+
+      - name: Stop server
+        run: kill %1 || true

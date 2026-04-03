@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}YT Cloner - Projetos{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/projects" style="color:#b388ff">Projetos</a>
+        <a href="/admin/students">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="page">
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128194;</span> Projetos</span>
+        </div>
+
+        {% if projects %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th scope="col">Nome</th>
+                    <th scope="col">Canal Original</th>
+                    <th scope="col">Nichos</th>
+                    <th scope="col">Titulos</th>
+                    <th scope="col">Roteiros</th>
+                    <th scope="col">Drive</th>
+                    <th scope="col">Mind Map</th>
+                    <th scope="col">Criado</th>
+                    <th scope="col">Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in projects %}
+                <tr>
+                    <td style="font-weight:bold;color:#e0e0e0">{{ p.name }}</td>
+                    <td style="font-size:.78em;color:#888;max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ p.channel_original or '-' }}</td>
+                    <td style="text-align:center">{{ p.niche_count or 0 }}</td>
+                    <td style="text-align:center">{{ p.idea_count or 0 }}</td>
+                    <td style="text-align:center">{{ p.script_count or 0 }}</td>
+                    <td>
+                        {% if p.drive_folder_url %}
+                        <a href="{{ p.drive_folder_url }}" target="_blank" class="badge badge-api" style="text-decoration:none">Abrir</a>
+                        {% else %}
+                        <span class="badge badge-no-api">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/output/mindmap_{{ p.id }}.html" target="_blank" class="badge badge-api" style="text-decoration:none;background:#0a1a2a;border-color:#00d4ff;color:#00d4ff">Ver</a>
+                    </td>
+                    <td style="font-size:.78em;color:#666">{{ p.created_at[:10] if p.created_at else '-' }}</td>
+                    <td>
+                        <div style="display:flex;gap:6px">
+                            <a href="/?project={{ p.id }}" class="btn-primary" style="font-size:.72em;padding:4px 10px;text-decoration:none">Dashboard</a>
+                            <button class="btn-danger" style="font-size:.72em;padding:4px 10px" onclick="deleteProject('{{ p.id }}', '{{ p.name }}')" aria-label="Excluir projeto {{ p.name }}">Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:40px;color:#555">
+            Nenhum projeto criado. Use "Executar Novo Nicho" no Dashboard para criar um.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script src="/static/js/app.js?v=20260406"></script>
+<script>
+function deleteProject(projectId, name) {
+    showConfirm('Excluir Projeto', 'Tem certeza que deseja EXCLUIR o projeto "' + name + '"?<br><br>Todos os titulos, roteiros e nichos serao apagados. Esta acao nao pode ser desfeita.', function() {
+        const loading = showToast('Excluindo projeto...', 'loading');
+        apiPost('/api/admin/delete-project', {project_id: projectId})
+        .then(r => r.json())
+        .then(data => {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Projeto excluido!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+</script>
+{% endblock %}

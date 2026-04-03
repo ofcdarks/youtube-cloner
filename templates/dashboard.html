@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block title %}YT Cloner - Dashboard{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        {% if all_projects and all_projects|length > 0 %}
+        <select id="project-selector" class="project-select" onchange="switchProject(this.value)" aria-label="Selecionar projeto">
+            {% if not current_project %}
+            <option value="">-- Selecione Projeto --</option>
+            {% endif %}
+            {% for p in all_projects %}
+            <option value="{{ p.id }}" {% if current_project and current_project.id == p.id %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        {% if current_project and current_project.id %}
+        <a href="/output/mindmap_{{ current_project.id }}.html" target="_blank" class="link-accent">Mind Map</a>
+        {% if user and user.role == 'admin' %}
+        <button type="button" class="score-btn" onclick="regenerateMindmap()" style="padding:4px 10px;font-size:11px">&#8635; Atualizar</button>
+        {% endif %}
+        {% endif %}
+        {% if current_project and current_project.drive_folder_url %}
+        <a href="{{ current_project.drive_folder_url }}" target="_blank" class="link-success">Google Drive</a>
+        {% endif %}
+        {% if user and user.role == 'admin' %}
+        <a href="/admin/projects" class="link-accent">Projetos</a>
+        <a href="/admin/students" class="link-purple">Alunos</a>
+        {% endif %}
+        <a href="/logout" class="link-danger">Sair</a>
+    </div>
+</div>
+
+<div class="page">
+
+    <!-- STATS -->
+    {% if current_project %}
+    <div class="project-info">
+        Projeto: <strong>{{ current_project.name }}</strong>
+        {% if current_project.channel_original %}
+        <span class="sep">|</span> Canal: <a href="{{ current_project.channel_original }}" target="_blank">{{ current_project.channel_original }}</a>
+        {% endif %}
+        {% if sop_source %}
+        <span class="sep">|</span> <span class="sop-badge">SOP via {{ sop_source }}</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div class="stats-row">
+        <div class="stat-card"><div class="stat-num">{{ ideas|length }}</div><div class="stat-lbl">Ideias</div></div>
+        <div class="stat-card"><div class="stat-num">{{ nichos|length }}</div><div class="stat-lbl">Nichos</div></div>
+        <div class="stat-card"><div class="stat-num">{{ all_projects|length if all_projects else 0 }}</div><div class="stat-lbl">Projetos</div></div>
+    </div>
+
+    <!-- PIPELINE -->
+    {% if current_project %}
+    <div class="section">
+        <div class="section-title"><span class="sec-icon">&#9881;</span> Pipeline de Producao</div>
+        <div class="pipeline">
+            {% set has_sop = false %}
+            {% for key, cat in categories.items() %}{% if cat.files and key == 'analise' %}{% set has_sop = true %}{% endif %}{% endfor %}
+            <div class="pipe-step {% if current_project %}done{% endif %}"><span class="check">{% if current_project %}&#10003;{% endif %}</span><h4>Projeto Criado</h4><p>{{ current_project.name }}</p></div>
+            <div class="pipe-arrow">&#10132;</div>
+            <div class="pipe-step {% if nichos|length > 0 %}done{% endif %}"><span class="check">{% if nichos|length > 0 %}&#10003;{% endif %}</span><h4>Nichos</h4><p>{{ nichos|length }} gerados</p></div>
+            <div class="pipe-arrow">&#10132;</div>
+            <div class="pipe-step {% if ideas|length > 0 %}done{% endif %}"><span class="check">{% if ideas|length > 0 %}&#10003;{% endif %}</span><h4>Titulos</h4><p>{{ ideas|length }} ideias</p></div>
+            <div class="pipe-arrow">&#10132;</div>
+            <div class="pipe-step"><h4>Roteiros</h4><p>Gerar via AI</p></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- MEU CANAL YOUTUBE -->
+    {% if user and user.role == 'admin' %}
+    <div class="section">
+        <div class="section-title">
+            <span class="sec-icon">&#128250;</span> Meu Canal YouTube
+            <div class="ideas-header-controls">
+                <button type="button" class="score-btn" onclick="refreshYoutubeStats()" id="yt-refresh-btn">&#8635; Atualizar</button>
+            </div>
+        </div>
+        <div id="yt-analytics">
+            <div id="yt-config" class="form-panel">
+                <p class="form-hint">Configure sua YouTube Data API v3 Key para acompanhar as metricas do seu canal.</p>
+                <div class="form-row">
+                    <div class="form-group grow-2">
+                        <label for="yt-api-key">YouTube API Key</label>
+                        <input type="password" id="yt-api-key" class="form-input" placeholder="AIzaSy...">
+                    </div>
+                    <div class="form-group grow-1">
+                        <label for="yt-channel-id">Channel ID</label>
+                        <input type="text" id="yt-channel-id" class="form-input" placeholder="UCxxxxxxxx">
+                    </div>
+                    <div>
+                        <button type="button" class="btn-primary" onclick="saveYoutubeSettings()">Salvar</button>
+                    </div>
+                </div>
+            </div>
+            <div id="yt-stats" style="display:none">
+                <div class="stats-row" id="yt-stats-cards"></div>
+                <div id="yt-recent-videos"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- EXECUTAR NOVO NICHO -->
+    {% if user and user.role == 'admin' %}
+    <div class="section">
+        <div class="section-title"><span class="sec-icon">&#128640;</span> Executar Novo Nicho</div>
+        <div class="form-panel">
+            <p class="form-hint">Analise um canal do YouTube e crie um novo projeto com SOP + 5 nichos + 30 titulos via AI.</p>
+            <div class="form-row">
+                <div class="form-group grow-2">
+                    <label for="channel-url">URL do Canal YouTube</label>
+                    <input type="text" id="channel-url" class="form-input" placeholder="https://youtube.com/@canal">
+                </div>
+                <div class="form-group grow-1">
+                    <label for="niche-name">Nome do Nicho</label>
+                    <input type="text" id="niche-name" class="form-input" placeholder="Ex: Dark Deals, Heist Architects...">
+                </div>
+                <div class="form-group grow-1">
+                    <label for="notebook-id">ID do Notebook (NotebookLM) <span class="optional">opcional</span></label>
+                    <input type="text" id="notebook-id" class="form-input" placeholder="Cole o ID do notebook aqui">
+                </div>
+                <div>
+                    <button class="btn-primary" id="analyze-btn" onclick="analyzeChannel()">
+                        &#128269; Analisar Canal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- NICHOS -->
+    <div class="section">
+        <div class="section-title"><span class="sec-icon">&#128161;</span> Nichos Gerados</div>
+        <div class="grid-5">
+            {% for n in nichos %}
+            <div class="niche-card {% if n.chosen %}niche-selected{% endif %}" onclick="selectNiche(this, '{{ n.name }}')" data-niche="{{ n.name }}" role="button" tabindex="0" aria-label="Selecionar nicho: {{ n.name }}">
+                <div class="niche-indicator" style="background:{{ n.color }}"></div>
+                <div class="niche-name">{{ n.name }}
+                    {% if n.chosen %}<span class="chosen-badge">ESCOLHIDO</span>{% endif %}
+                </div>
+                <div class="niche-desc">{{ n.desc }}</div>
+                <div class="niche-stats">
+                    <span class="niche-rpm">RPM: {{ n.rpm }}</span>
+                    <span class="niche-comp">Comp: {{ n.comp }}</span>
+                </div>
+                {% if n.countries %}
+                <div class="niche-countries">
+                    {% for c in n.countries %}
+                    <div class="niche-country" title="{{ c.reason }}">
+                        <span class="country-flag">{{ c.flag|safe }}</span>
+                        <span class="country-name">{{ c.name }}</span>
+                        <span class="country-lang">{{ c.lang }}</span>
+                        <span class="country-reason">{{ c.reason }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- FILES + IDEAS -->
+    <div class="grid-2">
+        <div>
+            <!-- ARQUIVOS POR CATEGORIA -->
+            <div class="section">
+                <div class="section-title"><span class="sec-icon">&#128193;</span> Arquivos do Projeto</div>
+                {% for key, cat in categories.items() %}
+                {% if cat.files %}
+                {% if key == 'analise' and (not user or user.role != 'admin') %}
+                {% else %}
+                <div class="category-card">
+                    <div class="category-header" style="border-color:{{ cat.color }}">
+                        <span class="cat-icon">{{ cat.icon|safe }}</span>
+                        <span class="cat-label">{{ cat.label }}</span>
+                        <span class="cat-count">{{ cat.files|length }}</span>
+                    </div>
+                    <div class="category-files">
+                        {% for f in cat.files %}
+                        <div class="file-item">
+                            <span class="file-dot" style="background:{{ cat.color }}"></span>
+                            <span class="file-label" onclick="loadFile('{{ f.path }}')" style="cursor:pointer" role="button" tabindex="0">{{ f.name|replace("loaded_dice_", "")|replace("_", " ")|title }}</span>
+                            <span class="file-size">{{ (f.size // 1024) }}KB</span>
+                            <button type="button" class="copy-file-btn" onclick="copyFile('{{ f.path }}')" title="Copiar conteudo" aria-label="Copiar conteudo">&#128203;</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <div>
+            <!-- IDEAS WITH SCORES -->
+            <div class="section">
+                <div class="section-title"><span class="sec-icon">&#127919;</span> Ideias de Videos
+                    <div class="ideas-header-controls">
+                        <select id="country-select" class="ideas-country-select" title="Filtro de paises">
+                            <option value="global,BR,US">Global + BR + US</option>
+                            <option value="global,BR">Global + Brasil</option>
+                            <option value="global,US">Global + EUA</option>
+                            <option value="global,BR,US,PT,ES">Global + BR + US + PT + ES</option>
+                            <option value="global,BR,US,GB,DE,FR">Global + Americas + Europa</option>
+                            <option value="BR">Apenas Brasil</option>
+                            <option value="US">Apenas EUA</option>
+                        </select>
+                        <button type="button" class="score-btn" onclick="scoreAll()" id="score-btn">Pontuar Todos</button>
+                        <button type="button" class="score-btn score-btn-green" onclick="generateMoreIdeas()" id="ideas-btn">+ Gerar Titulos</button>
+                    </div>
+                </div>
+                <!-- Score Legend -->
+                <div class="score-legend">
+                    <span class="legend-label">Score:</span>
+                    <span class="sc-excellent">&#9679; 80-100</span>
+                    <span class="sc-good">&#9679; 60-79</span>
+                    <span class="sc-medium">&#9679; 40-59</span>
+                    <span class="sc-low">&#9679; 1-39</span>
+                    <span class="sc-none">&#9679; N/A</span>
+                    <span class="legend-auto">Ordenado por score</span>
+                </div>
+                <div class="ideas-col-header">
+                    <span class="col-check">&#10003;</span>
+                    <span class="col-num">#</span>
+                    <span class="col-title">Titulo</span>
+                    <span>Pilar</span>
+                    <span class="col-score">Score</span>
+                    <span class="col-priority">Prior.</span>
+                </div>
+                {% for idea in ideas %}
+                {% set pri = idea.priority|default("MEDIA") %}
+                {% set pri_color = priority_colors.get(pri, "#71717a") %}
+                {% set score = idea.score|default(0) %}
+                {% set rating = idea.rating|default("") %}
+                {% set used = idea.used|default(0) %}
+                {% set idea_id = idea.id|default(0) %}
+                {% set num = idea.num|default(0) %}
+                {% set title = idea.title|default("") %}
+                {% set pillar = idea.pillar|default("") %}
+                {% if score >= 80 %}
+                    {% set sc = "#22c55e" %}
+                {% elif score >= 60 %}
+                    {% set sc = "#3b82f6" %}
+                {% elif score >= 40 %}
+                    {% set sc = "#eab308" %}
+                {% elif score > 0 %}
+                    {% set sc = "#ef4444" %}
+                {% else %}
+                    {% set sc = "#3f3f46" %}
+                {% endif %}
+                {% set check_style = "opacity:.4;text-decoration:line-through" if used else "" %}
+                {% set check_icon = "&#9745;" if used else "&#9744;" %}
+
+                <div class="idea-row-wrap" id="idea-{{ idea_id }}">
+                    <div class="idea-row" style="{{ check_style }}">
+                        <div class="idea-check" onclick="toggleUsed({{ idea_id }})" title="Marcar como usado" role="button" tabindex="0" aria-label="Marcar como usado">{{ check_icon|safe }}</div>
+                        <div class="idea-num">{{ num }}</div>
+                        <div class="idea-title" onclick="showIdeaDetails({{ idea_id }})" style="cursor:pointer" title="Ver detalhes regionais">{{ title }}</div>
+                        <div class="idea-pillar">{{ pillar }}</div>
+                        <div class="idea-score" style="color:{{ sc }}" title="{{ rating }}">{{ score if score > 0 else '-' }}</div>
+                        <div class="idea-priority" style="color:{{ pri_color }}">{{ pri }}</div>
+                        <button type="button" class="gen-btn" onclick="generateScript({{ idea_id }}, '{{ title|replace("'", "") }}')" title="Gerar roteiro" aria-label="Gerar roteiro">&#9998;</button>
+                    </div>
+                    {% if idea.region_html %}
+                    {{ idea.region_html|safe }}
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- DRIVE LINKS -->
+            <div class="section">
+                <div class="section-title"><span class="sec-icon">&#9729;</span> Google Drive</div>
+                <div class="drive-grid">
+                    {% for link in drive_links %}
+                    <a class="drive-link" href="{{ link.url }}" target="_blank">
+                        <span class="drive-icon">{{ link.icon|safe }}</span> {{ link.label }} <span class="drive-type">{{ link.type }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORICO -->
+    <div class="section">
+        <div class="section-title"><span class="sec-icon">&#128337;</span> Historico de Projetos</div>
+        {% if projects %}
+        {% for p in projects %}
+        <div class="history-item" onclick="loadProject('{{ p.id }}')" role="button" tabindex="0">
+            <div class="hist-color"></div>
+            <div class="hist-info">
+                <div class="hist-name">{{ p.name|default("") }}</div>
+                <div class="hist-meta">{{ p.created_at|default("")|truncate(10, True, "") }} | {{ p.channel_original|default("") }} | {{ p.file_count|default(0) }} arquivos</div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">Projetos aparecem aqui conforme voce executa o pipeline</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- MODAL VIEWER -->
+<div class="modal-overlay" id="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">Arquivo</h3>
+            <div class="modal-actions">
+                <button type="button" class="modal-copy-btn" onclick="copyModalContent()" title="Copiar conteudo" aria-label="Copiar conteudo do arquivo">&#128203; Copiar</button>
+                <button type="button" class="modal-close" onclick="closeModal()" aria-label="Fechar">&#10005;</button>
+            </div>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script>window.__CURRENT_PROJECT_ID = "{{ current_project_id|default('') }}";</script>
+<script src="/static/js/app.js?v=20260402"></script>
+<script>
+function regenerateMindmap() {
+    const pid = window.__CURRENT_PROJECT_ID;
+    if (!pid) { showToast('Selecione um projeto primeiro', 'warning'); return; }
+    showConfirm('Atualizar Mind Map', 'Regenerar o Mind Map com os dados atuais do projeto?', function() {
+        const loading = showToast('Regenerando Mind Map...', 'loading');
+        apiPost('/api/regenerate-mindmap', {project_id: pid})
+        .then(r => r.json())
+        .then(data => {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Mind Map atualizado!', 'success');
+                setTimeout(() => window.open(data.url, '_blank'), 1000);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function switchProject(projectId) {
+    if (projectId) {
+        window.location.href = '/?project=' + encodeURIComponent(projectId);
+    }
+}
+
+function analyzeChannel() {
+    const url = document.getElementById('channel-url').value.trim();
+    const nicheName = document.getElementById('niche-name').value.trim();
+    const notebookId = document.getElementById('notebook-id').value.trim();
+
+    if (!url) { showToast('Informe a URL do canal', 'warning'); return; }
+    if (!nicheName) { showToast('Informe o nome do nicho', 'warning'); return; }
+
+    const btn = document.getElementById('analyze-btn');
+    btn.disabled = true;
+    btn.innerHTML = '&#9881; Analisando...';
+
+    showProgressModal('Analisando Canal');
+    updateProgress(10, 'Criando projeto...');
+
+    // Simulate progress while waiting for API
+    let pct = 10;
+    const steps = [
+        {at: 15, msg: 'Gerando SOP do canal...'},
+        {at: 35, msg: 'Analisando conceito e estrategia...'},
+        {at: 55, msg: 'Gerando nichos derivados...'},
+        {at: 75, msg: 'Gerando 30 titulos virais...'},
+        {at: 90, msg: 'Salvando no banco de dados...'},
+    ];
+    let stepIdx = 0;
+    const analyzeInterval = setInterval(() => {
+        if (stepIdx < steps.length) {
+            pct = steps[stepIdx].at;
+            updateProgress(pct, steps[stepIdx].msg);
+            stepIdx++;
+        } else {
+            clearInterval(analyzeInterval);
+        }
+    }, 5000);
+
+    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, notebook_id: notebookId})
+    .then(r => r.json())
+    .then(data => {
+        clearInterval(analyzeInterval);
+        if (data.ok) {
+            const source = data.sop_source || 'AI';
+            updateProgress(100, 'Concluido! SOP via ' + source + ' + ' + data.niches_generated + ' nichos + ' + data.titles_generated + ' titulos');
+            showToast('Projeto "' + data.niche_name + '" criado! SOP via ' + source, 'success', 5000);
+            setTimeout(() => {
+                closeProgressModal();
+                window.location.href = '/?project=' + encodeURIComponent(data.project_id);
+            }, 2000);
+        } else {
+            closeProgressModal();
+            showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            btn.disabled = false;
+            btn.innerHTML = '&#128269; Analisar Canal';
+        }
+    })
+    .catch(e => {
+        clearInterval(analyzeInterval);
+        closeProgressModal();
+        showToast('Erro: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '&#128269; Analisar Canal';
+    });
+}
+
+/* ── YouTube Analytics ─────────────────────── */
+function saveYoutubeSettings() {
+    const apiKey = document.getElementById('yt-api-key').value.trim();
+    const channelId = document.getElementById('yt-channel-id').value.trim();
+    if (!apiKey) { showToast('Informe a API Key', 'warning'); return; }
+    if (!channelId) { showToast('Informe o Channel ID', 'warning'); return; }
+
+    const loading = showToast('Salvando configuracao...', 'loading');
+    apiPost('/api/admin/youtube-settings', {api_key: apiKey, channel_id: channelId})
+    .then(r => r.json())
+    .then(data => {
+        removeToast(loading);
+        if (data.ok) {
+            showToast('YouTube configurado!', 'success');
+            document.getElementById('yt-api-key').value = '';
+            refreshYoutubeStats();
+        } else {
+            showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+        }
+    })
+    .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+}
+
+function refreshYoutubeStats() {
+    const btn = document.getElementById('yt-refresh-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Carregando...'; }
+
+    api('/api/admin/youtube-stats')
+    .then(r => r.json())
+    .then(data => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#8635; Atualizar'; }
+        if (data.error) {
+            document.getElementById('yt-stats').style.display = 'none';
+            if (!data.error.includes('Configure')) showToast(data.error, 'error');
+            return;
+        }
+        renderYoutubeStats(data);
+    })
+    .catch(e => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#8635; Atualizar'; }
+    });
+}
+
+function renderYoutubeStats(data) {
+    document.getElementById('yt-config').style.display = 'none';
+    const statsDiv = document.getElementById('yt-stats');
+    statsDiv.style.display = 'block';
+
+    // Stats cards
+    const fmt = n => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? (n/1000).toFixed(1) + 'K' : n.toString();
+    document.getElementById('yt-stats-cards').innerHTML =
+        '<div class="stat-card"><div class="stat-num">' + fmt(data.subscribers) + '</div><div class="stat-lbl">Inscritos</div></div>' +
+        '<div class="stat-card"><div class="stat-num">' + fmt(data.total_views) + '</div><div class="stat-lbl">Views Total</div></div>' +
+        '<div class="stat-card"><div class="stat-num">' + data.video_count + '</div><div class="stat-lbl">Videos</div></div>' +
+        '<div class="stat-card"><div class="stat-num">' + (data.channel_name || '-') + '</div><div class="stat-lbl">Canal</div></div>';
+
+    // Recent videos table
+    if (data.recent_videos && data.recent_videos.length > 0) {
+        let html = '<table class="admin-table"><thead><tr><th scope="col">Video</th><th scope="col">Data</th><th scope="col">Views</th><th scope="col">Likes</th><th scope="col">Coments</th></tr></thead><tbody>';
+        data.recent_videos.forEach(v => {
+            html += '<tr>' +
+                '<td><a href="https://youtube.com/watch?v=' + v.video_id + '" target="_blank" style="color:var(--fg-primary);text-decoration:none">' + v.title.substring(0, 60) + (v.title.length > 60 ? '...' : '') + '</a></td>' +
+                '<td style="color:var(--fg-muted);font-size:12px">' + v.published + '</td>' +
+                '<td style="font-family:var(--font-mono);font-weight:600">' + fmt(v.views) + '</td>' +
+                '<td style="color:var(--success);font-family:var(--font-mono)">' + fmt(v.likes) + '</td>' +
+                '<td style="color:var(--fg-muted);font-family:var(--font-mono)">' + fmt(v.comments) + '</td>' +
+                '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('yt-recent-videos').innerHTML = html;
+    }
+}
+
+// Auto-load YouTube stats on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('yt-analytics')) {
+        refreshYoutubeStats();
+    }
+});
+</script>
+{% endblock %}

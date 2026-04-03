@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}YT Cloner - Alunos{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/students" style="color:#b388ff">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="page">
+
+    <!-- STATS -->
+    <div class="stats-row">
+        <div class="stat-card"><div class="stat-num">{{ students|length }}</div><div class="stat-lbl">Total Alunos</div></div>
+        <div class="stat-card"><div class="stat-num">{{ students|sum(attribute='total_assigned') }}</div><div class="stat-lbl">Titulos Atribuidos</div></div>
+        <div class="stat-card"><div class="stat-num">{{ students|sum(attribute='total_completed') }}</div><div class="stat-lbl">Videos Publicados</div></div>
+        <div class="stat-card"><div class="stat-num">{{ students|sum(attribute='total_in_progress') }}</div><div class="stat-lbl">Em Progresso</div></div>
+    </div>
+
+    <!-- HEADER + CREATE BUTTON -->
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128101;</span> Alunos Mentorados</span>
+            <button class="btn-primary" onclick="showCreateStudentModal()">+ Criar Aluno</button>
+        </div>
+
+        {% if students %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Nicho</th>
+                    <th>Titulos</th>
+                    <th>Progresso</th>
+                    <th>API</th>
+                    <th>Ultimo Acesso</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                {% set pct = ((s.total_completed / s.total_assigned * 100) if s.total_assigned > 0 else 0)|int %}
+                <tr>
+                    <td style="font-weight:bold">{{ s.name }}</td>
+                    <td style="color:#888">{{ s.email }}</td>
+                    <td><span style="color:#b388ff">{{ s.niches }}</span></td>
+                    <td>
+                        <span style="color:#4caf50">{{ s.total_completed }}</span> /
+                        <span style="color:#ffd740">{{ s.total_in_progress }}</span> /
+                        <span>{{ s.total_assigned }}</span>
+                    </td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width:{{ pct }}%;background:linear-gradient(90deg,#6c3ce0,#00d4ff)"></div>
+                        </div>
+                        <span style="font-size:.7em;color:#666">{{ pct }}%</span>
+                    </td>
+                    <td>
+                        {% if s.has_api_key %}
+                        <span class="badge badge-api">Sim</span>
+                        {% else %}
+                        <span class="badge badge-no-api">Nao</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:.78em;color:#666">{{ s.last_login[:16] if s.last_login and s.last_login != 'Nunca' else 'Nunca' }}</td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <a href="/admin/student/{{ s.id }}" class="btn-primary" style="font-size:.72em;padding:4px 10px;text-decoration:none">Ver Detalhes</a>
+                            <a href="/student?view_as={{ s.id }}" style="font-size:.72em;padding:4px 10px;text-decoration:none;background:#7c3aed20;color:#b388ff;border-radius:4px;" title="Ver painel como este aluno">&#128065; Como Aluno</a>
+                            <button class="btn-success" style="font-size:.72em;padding:4px 10px" onclick="quickReleaseTitles({{ s.id }})">+5 Titulos</button>
+                            {% if s.active %}
+                            <button class="btn-danger" style="font-size:.72em;padding:4px 10px;background:#8b4513;border-color:#8b4513" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', true)">Bloquear</button>
+                            {% else %}
+                            <button class="btn-success" style="font-size:.72em;padding:4px 10px" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', false)">Desbloquear</button>
+                            {% endif %}
+                            <button class="btn-danger" style="font-size:.72em;padding:4px 10px" onclick="deleteStudent({{ s.id }}, '{{ s.name }}')">Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:40px;color:#555">
+            Nenhum aluno cadastrado ainda. Clique em "Criar Aluno" para comecar.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- CREATE STUDENT MODAL -->
+<div class="modal-overlay" id="create-student-modal">
+    <div class="modal-content" style="max-width:500px">
+        <div class="modal-header">
+            <h3>Criar Novo Aluno</h3>
+            <button class="modal-close" onclick="closeCreateStudentModal()">&#10005;</button>
+        </div>
+        <div class="modal-form">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" id="student-name" placeholder="Nome do aluno">
+            </div>
+            <div class="form-group">
+                <label>Email (usado para login)</label>
+                <input type="email" id="student-email" placeholder="aluno@email.com">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="student-password" placeholder="Senha de acesso">
+            </div>
+            <div class="form-group">
+                <label>Nicho (clique para selecionar)</label>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                    {% for n in nichos %}
+                    <span class="niche-badge" onclick="selectNicheBadge(this, '{{ n.name }}')" style="cursor:pointer;padding:5px 12px;border-radius:6px;font-size:.78em;font-weight:bold;border:2px solid {{ n.color }};color:{{ n.color }};background:#0a0a1a;transition:.2s">{{ n.name }}</span>
+                    {% endfor %}
+                </div>
+                <input type="text" id="student-niche" placeholder="Ou digite manualmente..." readonly style="cursor:pointer">
+            </div>
+            <div class="form-group">
+                <label>Projeto</label>
+                <select id="student-project">
+                    {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                    {% if not projects %}
+                    <option value="">Nenhum projeto disponivel</option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Quantidade de Titulos</label>
+                <input type="number" id="student-titles" value="5" min="1" max="50">
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+                <button class="confirm-btn cancel" onclick="closeCreateStudentModal()">Cancelar</button>
+                <button class="btn-primary" onclick="createStudent()">Criar Aluno</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script src="/static/js/app.js?v=20260406"></script>
+<script>
+function showCreateStudentModal() {
+    document.getElementById('create-student-modal').classList.add('active');
+}
+function closeCreateStudentModal() {
+    document.getElementById('create-student-modal').classList.remove('active');
+}
+function selectNicheBadge(el, name) {
+    document.querySelectorAll('.niche-badge').forEach(b => {
+        b.style.background = '#0a0a1a';
+        b.style.opacity = '0.6';
+    });
+    el.style.background = el.style.borderColor;
+    el.style.color = '#fff';
+    el.style.opacity = '1';
+    document.getElementById('student-niche').value = name;
+}
+
+function createStudent() {
+    const name = document.getElementById('student-name').value.trim();
+    const email = document.getElementById('student-email').value.trim();
+    const password = document.getElementById('student-password').value.trim();
+    const niche = document.getElementById('student-niche').value.trim();
+    const project_id = document.getElementById('student-project').value;
+    const titles_count = parseInt(document.getElementById('student-titles').value) || 5;
+
+    if (!name || !email || !password) {
+        showToast('Preencha nome, email e senha', 'error');
+        return;
+    }
+
+    const loading = showToast('Criando aluno...', 'loading');
+    apiFetch('/api/admin/create-student', {
+        method: 'POST',
+        body: JSON.stringify({name, email, password, niche, project_id, titles_count})
+    })
+    .then(r => r.json())
+    .then(data => {
+        removeToast(loading);
+        if (data.ok) {
+            showToast('Aluno "' + name + '" criado com sucesso!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+        }
+    })
+    .catch(e => {
+        removeToast(loading);
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+function quickReleaseTitles(studentId) {
+    window.location.href = '/admin/student/' + studentId;
+}
+
+function toggleBlockStudent(studentId, name, block) {
+    const action = block ? 'Bloquear' : 'Desbloquear';
+    showConfirm(action + ' Aluno', action + ' o aluno "' + name + '"?', function() {
+        const loading = showToast(action + 'ando aluno...', 'loading');
+        apiPost('/api/admin/toggle-student', {student_id: studentId, active: !block})
+        .then(r => r.json())
+        .then(data => {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Aluno ' + (block ? 'bloqueado' : 'desbloqueado') + '!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function deleteStudent(studentId, name) {
+    showConfirm('Excluir Aluno', 'Tem certeza que deseja EXCLUIR o aluno "' + name + '"?<br><br>Esta acao nao pode ser desfeita.', function() {
+        const loading = showToast('Excluindo aluno...', 'loading');
+        apiPost('/api/admin/delete-student', {student_id: studentId})
+        .then(r => r.json())
+        .then(data => {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Aluno excluido!', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+</script>
+{% endblock %}

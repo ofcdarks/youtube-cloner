@@ -1,0 +1,15 @@
+# Development/testing dependencies
+# Install with: pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# Testing
+playwright>=1.40.0
+
+# Linting & Type Checking
+ruff>=0.3.0
+mypy>=1.8.0
+
+# Security Scanning
+bandit>=1.7.0
+safety>=3.0.0
