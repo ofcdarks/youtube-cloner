@@ -790,14 +790,14 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
     body = await request.json()
     url = validate_url(body.get("url", ""))
     niche_name = sanitize_niche_name(body.get("niche_name", ""))
-    notebook_id = body.get("notebook_id", "").strip()
+    nlm_sop = (body.get("nlm_sop") or "").strip()
 
     if not url:
         return JSONResponse({"error": "URL invalida"}, status_code=400)
     if not niche_name or len(niche_name) < 2:
         return JSONResponse({"error": "Nome do nicho invalido (min 2 caracteres)"}, status_code=400)
 
-    logger.info(f"[ANALYZE] {user.get('email')}: url={url[:80]}, niche={niche_name}")
+    logger.info(f"[ANALYZE] {user.get('email')}: url={url[:80]}, niche={niche_name}, nlm_sop={len(nlm_sop)} chars")
 
     try:
         from database import create_project, save_niche, save_idea, save_file, log_activity, update_project
@@ -817,21 +817,18 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
         except Exception as e:
             logger.debug(f"Drive folder: {e}")
 
-        # Step 2: Generate SOP (NotebookLM → Transcripts → AI fallback)
+        # Step 2: Generate SOP (Pasted NLM → Transcripts → AI fallback)
         sop_content = ""
         sop_source = "AI"
         nlm_error = ""
 
-        if notebook_id:
-            logger.info(f"[ANALYZE] Attempting NotebookLM analysis (notebook={notebook_id[:12]}...)")
-            sop_content = analyze_via_notebooklm(notebook_id, niche_name)
-            if sop_content and len(sop_content) > 200:
-                sop_source = "NotebookLM"
-                logger.info(f"[ANALYZE] NotebookLM SOP: {len(sop_content)} chars")
-            else:
-                nlm_error = "NotebookLM retornou vazio ou erro"
-                logger.warning(f"[ANALYZE] NotebookLM failed or empty ({len(sop_content) if sop_content else 0} chars). Falling back.")
+        # Priority 1: User pasted NotebookLM SOP
+        if nlm_sop and len(nlm_sop) > 200:
+            sop_content = nlm_sop
+            sop_source = "NotebookLM"
+            logger.info(f"[ANALYZE] Using pasted NotebookLM SOP: {len(sop_content)} chars")
 
+        # Priority 2: Transcripts + AI
         if not sop_content:
             logger.info(f"[ANALYZE] Trying transcript analysis for {url}")
             sop_content = analyze_via_transcripts(url, niche_name)

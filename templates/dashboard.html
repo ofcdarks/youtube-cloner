@@ -110,16 +110,9 @@
     <!-- EXECUTAR NOVO NICHO -->
     {% if user and user.role == 'admin' %}
     <div class="section">
-        <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
-            <span><span class="sec-icon">&#128640;</span> Executar Novo Nicho</span>
-            {% if nlm_connected %}
-            <span style="font-size:11px;padding:4px 10px;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.25);border-radius:4px;">&#9679; NotebookLM Conectado</span>
-            {% else %}
-            <a href="/admin/notebooklm" style="font-size:11px;padding:4px 10px;background:rgba(124,58,237,.1);color:#b388ff;border:1px solid rgba(124,58,237,.25);border-radius:4px;text-decoration:none;">&#128273; Conectar NotebookLM</a>
-            {% endif %}
-        </div>
+        <div class="section-title"><span class="sec-icon">&#128640;</span> Executar Novo Nicho</div>
         <div class="form-panel">
-            <p class="form-hint">Analise um canal do YouTube e crie um novo projeto com SOP + 5 nichos + 30 titulos via AI.{% if nlm_connected %} <span style="color:#22c55e;">NotebookLM ativo — analise mais profunda!</span>{% endif %}</p>
+            <p class="form-hint">Analise um canal do YouTube e crie um novo projeto com SOP + 5 nichos + 30 titulos via AI.</p>
             <div class="form-row">
                 <div class="form-group grow-2">
                     <label for="channel-url">URL do Canal YouTube</label>
@@ -129,30 +122,26 @@
                     <label for="niche-name">Nome do Nicho</label>
                     <input type="text" id="niche-name" class="form-input" placeholder="Ex: Dark Deals, Heist Architects...">
                 </div>
-                <div class="form-group grow-1">
-                    <label for="notebook-id">
-                        {% if nlm_connected %}
-                        &#128214; Notebook
-                        {% else %}
-                        ID do Notebook <span class="optional">requer conexao</span>
-                        {% endif %}
-                    </label>
-                    <input type="text" id="notebook-id" class="form-input" value="{{ nlm_notebook_id }}" placeholder="{% if nlm_connected %}Cole o ID do notebook{% else %}Conecte primeiro{% endif %}" {% if not nlm_connected %}disabled style="opacity:.5"{% endif %} style="{% if nlm_notebook_id %}display:none{% endif %}">
-                    {% if nlm_notebook_id and nlm_notebook_title %}
-                    <div id="notebook-display" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;" onclick="document.getElementById('notebook-id').style.display='';this.style.display='none';" title="Clique para editar o ID">
-                        <span style="font-size:13px;color:var(--fg-primary);">&#128214; {{ nlm_notebook_title[:40] }}{% if nlm_notebook_title|length > 40 %}...{% endif %}</span>
-                        <span style="font-size:10px;color:var(--fg-dim);margin-left:auto;">&#9998;</span>
-                    </div>
-                    <span style="font-size:10px;color:#22c55e;margin-top:3px;display:block;">&#10003; Notebook detectado automaticamente</span>
-                    {% elif nlm_connected %}
-                    <span style="font-size:10px;color:var(--fg-dim);margin-top:3px;display:block;">Copie o ID da URL do NotebookLM (apos /notebook/)</span>
-                    {% endif %}
-                </div>
                 <div>
                     <button class="btn-primary" id="analyze-btn" onclick="analyzeChannel()">
                         &#128269; Analisar Canal
                     </button>
                 </div>
+            </div>
+
+            <!-- NotebookLM SOP Section -->
+            <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <label style="font-size:13px;font-weight:600;color:var(--fg-primary);display:flex;align-items:center;gap:6px;">
+                        &#129302; SOP via NotebookLM <span style="font-size:10px;color:var(--fg-dim);font-weight:400;">(opcional — melhora a qualidade)</span>
+                    </label>
+                    <button type="button" onclick="generateNlmPrompt()" style="padding:5px 12px;font-size:11px;background:#7c3aed;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:500;">&#128203; Copiar Prompt para NotebookLM</button>
+                </div>
+                <p style="font-size:11px;color:var(--fg-dim);margin-bottom:8px;line-height:1.5;">
+                    <strong>Como usar:</strong> 1) Clique "Copiar Prompt" acima &rarr; 2) Cole no chat do NotebookLM &rarr; 3) Aguarde a resposta &rarr; 4) Copie a resposta e cole abaixo &rarr; 5) Clique "Analisar Canal"
+                </p>
+                <textarea id="nlm-sop-response" class="form-input" style="min-height:100px;resize:vertical;font-size:12px;font-family:monospace;" placeholder="Cole aqui a resposta do NotebookLM (o SOP gerado). Se deixar vazio, a IA gera automaticamente via transcricoes." oninput="updateNlmInfo()"></textarea>
+                <div id="nlm-sop-info" style="font-size:10px;color:var(--fg-dim);margin-top:4px;"></div>
             </div>
         </div>
     </div>
@@ -379,10 +368,59 @@ function switchProject(projectId) {
     }
 }
 
+function updateNlmInfo() {
+    var ta = document.getElementById('nlm-sop-response');
+    var info = document.getElementById('nlm-sop-info');
+    if (!ta || !info) return;
+    var len = ta.value.trim().length;
+    if (len > 200) {
+        info.innerHTML = '<span style="color:#22c55e">&#10003; SOP do NotebookLM: ' + (len/1000).toFixed(1) + 'KB — sera usado como base da analise</span>';
+    } else if (len > 0) {
+        info.innerHTML = '<span style="color:#eab308">&#9888; Texto muito curto (' + len + ' chars). Minimo: 200 caracteres.</span>';
+    } else {
+        info.textContent = '';
+    }
+}
+
+function generateNlmPrompt() {
+    var nicheName = document.getElementById('niche-name').value.trim() || 'NOME_DO_NICHO';
+    var prompt = 'Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("' + nicheName + '").\n\n' +
+'PARTE 1 — DNA DO CANAL\n' +
+'1. IDENTIDADE: Nicho, publico-alvo, proposta de valor, tom de voz, persona do narrador\n' +
+'2. FORMATO: Tipo (faceless/talking head), duracao, frequencia, estilo visual, B-roll, edicao, musica\n\n' +
+'PARTE 2 — ENGENHARIA DE ROTEIRO\n' +
+'3. ESTRUTURA: Hook (primeiros 5s e 30s), contexto, desenvolvimento por atos, climax, CTA — com exemplos REAIS\n' +
+'4. PLAYBOOK DE HOOKS: Todos os tipos (choque, curiosidade, pergunta, numero, contraste, urgencia, segredo) — 3 exemplos reais de cada\n' +
+'5. STORYTELLING: Open loops, pattern interrupts, specific spikes, cliffhangers, arco emocional, ritmo — 5 exemplos de cada\n' +
+'6. REGRAS DE OURO: 15 regras que NUNCA sao quebradas\n\n' +
+'PARTE 3 — ESTRATEGIA\n' +
+'7. PILARES DE CONTEUDO: 5-7 categorias com % e exemplos\n' +
+'8. FORMULA DE TITULOS: Padroes + 10 exemplos reais + template\n' +
+'9. ESTILO DE THUMBNAIL: Cores, tipografia, composicao, template\n' +
+'10. SEO: Tags, descricao, hashtags, end screens, playlists\n\n' +
+'PARTE 4 — MANUAL DE REPLICACAO\n' +
+'11. VERSAO IA: System prompt, 30 palavras do vocabulario, vocabulario proibido, exemplo no estilo exato\n' +
+'12. CHECKLIST: 10 perguntas de verificacao\n\n' +
+'Seja EXTREMAMENTE detalhado. Use exemplos REAIS dos videos. O resultado e um SOP para o nicho "' + nicheName + '".';
+
+    navigator.clipboard.writeText(prompt).then(function() {
+        showToast('Prompt copiado! Cole no chat do NotebookLM.', 'success', 4000);
+    }).catch(function() {
+        // Fallback
+        var ta = document.createElement('textarea');
+        ta.value = prompt;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Prompt copiado!', 'success', 3000);
+    });
+}
+
 function analyzeChannel() {
     const url = document.getElementById('channel-url').value.trim();
     const nicheName = document.getElementById('niche-name').value.trim();
-    const notebookId = document.getElementById('notebook-id').value.trim();
+    const nlmSop = (document.getElementById('nlm-sop-response') || {}).value || '';
 
     if (!url) { showToast('Informe a URL do canal', 'warning'); return; }
     if (!nicheName) { showToast('Informe o nome do nicho', 'warning'); return; }
@@ -394,15 +432,12 @@ function analyzeChannel() {
     showProgressModal('Analisando Canal');
     updateProgress(5, 'Criando projeto...');
 
-    // Different progress steps based on NotebookLM usage
     let pct = 5;
-    const hasNlm = !!notebookId;
-    const steps = hasNlm ? [
-        {at: 8, msg: '&#129302; Conectando ao NotebookLM...'},
-        {at: 15, msg: '&#129302; Enviando prompt para NotebookLM...'},
-        {at: 25, msg: '&#129302; NotebookLM analisando canal (pode levar 1-2 min)...'},
-        {at: 40, msg: '&#129302; Recebendo SOP do NotebookLM...'},
-        {at: 55, msg: 'Gerando nichos derivados...'},
+    const hasNlmSop = nlmSop.trim().length > 200;
+    const steps = hasNlmSop ? [
+        {at: 10, msg: '&#129302; Usando SOP do NotebookLM...'},
+        {at: 30, msg: 'Processando SOP (' + (nlmSop.length/1000).toFixed(0) + 'KB)...'},
+        {at: 50, msg: 'Gerando nichos derivados...'},
         {at: 70, msg: 'Gerando 30 titulos virais...'},
         {at: 85, msg: 'Gerando SEO Pack + Mind Map...'},
         {at: 95, msg: 'Salvando no banco de dados...'},
@@ -416,7 +451,7 @@ function analyzeChannel() {
         {at: 95, msg: 'Salvando no banco de dados...'},
     ];
     let stepIdx = 0;
-    const stepDelay = hasNlm ? 8000 : 5000; // NotebookLM takes longer
+    const stepDelay = hasNlmSop ? 3000 : 5000;
     const analyzeInterval = setInterval(() => {
         if (stepIdx < steps.length) {
             pct = steps[stepIdx].at;
@@ -427,7 +462,7 @@ function analyzeChannel() {
         }
     }, stepDelay);
 
-    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, notebook_id: notebookId})
+    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, nlm_sop: nlmSop.trim()})
     .then(r => r.json())
     .then(data => {
         clearInterval(analyzeInterval);
