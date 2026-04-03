@@ -82,6 +82,36 @@
     </div>
     {% endif %}
 
+    <!-- PROJECT FILES (SOP, SEO, etc — read only for students) -->
+    {% if current_project %}
+    <div class="section" style="margin-top:16px">
+        <div class="section-title"><span class="sec-icon">&#128194;</span> Arquivos do Projeto</div>
+        {% set project_files = [] %}
+        {% for a in assignments %}
+            {% if a.project_id == current_project.id %}
+                {% for idea in (a.ideas or []) %}{% endfor %}
+            {% endif %}
+        {% endfor %}
+        <div style="display:grid;gap:8px;">
+            {% if current_project.name %}
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;">
+                <div style="font-size:13px;color:var(--fg-primary);font-weight:500;">{{ current_project.name }}</div>
+                <div style="font-size:12px;color:var(--fg-muted);margin-top:4px;">Nicho: {{ assignments[0].niche if assignments else 'N/A' }}</div>
+            </div>
+            {% endif %}
+            {% if current_project.drive_folder_url %}
+            <a href="{{ current_project.drive_folder_url }}" target="_blank" style="display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;text-decoration:none;color:var(--fg-secondary);font-size:13px;transition:border-color .15s;">
+                <span>&#128193;</span> Google Drive do Projeto
+                <span style="margin-left:auto;color:var(--fg-dim);font-size:11px;">Abrir &#8599;</span>
+            </a>
+            {% endif %}
+        </div>
+        {% if not current_project.name and not current_project.drive_folder_url %}
+        <div style="text-align:center;padding:20px;color:var(--fg-dim);font-size:13px;">Nenhum arquivo do projeto disponivel</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- KANBAN BOARD -->
     <div class="section">
         <div class="section-title"><span class="sec-icon">&#128203;</span> Quadro de Producao</div>
@@ -95,6 +125,9 @@
                 {% for item in kanban.pending %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'pending')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
+                    {% if item.hook %}
+                    <div class="kanban-card-hook" style="font-size:.75em;color:#94a3b8;margin:4px 0 6px;line-height:1.4;border-left:2px solid #334155;padding-left:8px;">{{ item.hook[:120] }}{% if item.hook|length > 120 %}...{% endif %}</div>
+                    {% endif %}
                     <div class="kanban-card-meta">
                         <span style="color:#b388ff">{{ item.pillar }}</span>
                         {% if item.score and item.score > 0 %}

@@ -1260,7 +1260,12 @@ async def student_dashboard(request: Request, view_as: int = 0, user=Depends(req
     if project_ids:
         proj = get_project(list(project_ids)[0])
         if proj:
-            current_project = {"id": proj["id"], "name": proj["name"]}
+            current_project = {
+                "id": proj["id"],
+                "name": proj["name"],
+                "drive_folder_url": proj.get("drive_folder_url", ""),
+                "channel_original": proj.get("channel_original", ""),
+            }
 
     return render(request, "student_dashboard.html", {
         "user": target_user,
