@@ -1092,100 +1092,59 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
 
 @app.get("/admin/notebooklm", response_class=HTMLResponse)
 async def admin_nlm_auth_page(request: Request, user=Depends(require_admin)):
-    """NotebookLM authentication page with remote browser viewer."""
+    """NotebookLM credential management page."""
     has_credentials = False
-    playwright_available = False
-    playwright_error = ""
     try:
-        from pathlib import Path as _P
-        has_credentials = (_P.home() / ".notebooklm" / "storage_state.json").exists()
+        has_credentials = (Path.home() / ".notebooklm" / "storage_state.json").exists()
     except Exception:
         pass
+    return render(request, "admin_nlm_auth.html", {"user": user, "has_credentials": has_credentials})
+
+
+@app.post("/api/admin/nlm-save-credentials")
+@limiter.limit("10/minute")
+async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)):
+    """Save NotebookLM storage state (cookies + localStorage)."""
+    body = await request.json()
+    storage_state = body.get("storage_state", "")
+
+    if not storage_state:
+        return JSONResponse({"error": "storage_state obrigatorio"}, status_code=400)
+
+    # Validate JSON
     try:
-        import notebooklm_auth
-        playwright_available = notebooklm_auth._playwright_available
-        playwright_error = notebooklm_auth._playwright_error
+        if isinstance(storage_state, str):
+            parsed = json.loads(storage_state)
+        else:
+            parsed = storage_state
+            storage_state = json.dumps(parsed)
+
+        if not isinstance(parsed, dict):
+            return JSONResponse({"error": "JSON deve ser um objeto"}, status_code=400)
+        if "cookies" not in parsed and "origins" not in parsed:
+            return JSONResponse({"error": "JSON deve conter 'cookies' ou 'origins'"}, status_code=400)
+    except (json.JSONDecodeError, TypeError) as e:
+        return JSONResponse({"error": f"JSON invalido: {str(e)[:100]}"}, status_code=400)
+
+    try:
+        import base64
+
+        # Save to file
+        nlm_dir = Path.home() / ".notebooklm"
+        nlm_dir.mkdir(parents=True, exist_ok=True)
+        (nlm_dir / "storage_state.json").write_text(storage_state, encoding="utf-8")
+
+        # Also save to DB
+        from database import set_setting
+        b64 = base64.b64encode(storage_state.encode()).decode()
+        set_setting("notebooklm_storage_state", b64)
+
+        logger.info(f"NotebookLM credentials saved: {len(storage_state)} chars, {len(parsed.get('cookies', []))} cookies")
+
+        return JSONResponse({"ok": True, "cookies": len(parsed.get("cookies", [])), "origins": len(parsed.get("origins", []))})
     except Exception as e:
-        playwright_error = f"Erro ao carregar modulo: {str(e)[:200]}"
-    return render(request, "admin_nlm_auth.html", {
-        "user": user,
-        "has_credentials": has_credentials,
-        "playwright_available": playwright_available,
-        "playwright_error": playwright_error,
-    })
-
-
-@app.post("/api/admin/nlm-start")
-@limiter.limit("3/minute")
-async def api_nlm_start(request: Request, user=Depends(require_admin)):
-    """Start NotebookLM browser auth session."""
-    import notebooklm_auth
-    result = await notebooklm_auth.start_session()
-    return JSONResponse(result)
-
-
-@app.post("/api/admin/nlm-stop")
-async def api_nlm_stop(request: Request, user=Depends(require_admin)):
-    """Stop NotebookLM browser auth session."""
-    import notebooklm_auth
-    result = await notebooklm_auth.stop_session()
-    return JSONResponse(result)
-
-
-@app.get("/api/admin/nlm-status")
-async def api_nlm_status(request: Request, user=Depends(require_admin)):
-    """Get NotebookLM auth session status."""
-    import notebooklm_auth
-    return JSONResponse(notebooklm_auth.get_status())
-
-
-@app.get("/api/admin/nlm-screenshot")
-async def api_nlm_screenshot(request: Request, user=Depends(require_admin)):
-    """Get current browser screenshot as JPEG."""
-    import notebooklm_auth
-    from fastapi.responses import Response
-    screenshot = await notebooklm_auth.take_screenshot()
-    if not screenshot:
-        # Return 1x1 transparent pixel
-        return Response(content=b"", media_type="image/jpeg", status_code=204)
-    return Response(content=screenshot, media_type="image/jpeg")
-
-
-@app.post("/api/admin/nlm-click")
-async def api_nlm_click(request: Request, user=Depends(require_admin)):
-    """Send click event to browser."""
-    body = await request.json()
-    x = int(body.get("x", 0))
-    y = int(body.get("y", 0))
-    import notebooklm_auth
-    result = await notebooklm_auth.click(x, y)
-    return JSONResponse(result)
-
-
-@app.post("/api/admin/nlm-type")
-async def api_nlm_type(request: Request, user=Depends(require_admin)):
-    """Send text input to browser."""
-    body = await request.json()
-    text = body.get("text", "")
-    if not text or len(text) > 500:
-        return JSONResponse({"error": "Texto invalido"}, status_code=400)
-    import notebooklm_auth
-    result = await notebooklm_auth.type_text(text)
-    return JSONResponse(result)
-
-
-@app.post("/api/admin/nlm-key")
-async def api_nlm_key(request: Request, user=Depends(require_admin)):
-    """Send special key press to browser."""
-    body = await request.json()
-    key = body.get("key", "")
-    allowed_keys = {"Enter", "Tab", "Backspace", "Escape", "ArrowUp", "ArrowDown",
-                    "ArrowLeft", "ArrowRight", "Alt+ArrowLeft", "Alt+ArrowRight", "F5"}
-    if key not in allowed_keys:
-        return JSONResponse({"error": "Tecla nao permitida"}, status_code=400)
-    import notebooklm_auth
-    result = await notebooklm_auth.press_key(key)
-    return JSONResponse(result)
+        logger.error(f"NLM save error: {e}")
+        return JSONResponse({"error": "Falha ao salvar credenciais"}, status_code=500)
 
 
 # ══════════════════════════════════════════════════════════
