@@ -1067,8 +1067,8 @@ async def admin_nlm_auth_page(request: Request, user=Depends(require_admin)):
         import notebooklm_auth
         playwright_available = notebooklm_auth._playwright_available
         playwright_error = notebooklm_auth._playwright_error
-    except Exception:
-        playwright_error = "Modulo notebooklm_auth nao disponivel"
+    except Exception as e:
+        playwright_error = f"Erro ao carregar modulo: {str(e)[:200]}"
     return render(request, "admin_nlm_auth.html", {
         "user": user,
         "has_credentials": has_credentials,

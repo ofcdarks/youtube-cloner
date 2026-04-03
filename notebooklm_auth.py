@@ -22,8 +22,8 @@ _playwright_error = ""
 try:
     from playwright.async_api import async_playwright
     _playwright_available = True
-except ImportError:
-    _playwright_error = "Playwright nao instalado. Execute no container: pip install playwright && playwright install chromium"
+except Exception as e:
+    _playwright_error = f"Playwright indisponivel: {str(e)[:150]}. Execute: pip install playwright && playwright install chromium"
 
 # Browser session state
 _browser = None

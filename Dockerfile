@@ -7,8 +7,6 @@ FROM python:3.11-slim AS deps
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-# Install Playwright separately (large)
-RUN pip install --no-cache-dir --prefix=/install playwright
 
 # ── Stage 2: Runtime ──────────────────────────────────────
 FROM python:3.11-slim
