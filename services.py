@@ -195,44 +195,15 @@ def validate_project_id(project_id: str) -> bool:
 def analyze_via_notebooklm(notebook_id: str, niche_name: str) -> str:
     """Analyze channel using NotebookLM — comprehensive prompt extracts everything needed to clone."""
     try:
-        # notebooklm-py package may export different class names across versions
-        nlm = None
-        try:
-            from notebooklm_py import NotebookLM
-            nlm = NotebookLM()
-        except ImportError:
-            pass
-        if nlm is None:
-            try:
-                from notebooklm import NotebookLMClient
-                nlm = NotebookLMClient()
-            except ImportError:
-                pass
-        if nlm is None:
-            try:
-                from notebooklm import Client
-                nlm = Client()
-            except ImportError:
-                pass
-        if nlm is None:
-            try:
-                import notebooklm
-                # Check what's exported
-                exports = [x for x in dir(notebooklm) if not x.startswith("_")]
-                logger.error(f"notebooklm package exports: {exports}")
-                # Try the first class-like export
-                for name in exports:
-                    obj = getattr(notebooklm, name)
-                    if isinstance(obj, type):
-                        nlm = obj()
-                        logger.info(f"Using notebooklm.{name}()")
-                        break
-            except Exception as e:
-                logger.error(f"Could not find NotebookLM class: {e}")
+        # Import the client
+        from notebooklm import NotebookLMClient
 
-        if nlm is None:
-            logger.error("NotebookLM: no usable class found in notebooklm package")
+        # Auth = path to storage_state.json
+        if not STORAGE_PATH.exists():
+            logger.error("NotebookLM: storage_state.json not found")
             return ""
+
+        nlm = NotebookLMClient(auth=str(STORAGE_PATH))
 
         prompt = f"""Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("{niche_name}").
 
