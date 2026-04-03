@@ -515,6 +515,7 @@ async def api_score_all(
     project: str = "",
     user=Depends(require_auth),
 ):
+    import asyncio
     country_list = countries.split(",")
     force_rescore = force.lower() in ("true", "1", "yes")
 
@@ -530,28 +531,35 @@ async def api_score_all(
         return JSONResponse({"error": "Nenhum projeto"}, status_code=400)
 
     ideas = get_ideas(pid)
-    results = []
 
-    from protocols.title_scorer import score_title
+    def _score_all():
+        """Run scoring in thread so health checks keep responding."""
+        from protocols.title_scorer import score_title
+        results = []
+        for idea in ideas:
+            if idea.get("score", 0) > 0 and not force_rescore:
+                results.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea["rating"], "skipped": True})
+                continue
+            try:
+                score_result = score_title(idea["title"], country_list)
+                update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
+                results.append({
+                    "id": idea["id"],
+                    "title": idea["title"],
+                    "score": score_result["final_score"],
+                    "rating": score_result["rating"],
+                })
+            except Exception as e:
+                logger.warning(f"Score failed for '{idea['title'][:30]}': {e}")
+                results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": str(e)[:100]})
+        return results
 
-    for idea in ideas:
-        if idea.get("score", 0) > 0 and not force_rescore:
-            results.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea["rating"], "skipped": True})
-            continue
-        try:
-            score_result = score_title(idea["title"], country_list)
-            update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
-            results.append({
-                "id": idea["id"],
-                "title": idea["title"],
-                "score": score_result["final_score"],
-                "rating": score_result["rating"],
-            })
-        except Exception as e:
-            logger.warning(f"Score failed for '{idea['title'][:30]}': {e}")
-            results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": str(e)[:100]})
-
-    return JSONResponse({"ok": True, "scored": len(results), "results": results})
+    try:
+        results = await asyncio.to_thread(_score_all)
+        return JSONResponse({"ok": True, "scored": len(results), "results": results})
+    except Exception as e:
+        logger.error(f"score-all error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
 
 
 @app.post("/api/score-title")
