@@ -19,7 +19,7 @@ WORKDIR /app
 
 # System deps + Playwright browser deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg curl ca-certificates \
+    ffmpeg curl ca-certificates gosu \
     # Playwright Chromium deps
     libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
@@ -47,16 +47,19 @@ RUN rm -f credentials.json token.json service_account.json .env 2>/dev/null || t
 # Seed data
 RUN cp -r output/ /app/seed_output/ 2>/dev/null || true
 
-# Create non-root user with home dir for Playwright storage
+# Create non-root user
 RUN useradd -m -r appuser && \
     chown -R appuser:appuser /app && \
     mkdir -p /app/output && chown -R appuser:appuser /app/output && \
     mkdir -p /home/appuser/.notebooklm && chown -R appuser:appuser /home/appuser
-USER appuser
+
+# Entrypoint fixes volume permissions then starts as appuser
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8888
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8888/api/health || exit 1
 
-CMD ["uvicorn", "dashboard:app", "--host", "0.0.0.0", "--port", "8888", "--proxy-headers", "--forwarded-allow-ips", "*"]
+ENTRYPOINT ["/entrypoint.sh"]
