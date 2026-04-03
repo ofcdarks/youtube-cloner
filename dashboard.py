@@ -1203,6 +1203,38 @@ async def admin_nlm_receive(request: Request, user=Depends(require_auth)):
     return render(request, "admin_nlm_receive.html", {"user": user})
 
 
+@app.get("/api/admin/nlm-notebooks")
+async def api_nlm_notebooks(request: Request, user=Depends(require_admin)):
+    """List notebooks from NotebookLM account."""
+    import asyncio, threading
+
+    async def _fetch():
+        from notebooklm import NotebookLMClient
+        storage_path = Path.home() / ".notebooklm" / "storage_state.json"
+        path_arg = str(storage_path) if storage_path.exists() else None
+        async with await NotebookLMClient.from_storage(path=path_arg) as client:
+            notebooks = await client.notebooks.list()
+            return [{"id": nb.id, "title": getattr(nb, "title", getattr(nb, "name", str(nb)))} for nb in notebooks]
+
+    try:
+        container = [None, None]
+        def run():
+            try:
+                container[0] = asyncio.run(_fetch())
+            except Exception as e:
+                container[1] = e
+        t = threading.Thread(target=run)
+        t.start()
+        t.join(timeout=30)
+        if container[1]:
+            raise container[1]
+        notebooks = container[0] or []
+        return JSONResponse({"ok": True, "notebooks": notebooks})
+    except Exception as e:
+        logger.error(f"NLM list notebooks error: {e}")
+        return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
+
+
 @app.post("/api/admin/nlm-save-credentials")
 @limiter.limit("10/minute")
 async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)):
