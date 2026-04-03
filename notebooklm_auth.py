@@ -125,7 +125,7 @@ async def start_session() -> dict:
 
 async def take_screenshot() -> bytes:
     """Take a screenshot of the current page."""
-    global _last_screenshot, _last_screenshot_time
+    global _last_screenshot, _last_screenshot_time, _status_message, _auth_complete
 
     if not _page or not _session_active:
         return b""
@@ -145,7 +145,6 @@ async def take_screenshot() -> bytes:
             # Check if it's the actual app (not a redirect back to login)
             content = await _page.content()
             if "notebook" in content.lower() and "signin" not in current_url:
-                global _status_message, _auth_complete
                 _status_message = "Login detectado! Salvando sessao..."
                 await _save_storage_state()
                 _auth_complete = True
