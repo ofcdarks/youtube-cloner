@@ -31,8 +31,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps from stage 1
 COPY --from=deps /install /usr/local
 
-# Install Playwright Chromium browser (MUST succeed — required for NotebookLM auth)
-RUN python -m playwright install --with-deps chromium
+# Playwright browsers go to a shared path (not user-specific)
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Install Playwright Chromium browser
+RUN python -m playwright install --with-deps chromium && \
+    chmod -R 755 /ms-playwright
 
 # Application code
 COPY . .
