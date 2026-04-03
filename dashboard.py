@@ -1135,17 +1135,20 @@ async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)
     try:
         import base64
 
-        # Save to file
+        # Save to file FIRST (most reliable — appuser owns home dir)
         nlm_dir = Path.home() / ".notebooklm"
         nlm_dir.mkdir(parents=True, exist_ok=True)
         (nlm_dir / "storage_state.json").write_text(storage_state, encoding="utf-8")
+        logger.info(f"NotebookLM credentials saved to file: {len(storage_state)} chars")
 
-        # Also save to DB
-        from database import set_setting
-        b64 = base64.b64encode(storage_state.encode()).decode()
-        set_setting("notebooklm_storage_state", b64)
-
-        logger.info(f"NotebookLM credentials saved: {len(storage_state)} chars, {len(parsed.get('cookies', []))} cookies")
+        # Also try saving to DB (may fail if DB is readonly — that's OK)
+        try:
+            from database import set_setting
+            b64 = base64.b64encode(storage_state.encode()).decode()
+            set_setting("notebooklm_storage_state", b64)
+            logger.info("NotebookLM credentials also saved to DB")
+        except Exception as db_err:
+            logger.warning(f"Could not save NLM creds to DB (file save OK): {db_err}")
 
         return JSONResponse({"ok": True, "cookies": len(parsed.get("cookies", [])), "origins": len(parsed.get("origins", []))})
     except Exception as e:

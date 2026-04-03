@@ -48,11 +48,11 @@ RUN rm -f credentials.json token.json service_account.json .env 2>/dev/null || t
 RUN cp -r output/ /app/seed_output/ 2>/dev/null || true
 
 # Create non-root user with home dir for Playwright storage
-RUN useradd -m -r appuser && chown -R appuser:appuser /app
+RUN useradd -m -r appuser && \
+    chown -R appuser:appuser /app && \
+    mkdir -p /app/output && chown -R appuser:appuser /app/output && \
+    mkdir -p /home/appuser/.notebooklm && chown -R appuser:appuser /home/appuser
 USER appuser
-
-# Create .notebooklm dir
-RUN mkdir -p /home/appuser/.notebooklm
 
 EXPOSE 8888
 
