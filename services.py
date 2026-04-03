@@ -193,19 +193,41 @@ def validate_project_id(project_id: str) -> bool:
 # ── Channel Analysis ─────────────────────────────────────
 
 def analyze_via_notebooklm(notebook_id: str, niche_name: str) -> str:
-    """Analyze channel using NotebookLM."""
+    """Analyze channel using NotebookLM — sends detailed prompt, gets comprehensive SOP back."""
     try:
         from notebooklm import NotebookLM
 
         nlm = NotebookLM()
-        response = nlm.chat(
-            notebook_id=notebook_id,
-            message=f"""Analise este canal do YouTube e crie um SOP completo para o nicho "{niche_name}".
 
-Inclua: tom, estilo, estrutura de video, hooks, storytelling, visual, CTA, SEO, pilares de conteudo.
-Seja detalhado e especifico.""",
-        )
-        return response.text if hasattr(response, "text") else str(response)
+        prompt = f"""Faca uma analise COMPLETA e DETALHADA da estrutura dos roteiros deste canal em portugues. Inclua:
+
+1. VISAO GERAL DO CANAL: Nicho exato, publico-alvo, estilo visual, formato dos videos, duracao media
+
+2. FORMULA DE TITULOS: Padroes encontrados nos titulos com exemplos reais. Quais palavras-chave, numeros, e gatilhos emocionais sao usados repetidamente?
+
+3. ESTRUTURA DE ROTEIRO: Como comecam (hook dos primeiros 30 segundos), como mantem atencao ao longo do video, como terminam. Qual e a estrutura de atos?
+
+4. PLAYBOOK DE HOOKS: Liste TODOS os tipos de ganchos usados com exemplos reais dos videos. Classifique por tipo (curiosidade, choque, pergunta, afirmacao ousada, etc.)
+
+5. TECNICAS DE STORYTELLING: Open loops (misterios que so se resolvem depois), pattern interrupts (quebras de expectativa), cliffhangers, specific spikes (momentos de pico) — com exemplos concretos de cada video
+
+6. REGRAS DE OURO: 10 regras que NUNCA sao quebradas nesses roteiros. O que o canal SEMPRE faz e o que NUNCA faz?
+
+7. PILARES DE CONTEUDO: 5 categorias principais de videos com exemplos de cada. Qual pilar tem mais views? Qual tem mais engajamento?
+
+8. ESTILO DE THUMBNAIL: Analise o padrao visual das thumbnails - cores dominantes, tipografia, expressoes faciais, elementos graficos, composicao. Como replicar o estilo?
+
+9. VERSAO IA: Instrucoes formatadas para uma IA replicar EXATAMENTE este estilo de escrita. Inclua tom de voz, vocabulario tipico, ritmo das frases, nivel de formalidade, e exemplos de "faca isso" vs "nao faca isso".
+
+Seja EXTREMAMENTE detalhado com exemplos reais extraidos dos videos. O objetivo e criar um SOP (Standard Operating Procedure) que permita replicar a formula deste canal em um nicho diferente ("{niche_name}")."""
+
+        logger.info(f"Sending analysis prompt to NotebookLM (notebook={notebook_id[:12]}...)")
+        response = nlm.chat(notebook_id=notebook_id, message=prompt)
+
+        result = response.text if hasattr(response, "text") else str(response)
+        logger.info(f"NotebookLM response: {len(result)} chars")
+        return result
+
     except Exception as e:
         logger.error(f"NotebookLM analysis failed: {e}")
         return ""
@@ -256,24 +278,26 @@ def analyze_via_transcripts(channel_url: str, niche_name: str) -> str:
 
         from protocols.ai_client import chat
 
-        sop_prompt = f"""Analise estas transcricoes de videos do canal e crie um SOP completo para o nicho "{niche_name}".
+        sop_prompt = f"""Analise estas transcricoes REAIS de videos do canal e crie um SOP completo para o nicho "{niche_name}".
 
-TRANSCRICOES:
+TRANSCRICOES DOS VIDEOS:
 {combined[:12000]}
 
-Crie um SOP detalhado incluindo:
-1. CONCEITO DO CANAL - Tom, estilo, audiencia-alvo
-2. ESTRUTURA DE VIDEO - Formato padrao, duracao, secoes
-3. HOOKS - Como capturar atencao nos primeiros 30 segundos
-4. STORYTELLING - Tecnicas narrativas (open loops, pattern interrupts, specific spikes)
-5. VISUAL - Estilo visual, B-roll, transicoes
-6. CTA - Estrategia de call-to-action
-7. SEO - Estrategia de titulos, tags, thumbnails
-8. PILARES DE CONTEUDO - 5 categorias principais de videos
+Baseado nos PADROES REAIS encontrados nas transcricoes, crie um SOP detalhado com:
 
-Escreva o SOP completo baseado nos PADROES REAIS encontrados nas transcricoes."""
+1. VISAO GERAL DO CANAL: Nicho exato, publico-alvo, estilo, formato dos videos, duracao media
+2. FORMULA DE TITULOS: Padroes encontrados nos titulos com exemplos reais extraidos
+3. ESTRUTURA DE ROTEIRO: Como comecam (hook dos primeiros 30s), como mantem atencao, como terminam
+4. PLAYBOOK DE HOOKS: Tipos de ganchos usados com exemplos reais das transcricoes
+5. TECNICAS DE STORYTELLING: Open loops, pattern interrupts, cliffhangers, specific spikes — com exemplos concretos
+6. REGRAS DE OURO: 10 regras que NUNCA sao quebradas nesses roteiros
+7. PILARES DE CONTEUDO: 5 categorias principais de videos com exemplos
+8. ESTILO DE THUMBNAIL: Padroes visuais sugeridos baseados no estilo do canal
+9. VERSAO IA: Instrucoes para uma IA replicar EXATAMENTE este estilo de escrita
 
-        return chat(sop_prompt, system="Voce e um estrategista de YouTube analisando transcricoes reais.", max_tokens=MAX_TOKENS_MEDIUM)
+IMPORTANTE: Baseie TUDO em evidencias reais das transcricoes. Cite trechos especificos como exemplos."""
+
+        return chat(sop_prompt, system="Voce e um estrategista de YouTube analisando transcricoes reais de videos. Seja extremamente detalhado.", max_tokens=MAX_TOKENS_LARGE)
 
     except Exception as e:
         logger.error(f"Transcript analysis failed: {e}")

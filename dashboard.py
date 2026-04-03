@@ -801,12 +801,25 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
                 sop_source = "Transcricoes"
 
         if not sop_content:
-            sop_prompt = f"""Analise o conceito deste canal do YouTube e crie um SOP completo.
+            sop_prompt = f"""Analise o conceito deste canal do YouTube e crie um SOP completo e detalhado.
+
 URL: {url}
 Nicho: {niche_name}
 
-Crie um SOP detalhado com: CONCEITO, ESTRUTURA DE VIDEO, HOOKS, STORYTELLING, VISUAL, CTA, SEO, PILARES DE CONTEUDO."""
-            sop_content = chat(sop_prompt, system="Voce e um estrategista de canais faceless do YouTube.", max_tokens=MAX_TOKENS_MEDIUM)
+Crie um SOP (Standard Operating Procedure) incluindo TODAS estas secoes:
+
+1. VISAO GERAL DO CANAL: Nicho exato, publico-alvo, estilo visual, formato dos videos, duracao media
+2. FORMULA DE TITULOS: Padroes de titulos virais para esse nicho com exemplos
+3. ESTRUTURA DE ROTEIRO: Hook (primeiros 30s), desenvolvimento por atos, climax, resolucao, CTA
+4. PLAYBOOK DE HOOKS: 10 tipos de ganchos que funcionam nesse nicho com exemplos
+5. TECNICAS DE STORYTELLING: Open loops, pattern interrupts, cliffhangers, specific spikes
+6. REGRAS DE OURO: 10 regras que devem ser seguidas em todo roteiro
+7. PILARES DE CONTEUDO: 5 categorias principais de videos
+8. ESTILO DE THUMBNAIL: Padroes visuais (cores, tipografia, composicao) para thumbnails virais
+9. VERSAO IA: Instrucoes para uma IA replicar este estilo (tom, vocabulario, ritmo, formalidade)
+
+Seja EXTREMAMENTE detalhado e especifico para o nicho "{niche_name}"."""
+            sop_content = chat(sop_prompt, system="Voce e um estrategista de canais faceless do YouTube com 10 anos de experiencia.", max_tokens=MAX_TOKENS_LARGE)
 
         save_file(project_id, "analise", f"SOP - {niche_name}", f"sop_{project_id}.md", sop_content)
         log_activity(project_id, "sop_generated", f"SOP via {sop_source}")
