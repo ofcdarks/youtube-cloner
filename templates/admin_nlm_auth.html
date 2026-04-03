@@ -5,21 +5,20 @@
 .nlm-container { max-width: 900px; margin: 0 auto; padding: 20px; }
 .nlm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .nlm-header h2 { font-size: 16px; font-weight: 600; color: var(--fg-primary); display: flex; align-items: center; gap: 8px; }
-.nlm-status { font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .step-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 14px; }
 .step-card h3 { font-size: 14px; font-weight: 600; color: var(--fg-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-.step-num { width: 24px; height: 24px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.step-num { width: 28px; height: 28px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 .step-card p { font-size: 13px; color: var(--fg-secondary); line-height: 1.6; margin-bottom: 8px; }
-.step-card code { display: block; background: #0a0a1a; padding: 12px; border-radius: 6px; font-size: 12px; color: #06b6d4; margin: 8px 0; white-space: pre-wrap; word-break: break-all; cursor: pointer; }
-.step-card .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; text-decoration: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all .15s; }
 .btn-purple { background: #7c3aed; color: #fff; }
 .btn-purple:hover { background: #6d28d9; }
 .btn-green { background: rgba(34,197,94,.15); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
-.paste-area { width: 100%; min-height: 120px; padding: 12px; background: #020617; border: 1px solid var(--border); border-radius: 8px; color: var(--fg-primary); font-family: monospace; font-size: 11px; resize: vertical; }
-.paste-area:focus { border-color: #7c3aed; outline: none; }
+.bookmarklet-zone { background: #0a0a2a; border: 2px dashed #334155; border-radius: 10px; padding: 24px; text-align: center; margin: 12px 0; }
+.bookmarklet-btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 24px; background: linear-gradient(135deg, #7c3aed, #3b82f6); color: #fff; font-size: 14px; font-weight: 700; border-radius: 8px; text-decoration: none; cursor: grab; box-shadow: 0 4px 12px rgba(124,58,237,.3); }
+.bookmarklet-btn:hover { box-shadow: 0 6px 20px rgba(124,58,237,.5); transform: translateY(-1px); }
 .nlm-success { background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.3); border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 14px; }
 .nlm-success h3 { color: #22c55e; font-size: 16px; margin-bottom: 6px; }
-.nlm-or { text-align: center; color: var(--fg-dim); font-size: 12px; padding: 10px; font-weight: 600; }
+.arrow-down { text-align: center; font-size: 20px; color: var(--fg-dim); padding: 4px; }
 {% endblock %}
 
 {% block body %}
@@ -35,54 +34,63 @@
 <div class="nlm-container">
     <div class="nlm-header">
         <h2>&#129302; Conectar NotebookLM</h2>
-        <div class="nlm-status">
-            {% if has_credentials %}
-            <span style="color:#22c55e">&#9679; Conectado</span>
-            {% else %}
-            <span style="color:#64748b">&#9679; Nao conectado</span>
-            {% endif %}
-        </div>
+        {% if has_credentials %}
+        <span style="color:#22c55e;font-size:13px;">&#9679; Conectado</span>
+        {% else %}
+        <span style="color:#64748b;font-size:13px;">&#9679; Nao conectado</span>
+        {% endif %}
     </div>
 
     {% if has_credentials %}
     <div class="nlm-success">
         <h3>&#10003; NotebookLM conectado</h3>
-        <p style="color:var(--fg-secondary);font-size:13px">Credenciais salvas. Reconecte abaixo se a sessao expirar.</p>
+        <p style="color:var(--fg-secondary);font-size:13px">Credenciais salvas. Refaca o processo abaixo se a sessao expirar.</p>
     </div>
     {% endif %}
 
+    <!-- STEP 1: Drag bookmarklet -->
     <div class="step-card">
-        <h3><span class="step-num">1</span> Abra o NotebookLM e faca login</h3>
-        <p>Clique abaixo para abrir o NotebookLM em uma nova aba. Faca login normalmente com sua conta Google.</p>
+        <h3><span class="step-num">1</span> Arraste o botao abaixo para sua barra de favoritos</h3>
+        <p>Segure e arraste o botao azul/roxo para a barra de favoritos do seu navegador. Isso cria um atalho que vai capturar os cookies automaticamente.</p>
+        <div class="bookmarklet-zone">
+            <a class="bookmarklet-btn" id="bookmarklet" href="#" onclick="return false;">&#128273; Capturar NotebookLM</a>
+            <p style="font-size:11px;color:var(--fg-dim);margin-top:10px;">&#8593; Arraste este botao para a barra de favoritos</p>
+        </div>
+    </div>
+
+    <div class="arrow-down">&#11015;</div>
+
+    <!-- STEP 2: Open NotebookLM -->
+    <div class="step-card">
+        <h3><span class="step-num">2</span> Abra o NotebookLM e faca login</h3>
+        <p>Clique abaixo para abrir o NotebookLM. Faca login com sua conta Google normalmente.</p>
         <a href="https://notebooklm.google.com/" target="_blank" class="btn btn-purple">&#128279; Abrir NotebookLM</a>
     </div>
 
+    <div class="arrow-down">&#11015;</div>
+
+    <!-- STEP 3: Click bookmarklet -->
     <div class="step-card">
-        <h3><span class="step-num">2</span> Exporte os cookies</h3>
-        <p>Depois de logado no NotebookLM, pressione <strong>F12</strong> → aba <strong>Console</strong> → cole o script abaixo e pressione <strong>Enter</strong>:</p>
-        <code onclick="copyScript(this)" id="export-script">(function(){var c=document.cookie.split(';').map(function(s){var p=s.trim().split('=');return{name:p[0],value:p.slice(1).join('='),domain:location.hostname,path:'/',expires:-1,httpOnly:false,secure:true,sameSite:'None'}});var ls=[];try{for(var i=0;i&lt;localStorage.length;i++){var k=localStorage.key(i);ls.push({name:k,value:localStorage.getItem(k)})}}catch(e){}var r=JSON.stringify({cookies:c,origins:[{origin:location.origin,localStorage:ls}]});var w=window.open('','_blank','width=600,height=300');w.document.write('&lt;textarea style=\"width:100%;height:100%;font-size:11px\"&gt;'+r+'&lt;/textarea&gt;');w.document.title='Copie tudo (Ctrl+A, Ctrl+C)';})()</code>
-        <p style="font-size:11px;color:var(--fg-dim);">&#128203; Clique no codigo para copiar. O script abre uma janela com o JSON — selecione tudo (Ctrl+A) e copie (Ctrl+C).</p>
+        <h3><span class="step-num">3</span> Clique no favorito "Capturar NotebookLM"</h3>
+        <p>Depois de logado no NotebookLM, clique no favorito que voce criou no passo 1. Voce sera redirecionado automaticamente de volta para ca e as credenciais serao salvas.</p>
+        <p style="font-size:12px;color:#06b6d4;margin-top:4px;">&#9889; Tudo automatico — nao precisa copiar/colar nada!</p>
     </div>
 
-    <div class="step-card">
-        <h3><span class="step-num">3</span> Cole aqui e salve</h3>
-        <textarea class="paste-area" id="cookie-json" placeholder='Cole o JSON aqui... {"cookies":[...],"origins":[...]}'></textarea>
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-purple" onclick="saveCookies()">&#128190; Salvar Credenciais</button>
-            <span id="save-status" style="font-size:12px;color:var(--fg-muted);"></span>
+    <!-- Manual fallback -->
+    <details style="margin-top: 20px;">
+        <summary style="cursor:pointer;color:var(--fg-muted);font-size:13px;padding:10px;">&#9881; Metodo manual (se o bookmarklet nao funcionar)</summary>
+        <div class="step-card" style="margin-top:8px;">
+            <h3>Upload do storage_state.json</h3>
+            <p>Se voce tem o <code style="display:inline;padding:2px 6px;background:#0a0a1a;border-radius:4px;font-size:12px;">storage_state.json</code> do notebooklm-py:</p>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                <input type="file" id="file-upload" accept=".json">
+                <button class="btn btn-green" onclick="uploadFile()">&#128228; Enviar</button>
+            </div>
+            <p style="margin-top:12px;font-size:12px;color:var(--fg-muted);">Ou cole o JSON manualmente:</p>
+            <textarea id="manual-json" style="width:100%;min-height:80px;padding:10px;background:#020617;border:1px solid var(--border);border-radius:6px;color:var(--fg-primary);font-family:monospace;font-size:11px;margin-top:4px;" placeholder='{"cookies":[...],"origins":[...]}'></textarea>
+            <button class="btn btn-purple" style="margin-top:8px;" onclick="saveManual()">Salvar</button>
         </div>
-    </div>
-
-    <div class="nlm-or">— OU —</div>
-
-    <div class="step-card">
-        <h3><span class="step-num">&#128230;</span> Upload do storage_state.json</h3>
-        <p>Se voce ja tem o arquivo <code style="display:inline;padding:2px 6px;margin:0;">~/.notebooklm/storage_state.json</code> (gerado pelo notebooklm-py), faca upload:</p>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-            <input type="file" id="file-upload" accept=".json">
-            <button class="btn btn-green" onclick="uploadFile()">&#128228; Enviar</button>
-        </div>
-    </div>
+    </details>
 </div>
 
 <div id="toast-container"></div>
@@ -91,34 +99,32 @@
 {% block scripts %}
 <script src="/static/js/app.js"></script>
 <script>
-function copyScript(el) {
-    var text = el.textContent.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
-    navigator.clipboard.writeText(text).then(function() {
-        showToast('Script copiado! Cole no Console (F12) do NotebookLM.', 'success', 4000);
-    });
-}
+// Build bookmarklet URL dynamically (uses current domain)
+(function() {
+    var baseUrl = window.location.origin + '/admin/nlm-receive';
+    var code = "javascript:void(function(){var c=document.cookie.split(';').map(function(s){var p=s.trim().split('=');return{name:p[0],value:p.slice(1).join('='),domain:location.hostname,path:'/'}});var ls=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);ls.push({name:k,value:localStorage.getItem(k)})}}catch(e){}var d=JSON.stringify({cookies:c,origins:[{origin:location.origin,localStorage:ls}]});window.location='" + baseUrl + "#'+btoa(unescape(encodeURIComponent(d)))}())";
+    document.getElementById('bookmarklet').href = code;
+})();
 
-function saveCookies() {
-    var json = document.getElementById('cookie-json').value.trim();
-    if (!json) { showToast('Cole o JSON primeiro', 'warning'); return; }
-    try {
-        var parsed = JSON.parse(json);
-        if (!parsed.cookies && !parsed.origins) {
-            showToast('JSON invalido — deve ter "cookies" ou "origins"', 'error'); return;
-        }
-    } catch(e) {
-        showToast('JSON invalido: ' + e.message, 'error'); return;
+// Check if we just received credentials (from callback page)
+(function() {
+    var saved = sessionStorage.getItem('nlm_saved');
+    if (saved === 'ok') {
+        sessionStorage.removeItem('nlm_saved');
+        showToast('NotebookLM conectado com sucesso!', 'success', 5000);
     }
-    document.getElementById('save-status').textContent = 'Salvando...';
-    apiPost('/api/admin/nlm-save-credentials', {storage_state: json})
+})();
+
+function saveCreds(json) {
+    return apiPost('/api/admin/nlm-save-credentials', {storage_state: json})
     .then(function(data) {
         if (data.ok) {
-            showToast('Credenciais salvas!', 'success', 5000);
-            document.getElementById('save-status').innerHTML = '<span style="color:#22c55e">&#10003; Salvo!</span>';
+            showToast('Credenciais salvas! ' + (data.cookies || 0) + ' cookies.', 'success', 5000);
             setTimeout(function() { location.reload(); }, 2000);
+            return true;
         } else {
             showToast('Erro: ' + (data.error || 'falha'), 'error');
-            document.getElementById('save-status').textContent = '';
+            return false;
         }
     });
 }
@@ -127,11 +133,14 @@ function uploadFile() {
     var f = document.getElementById('file-upload').files[0];
     if (!f) { showToast('Selecione o arquivo', 'warning'); return; }
     var reader = new FileReader();
-    reader.onload = function(e) {
-        document.getElementById('cookie-json').value = e.target.result;
-        saveCookies();
-    };
+    reader.onload = function(e) { saveCreds(e.target.result); };
     reader.readAsText(f);
+}
+
+function saveManual() {
+    var json = document.getElementById('manual-json').value.trim();
+    if (!json) { showToast('Cole o JSON', 'warning'); return; }
+    saveCreds(json);
 }
 </script>
 {% endblock %}

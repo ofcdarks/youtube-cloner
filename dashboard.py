@@ -1101,6 +1101,12 @@ async def admin_nlm_auth_page(request: Request, user=Depends(require_admin)):
     return render(request, "admin_nlm_auth.html", {"user": user, "has_credentials": has_credentials})
 
 
+@app.get("/admin/nlm-receive", response_class=HTMLResponse)
+async def admin_nlm_receive(request: Request, user=Depends(require_auth)):
+    """Callback page — receives cookies from bookmarklet via URL hash and auto-saves."""
+    return render(request, "admin_nlm_receive.html", {"user": user})
+
+
 @app.post("/api/admin/nlm-save-credentials")
 @limiter.limit("10/minute")
 async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)):

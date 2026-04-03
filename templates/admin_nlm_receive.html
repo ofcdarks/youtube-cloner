@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NotebookLM — Salvando...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#020617;font-family:'Inter',system-ui,sans-serif;color:#e4e4e7;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#0e1223;border:1px solid #1e293b;border-radius:12px;padding:40px;width:420px;text-align:center}
+h2{font-size:1.3em;color:#f8fafc;margin-bottom:8px}
+p{color:#64748b;font-size:13px;margin-bottom:16px}
+.spinner{width:40px;height:40px;border:3px solid #1e293b;border-top:3px solid #7c3aed;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.success{color:#22c55e;font-size:40px;margin-bottom:12px}
+.error{color:#ef4444;font-size:14px;background:rgba(239,68,68,.1);padding:12px;border-radius:8px;margin-top:12px;text-align:left}
+a{color:#7c3aed;text-decoration:none}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="card">
+    <div id="loading">
+        <div class="spinner"></div>
+        <h2>Salvando credenciais...</h2>
+        <p>Capturando cookies do NotebookLM</p>
+    </div>
+    <div id="success" style="display:none">
+        <div class="success">&#10003;</div>
+        <h2>NotebookLM conectado!</h2>
+        <p>Credenciais salvas com sucesso. Redirecionando...</p>
+    </div>
+    <div id="error-box" style="display:none">
+        <h2 style="color:#ef4444">Erro</h2>
+        <div class="error" id="error-msg"></div>
+        <p style="margin-top:12px"><a href="/admin/notebooklm">Voltar e tentar novamente</a></p>
+    </div>
+</div>
+
+<script>
+(function() {
+    var hash = window.location.hash.substring(1);
+    if (!hash) {
+        showError('Nenhum dado recebido. Clique no bookmarklet estando na pagina do NotebookLM.');
+        return;
+    }
+
+    // Decode base64
+    var json;
+    try {
+        json = decodeURIComponent(escape(atob(hash)));
+        JSON.parse(json); // validate
+    } catch(e) {
+        showError('Dados invalidos: ' + e.message);
+        return;
+    }
+
+    // Get session token from cookie
+    var session = '';
+    document.cookie.split(';').forEach(function(c) {
+        var parts = c.trim().split('=');
+        if (parts[0] === 'session') session = parts.slice(1).join('=');
+    });
+
+    if (!session) {
+        showError('Sessao expirada. <a href="/login">Faca login</a> e tente novamente.');
+        return;
+    }
+
+    // Get CSRF token — we need to fetch it first
+    fetch('/admin/notebooklm', {credentials: 'include'})
+    .then(function(r) { return r.text(); })
+    .then(function(html) {
+        var match = html.match(/CSRF_TOKEN\s*=\s*'([^']+)'/);
+        var csrf = match ? match[1] : '';
+
+        // Save credentials
+        return fetch('/api/admin/nlm-save-credentials', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Session': session,
+                'X-CSRF-Token': csrf
+            },
+            body: JSON.stringify({storage_state: json})
+        });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('success').style.display = '';
+            // Set flag for the main page to show toast
+            try { sessionStorage.setItem('nlm_saved', 'ok'); } catch(e) {}
+            setTimeout(function() {
+                window.location.href = '/admin/notebooklm';
+            }, 2000);
+        } else {
+            showError(data.error || 'Falha ao salvar');
+        }
+    })
+    .catch(function(e) {
+        showError('Erro de rede: ' + e.message);
+    });
+
+    function showError(msg) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-box').style.display = '';
+        document.getElementById('error-msg').innerHTML = msg;
+    }
+})();
+</script>
+</body>
+</html>
