@@ -384,29 +384,191 @@ function updateNlmInfo() {
 
 function generateNlmPrompt() {
     var nicheName = document.getElementById('niche-name').value.trim() || 'NOME_DO_NICHO';
-    var prompt = 'Voce e um analista de canais do YouTube de elite. Faca uma analise COMPLETA, PROFUNDA e EXTREMAMENTE DETALHADA deste canal. O objetivo e criar um manual que permita replicar a formula de sucesso em outro nicho ("' + nicheName + '").\n\n' +
-'PARTE 1 — DNA DO CANAL\n' +
-'1. IDENTIDADE: Nicho, publico-alvo, proposta de valor, tom de voz, persona do narrador\n' +
-'2. FORMATO: Tipo (faceless/talking head), duracao, frequencia, estilo visual, B-roll, edicao, musica\n\n' +
-'PARTE 2 — ENGENHARIA DE ROTEIRO\n' +
-'3. ESTRUTURA: Hook (primeiros 5s e 30s), contexto, desenvolvimento por atos, climax, CTA — com exemplos REAIS\n' +
-'4. PLAYBOOK DE HOOKS: Todos os tipos (choque, curiosidade, pergunta, numero, contraste, urgencia, segredo) — 3 exemplos reais de cada\n' +
-'5. STORYTELLING: Open loops, pattern interrupts, specific spikes, cliffhangers, arco emocional, ritmo — 5 exemplos de cada\n' +
-'6. REGRAS DE OURO: 15 regras que NUNCA sao quebradas\n\n' +
-'PARTE 3 — ESTRATEGIA\n' +
-'7. PILARES DE CONTEUDO: 5-7 categorias com % e exemplos\n' +
-'8. FORMULA DE TITULOS: Padroes + 10 exemplos reais + template\n' +
-'9. ESTILO DE THUMBNAIL: Cores, tipografia, composicao, template\n' +
-'10. SEO: Tags, descricao, hashtags, end screens, playlists\n\n' +
-'PARTE 4 — MANUAL DE REPLICACAO\n' +
-'11. VERSAO IA: System prompt, 30 palavras do vocabulario, vocabulario proibido, exemplo no estilo exato\n' +
-'12. CHECKLIST: 10 perguntas de verificacao\n\n' +
-'Seja EXTREMAMENTE detalhado. Use exemplos REAIS dos videos. O resultado e um SOP para o nicho "' + nicheName + '".';
+    var prompt = `Voce e um analista de canais do YouTube de elite com 15 anos de experiencia em engenharia de conteudo viral. Sua missao e fazer uma AUTÓPSIA COMPLETA deste canal — dissecar cada elemento que faz ele funcionar — para criar um SOP (Standard Operating Procedure) que permita replicar a formula em outro nicho ("${nicheName}").
+
+IMPORTANTE: Analise TODOS os videos disponiveis nas fontes. Nao generalize. Cite trechos ESPECIFICOS, timestamps, e exemplos REAIS extraidos dos videos.
+
+══════════════════════════════════════════════════════════
+PARTE 1 — DNA COMPLETO DO CANAL
+══════════════════════════════════════════════════════════
+
+1. IDENTIDADE PROFUNDA
+- Qual e o nicho EXATO e sub-nicho? (nao diga apenas "educacao" — seja especifico: "explicacoes dramatizadas de cenarios hipoteticos em primeira pessoa")
+- Quem e o publico-alvo? Idade, genero, interesses, DORES e DESEJOS. O que essa pessoa busca ao assistir?
+- Qual e a PROPOSTA DE VALOR UNICA? Por que alguem assistiria ESTE canal e nao os outros 500 do mesmo nicho?
+- Tom de voz: serio, sarcastico, dramatico, educativo, misterioso, conspiratorio? CITE 5 frases que exemplificam o tom.
+- Persona do narrador: Quem "fala"? Um investigador? Um professor? Um insider? Um contador de historias? Como essa persona se posiciona em relacao ao espectador?
+- Nivel de linguagem: formal, coloquial, tecnico, street? Usa girias? Jargoes? CITE 10 expressoes tipicas.
+
+2. FORMATO E PRODUCAO DETALHADA
+- Tipo de canal: faceless, talking head, animacao, screen recording, misto?
+- Duracao MEDIA dos videos (calcule a media real dos videos analisados)
+- Frequencia de upload ideal (quantos por semana/mes?)
+- Estilo visual DOMINANTE: dark/neon, clean/minimalista, cinematico, colorido, retro?
+- Tipo de B-roll: stock footage, animacoes motion graphics, screen recording, fotos, IA? Descreva os padroes visuais mais recorrentes.
+- Edicao: cortes rapidos (a cada quantos segundos?), transicoes (quais tipos?), zoom-ins, text overlays (frequencia e estilo?)
+- Musica: que genero? Quando muda? Usa efeitos sonoros? Sound design dramatico? DESCREVA o padrao sonoro.
+- Narrador: voz humana ou IA? Ritmo da fala (rapido, pausado, variavel)? Entonacao em momentos-chave?
+
+══════════════════════════════════════════════════════════
+PARTE 2 — ENGENHARIA DE ROTEIRO (A PARTE MAIS IMPORTANTE)
+══════════════════════════════════════════════════════════
+
+3. ANATOMIA COMPLETA DO ROTEIRO
+Analise a estrutura de pelo menos 5 videos diferentes e encontre o PADRAO COMUM:
+
+HOOK (0:00 - 0:05): Qual e a PRIMEIRA FRASE de cada video? Liste as primeiras frases de todos os videos analisados. Qual padrao emerge?
+
+HOOK EXPANDIDO (0:05 - 0:30): O que acontece nos primeiros 30 segundos? Como constroem a PROMESSA do video? Cite 5 exemplos reais com o texto exato.
+
+CONTEXTO/SETUP (0:30 - 2:00): Como fazem a transicao do hook para o conteudo sem perder o espectador? Usam backstory? Dados? Contexto historico?
+
+DESENVOLVIMENTO: Quantos "atos" tem o video tipico? 3 atos? 5 segmentos? Descreva a PROGRESSAO de cada ato com exemplos.
+
+MOMENTOS DE PICO (Specific Spikes): Em que minuto acontecem as revelacoes/surpresas? Mapeie os picos de tensao de 3 videos.
+
+CLIMAX: Como constroem o ponto mais alto? E uma revelacao? Um twist? Um dado chocante?
+
+RESOLUCAO: Como terminam? Reflexao? Moral? Gancho para proximo video? Pergunta aberta?
+
+CTA: COMO pedem like/subscribe? Em que momento? Qual a frase exata? Usam CTA no meio do video ou so no fim?
+
+4. PLAYBOOK COMPLETO DE HOOKS
+Para CADA tipo abaixo, extraia 3-5 exemplos REAIS (texto exato) dos videos:
+
+a) HOOK DE CHOQUE: Frase que causa impacto imediato ("Ele perdeu $200 milhoes em 3 horas")
+b) HOOK DE CURIOSIDADE: Cria um misterio ("O que acontece quando voce...")
+c) HOOK DE PERGUNTA IMPOSSIVEL: ("Como um estagiario de 19 anos hackeou o Pentagon?")
+d) HOOK DE NUMERO IMPACTANTE: ("$1.7 bilhao desapareceu de um dia para o outro")
+e) HOOK DE CONTRASTE: ("De morador de rua a bilionario em 18 meses")
+f) HOOK DE URGENCIA/TEMPORAL: ("Isso esta acontecendo AGORA e ninguem percebeu")
+g) HOOK DE SEGREDO/PROIBIDO: ("O metodo que bancos nao querem que voce saiba")
+h) HOOK DE IMERSAO/POV: ("Voce acorda e percebe que...")
+i) HOOK DE LISTA/RANKING: ("Os 5 maiores...")
+j) OUTROS TIPOS que o canal usa e que nao se encaixam acima
+
+5. STORYTELLING — TECNICAS AVANCADAS
+Para cada tecnica, cite 5 exemplos CONCRETOS com o trecho exato do video:
+
+OPEN LOOPS: Misterios/perguntas plantadas no inicio que so se resolvem depois. Ex: "Mas o que ele nao sabia e que..." (resolve 5 min depois). LISTE TODOS os open loops encontrados.
+
+PATTERN INTERRUPTS: Momentos que quebram a expectativa e reativam a atencao. Mudanca subita de tom, revelacao inesperada, dado surpreendente. Mapeie QUANDO acontecem (a cada quantos minutos?).
+
+CLIFFHANGERS INTERNOS: Ganchos ENTRE secoes que impedem o espectador de sair. Ex: "Mas isso foi so o comeco do pesadelo..." Como o canal cria micro-hooks ao longo do video?
+
+SPECIFIC SPIKES: Momentos de PICO EMOCIONAL. O que causa o spike? Revelacao? Numero chocante? Virada dramatica? Em que momento do video acontecem?
+
+ARCO EMOCIONAL: Mapeie como a EMOCAO do espectador muda ao longo do video tipico. Ex: curiosidade(0:00) → tensao(2:00) → choque(5:00) → suspense(7:00) → revelacao(9:00) → reflexao(11:00)
+
+RITMO NARRATIVO: Quando ACELERA? Quando DESACELERA? Quando faz PAUSA DRAMATICA? Qual e o padrao de ritmo? Frases curtas = tensao. Frases longas = contexto. Mapeie isso.
+
+TRANSICOES ENTRE SECOES: Como o narrador muda de assunto sem perder o espectador? Quais frases de transicao usa? Liste pelo menos 10 frases de transicao reais.
+
+6. REGRAS DE OURO (minimo 15)
+O que este canal SEMPRE faz (REGRAS) e NUNCA faz (ANTI-PATTERNS):
+
+Regras de ABERTURA (primeiros 30 segundos):
+- Regra 1: ...
+- Regra 2: ...
+
+Regras de MEIO (corpo do video):
+- ...
+
+Regras de FECHAMENTO:
+- ...
+
+Regras de LINGUAGEM:
+- Palavras que SEMPRE usa
+- Palavras que NUNCA usa
+- Estrutura gramatical predominante
+
+Regras de VISUAL:
+- ...
+
+ANTI-PATTERNS (o que NUNCA fazem):
+- ...
+
+══════════════════════════════════════════════════════════
+PARTE 3 — ESTRATEGIA DE CONTEUDO E GROWTH
+══════════════════════════════════════════════════════════
+
+7. PILARES DE CONTEUDO
+Liste 5-7 categorias/tipos de videos. Para CADA pilar:
+- Nome do pilar
+- Descricao em 2 frases
+- % estimada do canal (quanto do conteudo e desse tipo?)
+- 3 exemplos de videos reais desse pilar
+- Performance: qual pilar parece ter MAIS views? Qual tem mais engajamento?
+- Template de titulo para esse pilar
+
+8. FORMULA DE TITULOS — ENGENHARIA REVERSA
+- Analise TODOS os titulos dos videos nas fontes
+- Identifique PADROES REPETIDOS: estrutura gramatical, palavras-chave, numeros, gatilhos emocionais
+- Comprimento ideal (quantos caracteres/palavras?)
+- Uso de numeros (sim/nao? Que tipo?)
+- Uso de palavras de poder (quais?)
+- Liste os 10 MELHORES titulos (mais virais/criativos)
+- Crie um TEMPLATE: "Como transformar qualquer tema neste estilo de titulo"
+- Gere 5 exemplos de titulos para o nicho "${nicheName}" usando a formula
+
+9. ESTILO DE THUMBNAIL (se possivel inferir das fontes)
+- Cores dominantes
+- Tipografia (bold, caps, cores do texto?)
+- Elementos graficos (setas, circulos, emojis, icones, rostos?)
+- Composicao (regra dos tercos, foco central?)
+- Contraste e legibilidade
+- O que NUNCA aparece
+- Template: como criar uma thumbnail neste estilo
+
+10. SEO E ALGORITMO
+- Estrategia de tags (que tipo de tags provavelmente usam?)
+- Template de descricao
+- Uso de hashtags (quantas? quais?)
+- Estrategia de end screens / cards
+- Estrategia de playlists/series
+- Como otimizam para CTR (click-through rate)?
+
+══════════════════════════════════════════════════════════
+PARTE 4 — MANUAL DE REPLICACAO PARA IA
+══════════════════════════════════════════════════════════
+
+11. SYSTEM PROMPT PARA IA
+Escreva um SYSTEM PROMPT completo (minimo 200 palavras) que uma IA possa usar para gerar roteiros IDENTICOS a este canal. Inclua:
+
+- Persona e tom de voz
+- Estrutura obrigatoria do roteiro (com secoes e tempos)
+- Lista de 30 palavras/expressoes que o canal usa MUITO
+- Lista de 15 palavras/expressoes que NUNCA usa
+- Ritmo das frases (curtas vs longas, quando alternar)
+- Como formatar numeros e valores
+- Como criar pausas dramaticas
+- Como construir open loops
+- Como fazer transicoes
+- Exemplo de PARAGRAFO no estilo EXATO do canal (escreva um paragrafo original que poderia ser confundido com o canal real)
+- Exemplo de HOOK no estilo exato
+- Exemplo de FECHAMENTO no estilo exato
+
+12. CHECKLIST DE QUALIDADE
+15 perguntas SIM/NAO para verificar se um roteiro esta "no padrao" deste canal:
+- [ ] O hook prende nos primeiros 5 segundos?
+- [ ] Tem pelo menos 3 open loops?
+- [ ] Usa a formula de titulo do canal?
+- [ ] O tom de voz e consistente?
+- [ ] Tem specific spikes a cada 2-3 minutos?
+- [ ] O CTA e natural (nao forcado)?
+- [ ] As transicoes entre secoes sao suaves?
+- [ ] O climax e impactante?
+- [ ] A resolucao deixa o espectador pensando?
+- [ ] O vocabulario esta dentro do padrao?
+- (continue com mais 5)
+
+══════════════════════════════════════════════════════════
+
+INSTRUCAO FINAL: Nao resuma. Nao generalize. Nao diga "o canal usa varios tipos de hooks" — LISTE CADA UM COM EXEMPLO REAL. Cada secao deve ter NO MINIMO 200 palavras. O documento final deve ter pelo menos 4000 palavras. Este e o SOP que sera usado para construir um canal de ${nicheName} — precisa ser COMPLETO o suficiente para alguem que nunca viu o canal original conseguir replicar a formula.`;
 
     navigator.clipboard.writeText(prompt).then(function() {
         showToast('Prompt copiado! Cole no chat do NotebookLM.', 'success', 4000);
     }).catch(function() {
-        // Fallback
         var ta = document.createElement('textarea');
         ta.value = prompt;
         document.body.appendChild(ta);
