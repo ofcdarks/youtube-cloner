@@ -238,7 +238,7 @@
                 </div>
                 {% for idea in ideas %}
                 {% set pri = idea.priority|default("MEDIA") %}
-                {% set pri_color = priority_colors.get(pri, "#71717a") %}
+                {% set pri_color = {"ALTA": "#ef4444", "MEDIA": "#eab308", "BAIXA": "#22c55e"}.get(pri, "#71717a") %}
                 {% set score = idea.score|default(0) %}
                 {% set rating = idea.rating|default("") %}
                 {% set used = idea.used|default(0) %}

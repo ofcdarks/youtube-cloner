@@ -9,6 +9,15 @@ import secrets
 import logging
 from pathlib import Path
 
+# Load .env file if it exists (for local dev and Docker)
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path, override=False)
+except ImportError:
+    pass
+
 logger = logging.getLogger("ytcloner.config")
 
 # ── Paths ─────────────────────────────────────────────────

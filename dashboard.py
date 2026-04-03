@@ -113,9 +113,9 @@ async def startup():
 
     # Seed data if output is empty
     try:
+        import shutil
         seed_dir = PROJECT_DIR / "seed_output"
         if seed_dir.exists():
-            import shutil
             db_path = OUTPUT_DIR / "ytcloner.db"
             seed_db = seed_dir / "ytcloner.db"
             if seed_db.exists() and (not db_path.exists() or db_path.stat().st_size < 1000):
@@ -219,6 +219,26 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
         if mm.exists():
             mindmap_path = f"/output-file?name=mindmap_{current_project['id']}.html"
 
+    # Drive links from project
+    drive_links = []
+    sop_source = ""
+    if current_project:
+        drive_url = current_project.get("drive_folder_url", "")
+        if drive_url:
+            drive_links.append({"url": drive_url, "label": "Pasta do Projeto", "type": "Folder", "icon": "&#128193;"})
+        # Add file-specific drive links
+        for f in files:
+            if f.get("drive_url"):
+                drive_links.append({"url": f["drive_url"], "label": f.get("label", f["filename"]), "type": f.get("category", ""), "icon": "&#128196;"})
+        # SOP source from meta
+        meta = current_project.get("meta", "{}")
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except Exception:
+                meta = {}
+        sop_source = meta.get("sop_source", "")
+
     return render(request, "dashboard.html", {
         "user": user,
         "all_projects": projects,
@@ -233,6 +253,8 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
         "stats": stats,
         "categories": categories,
         "mindmap_path": mindmap_path,
+        "drive_links": drive_links,
+        "sop_source": sop_source,
     })
 
 
