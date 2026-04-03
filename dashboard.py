@@ -534,53 +534,22 @@ async def api_score_all(
 
     from protocols.title_scorer import score_title
 
-    # Try AI-based batch scoring first (more reliable than pytrends/yt-dlp)
-    unscored = [i for i in ideas if (i.get("score", 0) == 0 or force_rescore)]
-    scored_cache = [i for i in ideas if i.get("score", 0) > 0 and not force_rescore]
-
-    for i in scored_cache:
-        results.append({"id": i["id"], "title": i["title"], "score": i["score"], "rating": i["rating"], "skipped": True})
-
-    if unscored:
-        # Try batch AI scoring
+    for idea in ideas:
+        if idea.get("score", 0) > 0 and not force_rescore:
+            results.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea["rating"], "skipped": True})
+            continue
         try:
-            from protocols.ai_client import chat
-            titles_block = "\n".join([f'{idx+1}. {i["title"]}' for idx, i in enumerate(unscored[:30])])
-            ai_prompt = f"""Pontue estes {len(unscored[:30])} titulos de videos para YouTube de 0-100.
-Criterios: CTR potencial (40%), curiosidade/gancho (30%), especificidade (20%), SEO (10%).
-
-{titles_block}
-
-Retorne APENAS JSON: [{{"index":1,"score":75,"rating":"BOM"}}, ...]
-Ratings: EXCELENTE (80-100), BOM (60-79), MEDIO (40-59), BAIXO (0-39)
-Retorne APENAS o JSON array."""
-
-            ai_response = chat(ai_prompt, system="Voce e um especialista em YouTube SEO e CTR optimization.", max_tokens=2000, temperature=0.3)
-            ai_json = re.search(r'\[.*\]', ai_response, re.DOTALL)
-            if ai_json:
-                ai_scores = json.loads(ai_json.group())
-                for s in ai_scores:
-                    idx = s.get("index", 0) - 1
-                    if 0 <= idx < len(unscored):
-                        idea = unscored[idx]
-                        score = max(0, min(100, int(s.get("score", 50))))
-                        rating = s.get("rating", "MEDIO")
-                        update_idea_score(idea["id"], score, rating, {"method": "ai", "score": score})
-                        results.append({"id": idea["id"], "title": idea["title"], "score": score, "rating": rating})
-                logger.info(f"AI scored {len(ai_scores)} titles")
-            else:
-                raise ValueError("No JSON in AI response")
+            score_result = score_title(idea["title"], country_list)
+            update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
+            results.append({
+                "id": idea["id"],
+                "title": idea["title"],
+                "score": score_result["final_score"],
+                "rating": score_result["rating"],
+            })
         except Exception as e:
-            logger.warning(f"AI scoring failed: {e}. Falling back to pytrends/yt-dlp")
-            # Fallback: traditional scoring
-            for idea in unscored:
-                try:
-                    score_result = score_title(idea["title"], country_list)
-                    update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
-                    results.append({"id": idea["id"], "title": idea["title"], "score": score_result["final_score"], "rating": score_result["rating"]})
-                except Exception:
-                    update_idea_score(idea["id"], 50, "MEDIO", {"error": "scoring failed"})
-                    results.append({"id": idea["id"], "title": idea["title"], "score": 50, "rating": "MEDIO"})
+            logger.warning(f"Score failed for '{idea['title'][:30]}': {e}")
+            results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": str(e)[:100]})
 
     return JSONResponse({"ok": True, "scored": len(results), "results": results})
 
@@ -841,7 +810,10 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
 
     logger.info(f"[ANALYZE] {user.get('email')}: url={url[:80]}, niche={niche_name}, nlm_sop={len(nlm_sop)} chars")
 
-    try:
+    import asyncio
+
+    def _run_pipeline():
+        """Run the entire pipeline in a thread so health checks keep responding."""
         from database import create_project, save_niche, save_idea, save_file, log_activity, update_project
         from protocols.ai_client import chat
 
@@ -1016,20 +988,25 @@ Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15
         except Exception as e:
             logger.error(f"Mindmap generation failed: {type(e).__name__}: {e}")
 
-        return JSONResponse({
+        return {
             "ok": True,
             "project_id": project_id,
             "sop_source": sop_source,
+            "niche_name": niche_name,
             "niches_generated": niches_generated,
             "titles_generated": titles_generated,
             "seo_generated": seo_generated,
             "mindmap_generated": mindmap_generated,
             "drive_folder_id": drive_folder_id,
-        })
+        }
 
+    # Run pipeline in thread so health checks keep responding
+    try:
+        result = await asyncio.to_thread(_run_pipeline)
+        return JSONResponse(result)
     except Exception as e:
         logger.error(f"analyze-channel error: {e}")
-        return JSONResponse({"error": "Falha na analise do canal"}, status_code=500)
+        return JSONResponse({"error": f"Falha na analise: {str(e)[:200]}"}, status_code=500)
 
 
 @app.get("/admin/projects", response_class=HTMLResponse)
