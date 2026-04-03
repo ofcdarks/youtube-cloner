@@ -102,6 +102,15 @@
 
     <!-- Not started state -->
     <div id="start-panel">
+        {% if not playwright_available %}
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:20px;margin-bottom:16px;">
+            <h4 style="color:#ef4444;font-size:14px;margin-bottom:6px;">Playwright nao disponivel</h4>
+            <p style="color:var(--fg-secondary);font-size:13px;margin-bottom:10px;">{{ playwright_error }}</p>
+            <p style="color:var(--fg-muted);font-size:12px;">Para instalar, execute no terminal do container:</p>
+            <code style="display:block;background:#0a0a1a;padding:10px;border-radius:6px;font-size:12px;color:#06b6d4;margin-top:6px;">pip install playwright && playwright install chromium --with-deps</code>
+        </div>
+        {% endif %}
+
         {% if has_credentials %}
         <div class="nlm-success">
             <h3>&#10003; NotebookLM ja esta conectado</h3>
@@ -132,7 +141,7 @@
 
     <!-- Toolbar -->
     <div class="nlm-toolbar">
-        <button class="btn-start" id="btn-start" onclick="startAuth()">&#9654; Iniciar Conexao</button>
+        <button class="btn-start" id="btn-start" onclick="startAuth()" {% if not playwright_available %}disabled style="opacity:.5;cursor:not-allowed"{% endif %}>&#9654; Iniciar Conexao</button>
         <button class="btn-stop" id="btn-stop" onclick="stopAuth()" style="display:none;">&#9724; Parar</button>
         <button onclick="refreshScreenshot()" id="btn-refresh" style="display:none;">&#8635; Atualizar</button>
         <button onclick="goBack()" id="btn-back" style="display:none;">&#10094; Voltar</button>

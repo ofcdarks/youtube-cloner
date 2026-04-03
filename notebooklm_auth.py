@@ -3,14 +3,6 @@ NotebookLM Auth — Remote browser authentication via Playwright.
 
 Manages a headless Chromium instance that the admin interacts with
 through screenshots + click/type events from the frontend.
-
-Flow:
-  1. Admin clicks "Conectar NotebookLM"
-  2. Backend launches Playwright browser → Google login page
-  3. Frontend polls /api/admin/nlm-screenshot every 500ms
-  4. Admin clicks/types via the screenshot viewer
-  5. After login, backend captures storage_state.json
-  6. Saves encrypted to DB for future NotebookLM API calls
 """
 
 import asyncio
@@ -20,9 +12,18 @@ import logging
 import os
 import time
 from pathlib import Path
-from io import BytesIO
 
 logger = logging.getLogger("ytcloner.nlm_auth")
+
+# ── Check Playwright availability ────────────────────────
+_playwright_available = False
+_playwright_error = ""
+
+try:
+    from playwright.async_api import async_playwright
+    _playwright_available = True
+except ImportError:
+    _playwright_error = "Playwright nao instalado. Execute no container: pip install playwright && playwright install chromium"
 
 # Browser session state
 _browser = None
@@ -48,25 +49,35 @@ async def start_session() -> dict:
     """Start a new Playwright browser session for NotebookLM auth."""
     global _browser, _context, _page, _session_active, _auth_complete, _status_message
 
+    if not _playwright_available:
+        _status_message = _playwright_error
+        return {"ok": False, "error": _playwright_error}
+
     if _session_active:
         return {"ok": True, "message": "Sessao ja ativa"}
 
     try:
-        from playwright.async_api import async_playwright
-
         _status_message = "Iniciando navegador..."
         _auth_complete = False
 
         pw = await async_playwright().start()
-        _browser = await pw.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-            ],
-        )
+
+        try:
+            _browser = await pw.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
+            )
+        except Exception as e:
+            error_msg = str(e)
+            if "executable doesn't exist" in error_msg.lower() or "browsertype.launch" in error_msg.lower():
+                _status_message = "Chromium nao encontrado. Execute: playwright install chromium"
+                return {"ok": False, "error": _status_message}
+            raise
 
         # Check if we have existing storage state
         storage_state = None
@@ -105,9 +116,6 @@ async def start_session() -> dict:
 
         return {"ok": True, "message": _status_message, "url": current_url}
 
-    except ImportError:
-        _status_message = "Playwright nao instalado"
-        return {"ok": False, "error": "Playwright nao instalado. Execute: pip install playwright && playwright install chromium"}
     except Exception as e:
         _status_message = f"Erro: {str(e)[:100]}"
         logger.error(f"NLM auth start failed: {e}")
@@ -270,10 +278,29 @@ async def stop_session() -> dict:
 
 def get_status() -> dict:
     """Get current session status."""
-    return {
-        "active": _session_active,
-        "authenticated": _auth_complete,
-        "message": _status_message,
-        "url": _page.url if _page else "",
-        "has_existing_credentials": STORAGE_PATH.exists(),
-    }
+    try:
+        url = ""
+        if _page:
+            try:
+                url = _page.url
+            except Exception:
+                url = ""
+        return {
+            "active": _session_active,
+            "authenticated": _auth_complete,
+            "message": _status_message,
+            "url": url,
+            "has_existing_credentials": STORAGE_PATH.exists() if STORAGE_PATH else False,
+            "playwright_available": _playwright_available,
+            "playwright_error": _playwright_error,
+        }
+    except Exception as e:
+        return {
+            "active": False,
+            "authenticated": False,
+            "message": f"Erro ao verificar status: {str(e)[:100]}",
+            "url": "",
+            "has_existing_credentials": False,
+            "playwright_available": _playwright_available,
+            "playwright_error": _playwright_error,
+        }

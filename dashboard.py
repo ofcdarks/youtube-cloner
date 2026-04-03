@@ -1055,9 +1055,26 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
 @app.get("/admin/notebooklm", response_class=HTMLResponse)
 async def admin_nlm_auth_page(request: Request, user=Depends(require_admin)):
     """NotebookLM authentication page with remote browser viewer."""
-    from pathlib import Path
-    has_credentials = (Path.home() / ".notebooklm" / "storage_state.json").exists()
-    return render(request, "admin_nlm_auth.html", {"user": user, "has_credentials": has_credentials})
+    has_credentials = False
+    playwright_available = False
+    playwright_error = ""
+    try:
+        from pathlib import Path as _P
+        has_credentials = (_P.home() / ".notebooklm" / "storage_state.json").exists()
+    except Exception:
+        pass
+    try:
+        import notebooklm_auth
+        playwright_available = notebooklm_auth._playwright_available
+        playwright_error = notebooklm_auth._playwright_error
+    except Exception:
+        playwright_error = "Modulo notebooklm_auth nao disponivel"
+    return render(request, "admin_nlm_auth.html", {
+        "user": user,
+        "has_credentials": has_credentials,
+        "playwright_available": playwright_available,
+        "playwright_error": playwright_error,
+    })
 
 
 @app.post("/api/admin/nlm-start")
