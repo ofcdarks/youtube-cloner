@@ -80,7 +80,31 @@ def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 800
             if response.status_code == 200:
                 data = response.json()
                 content = data["choices"][0]["message"]["content"]
-                logger.info(f"[AI] Success on attempt {attempt}: response_len={len(content)}")
+
+                # Track token usage
+                usage = data.get("usage", {})
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
+                total_tokens = usage.get("total_tokens", prompt_tokens + completion_tokens)
+
+                # Estimate cost (approximate — varies by model)
+                cost = 0.0
+                if "claude" in used_model.lower():
+                    cost = (prompt_tokens * 3 + completion_tokens * 15) / 1_000_000  # Claude Sonnet pricing
+                elif "gpt-4" in used_model.lower():
+                    cost = (prompt_tokens * 2.5 + completion_tokens * 10) / 1_000_000
+                elif "gpt-3" in used_model.lower() or "mini" in used_model.lower():
+                    cost = (prompt_tokens * 0.15 + completion_tokens * 0.6) / 1_000_000
+
+                try:
+                    from database import log_ai_usage
+                    log_ai_usage(model=used_model, prompt_tokens=prompt_tokens,
+                                completion_tokens=completion_tokens, estimated_cost=cost,
+                                operation="chat")
+                except Exception:
+                    pass
+
+                logger.info(f"[AI] Success on attempt {attempt}: response_len={len(content)}, tokens={total_tokens}, cost=${cost:.4f}")
                 return content
 
             # Check if retryable
@@ -116,12 +140,16 @@ def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 800
     raise Exception(f"API failed after {MAX_RETRIES} attempts. Last error: {last_error}")
 
 
-def generate_script(title: str, hook: str, sop: str, niche: str = "System Breakers") -> str:
+def generate_script(title: str, hook: str, sop: str, niche: str = "System Breakers", language: str = "pt-BR") -> str:
     """Gera um roteiro completo para um titulo."""
 
-    system = """Voce e um roteirista profissional de YouTube especializado em canais faceless de storytelling.
+    LANG_LABELS = {"pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol", "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano"}
+    lang_label = LANG_LABELS.get(language, language)
+
+    system = f"""Voce e um roteirista profissional de YouTube especializado em canais faceless de storytelling.
 Voce escreve roteiros cinematicos, dramaticos, com narrativa envolvente que prende o espectador do inicio ao fim.
-Seus roteiros sao otimizados para narracao em voz (TTS) - sem marcacoes tecnicas no texto da narracao."""
+Seus roteiros sao otimizados para narracao em voz (TTS) - sem marcacoes tecnicas no texto da narracao.
+Escreva SEMPRE em {lang_label}."""
 
     prompt = f"""Escreva um roteiro COMPLETO de 10-12 minutos para o canal "{niche}".
 

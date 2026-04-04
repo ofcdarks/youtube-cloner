@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Admin Panel{% endblock %}
-{% block content %}
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/projects" class="link-accent">Projetos</a>
+        <a href="/admin/students" class="link-purple">Alunos</a>
+        <a href="/logout" class="link-danger">Sair</a>
+    </div>
+</div>
+<div class="page">
 <div class="section">
     <div class="section-title"><span class="sec-icon">&#9881;</span> Painel Administrativo</div>
 </div>
@@ -47,31 +57,54 @@
                 <label>LaoZhang API Key (Claude)</label>
                 <div style="display:flex;gap:8px">
                     <input type="password" class="form-input" value="{{ api_keys.laozhang_masked }}" disabled style="flex:1">
-                    <span style="color:{{ '#22c55e' if api_keys.laozhang else '#ef4444' }};font-size:12px;align-self:center">{{ '&#10003; Ativa' if api_keys.laozhang else '&#10007; Nao configurada' }}</span>
+                    <span style="color:{{ '#22c55e' if api_keys.laozhang else '#ef4444' }};font-size:12px;align-self:center">{{ ('✓ Ativa' if api_keys.laozhang else '✗ Nao configurada') }}</span>
                 </div>
             </div>
             <div class="form-group" style="margin-bottom:12px;">
                 <label>YouTube Data API v3</label>
                 <div style="display:flex;gap:8px">
                     <input type="password" class="form-input" value="{{ api_keys.youtube_masked }}" disabled style="flex:1">
-                    <span style="color:{{ '#22c55e' if api_keys.youtube else '#ef4444' }};font-size:12px;align-self:center">{{ '&#10003; Ativa' if api_keys.youtube else '&#10007; Nao configurada' }}</span>
-                </div>
-            </div>
-            <div class="form-group" style="margin-bottom:12px;">
-                <label>NotebookLM</label>
-                <div style="display:flex;gap:8px">
-                    <input type="text" class="form-input" value="{{ api_keys.nlm_status }}" disabled style="flex:1">
-                    <span style="color:{{ '#22c55e' if api_keys.nlm else '#ef4444' }};font-size:12px;align-self:center">{{ '&#10003; Conectado' if api_keys.nlm else '&#10007; Desconectado' }}</span>
+                    <span style="color:{{ '#22c55e' if api_keys.youtube else '#ef4444' }};font-size:12px;align-self:center">{{ ('✓ Ativa' if api_keys.youtube else '✗ Nao configurada') }}</span>
                 </div>
             </div>
             <div class="form-group">
                 <label>Google Drive OAuth</label>
-                <div style="display:flex;gap:8px">
+                <div style="display:flex;gap:8px;align-items:center">
                     <input type="text" class="form-input" value="{{ api_keys.gdrive_status }}" disabled style="flex:1">
-                    <span style="color:{{ '#22c55e' if api_keys.gdrive else '#ef4444' }};font-size:12px;align-self:center">{{ '&#10003; Conectado' if api_keys.gdrive else '&#10007; Nao configurado' }}</span>
+                    <span style="color:{{ '#22c55e' if api_keys.gdrive else '#ef4444' }};font-size:12px">{{ ('✓ Conectado' if api_keys.gdrive else '✗ Nao conectado') }}</span>
+                    {% if api_keys.gdrive %}
+                    <button onclick="disconnectGDrive()" style="background:#ef4444;color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer">Desconectar</button>
+                    {% elif api_keys.gdrive_configured %}
+                    <a href="/api/admin/gdrive/auth" style="background:#22c55e;color:#fff;padding:4px 12px;border-radius:4px;font-size:11px;text-decoration:none;white-space:nowrap">Conectar Drive</a>
+                    {% else %}
+                    <span style="font-size:10px;color:#71717a">Defina GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET</span>
+                    {% endif %}
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- AI Analytics -->
+    <div class="section">
+        <div class="section-title"><span class="sec-icon">&#129302;</span> AI Analytics</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;">
+            <div class="stat-card"><div class="stat-num">{{ "{:,}".format(ai_usage.total_tokens) }}</div><div class="stat-lbl">Tokens Usados</div></div>
+            <div class="stat-card" style="border-color:#22c55e"><div class="stat-num">${{ "%.4f"|format(ai_usage.total_cost) }}</div><div class="stat-lbl">Custo Estimado</div></div>
+            <div class="stat-card"><div class="stat-num">{{ ai_usage.total_calls }}</div><div class="stat-lbl">Chamadas AI</div></div>
+        </div>
+        {% if ai_usage.by_operation %}
+        <div class="form-panel" style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--fg-secondary);margin-bottom:8px">Por operacao</div>
+            <table style="width:100%;font-size:11px;">
+                <thead><tr style="color:var(--fg-dim);border-bottom:1px solid var(--border)"><th style="padding:4px;text-align:left">Operacao</th><th style="text-align:right">Tokens</th><th style="text-align:right">Custo</th><th style="text-align:right">Calls</th></tr></thead>
+                <tbody>
+                {% for op in ai_usage.by_operation %}
+                <tr><td style="padding:4px;color:var(--fg-primary)">{{ op.operation }}</td><td style="text-align:right;color:var(--fg-secondary)">{{ "{:,}".format(op.tokens|int) }}</td><td style="text-align:right;color:#22c55e">${{ "%.4f"|format(op.cost) }}</td><td style="text-align:right;color:var(--fg-dim)">{{ op.calls }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Usuarios -->
@@ -85,15 +118,21 @@
                         <th>Email</th>
                         <th>Papel</th>
                         <th>Criado</th>
+                        <th style="text-align:right">Acoes</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for u in users %}
-                    <tr style="border-bottom:1px solid var(--border)">
+                    <tr style="border-bottom:1px solid var(--border)" id="user-row-{{ u.id }}">
                         <td style="padding:6px;color:#fff">{{ u.name }}</td>
                         <td style="color:var(--fg-dim)">{{ u.email }}</td>
                         <td><span style="padding:2px 8px;border-radius:3px;font-size:10px;background:{{ '#7c3aed' if u.role == 'admin' else '#3b82f6' }};color:#fff">{{ u.role }}</span></td>
                         <td style="color:var(--fg-dim)">{{ u.created_at[:10] if u.created_at else '-' }}</td>
+                        <td style="text-align:right">
+                            {% if u.role != 'admin' %}
+                            <button style="background:#ef4444;color:#fff;border:none;padding:3px 10px;border-radius:4px;font-size:10px;cursor:pointer" onclick="deleteUser({{ u.id }}, '{{ u.name|replace("'", "") }}')">Excluir</button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -123,7 +162,7 @@
                 {% for p in projects %}
                 <tr style="border-bottom:1px solid var(--border)">
                     <td style="padding:6px;color:#fff;font-weight:500">{{ p.name }}</td>
-                    <td style="color:var(--fg-dim);font-size:11px">{{ (p.channel_original or '')[:30] }}</td>
+                    <td style="font-size:11px">{% if p.channel_original %}<a href="{{ p.channel_original }}" target="_blank" style="color:#a78bfa">{{ (p.channel_original or '')[:30] }}</a>{% else %}-{% endif %}</td>
                     <td style="text-align:center">{{ p.niches_count or 0 }}</td>
                     <td style="text-align:center">{{ p.ideas_count or 0 }}</td>
                     <td style="text-align:center">{{ p.scripts_count or 0 }}</td>
@@ -155,4 +194,75 @@
         {% endif %}
     </div>
 </div>
+</div><!-- /page -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('gdrive_success')) {
+        const flash = document.createElement('div');
+        flash.style.cssText = 'position:fixed;top:16px;right:16px;background:#22c55e;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999';
+        flash.textContent = '\u2713 Google Drive conectado com sucesso!';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 4000);
+        history.replaceState(null, '', '/admin/panel');
+    }
+    if (params.get('gdrive_error')) {
+        const flash = document.createElement('div');
+        flash.style.cssText = 'position:fixed;top:16px;right:16px;background:#ef4444;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;z-index:9999';
+        flash.textContent = '\u2717 Erro ao conectar Google Drive: ' + params.get('gdrive_error');
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 6000);
+        history.replaceState(null, '', '/admin/panel');
+    }
+})();
+
+function disconnectGDrive() {
+    if (!confirm('Desconectar Google Drive? Os arquivos no Drive nao serao apagados.')) return;
+    fetch('/api/admin/gdrive/disconnect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'x-csrf-token': '{{ csrf_token }}'},
+    }).then(r => r.json()).then(d => {
+        if (d.ok) location.reload();
+    });
+}
+
+function deleteUser(userId, name) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:999;';
+    overlay.innerHTML = '<div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;max-width:420px;width:90%;text-align:center;">' +
+        '<div style="font-size:28px;margin-bottom:10px;">&#9888;</div>' +
+        '<div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:8px;">Excluir aluno</div>' +
+        '<div style="font-size:13px;color:#888;margin-bottom:16px;line-height:1.6;">Tem certeza que deseja excluir <strong style="color:#f87171;">"' + name + '"</strong>?<br>Isso remove o usuario, atribuicoes, progresso, canais e notificacoes. <strong>Acao irreversivel.</strong></div>' +
+        '<div style="display:flex;gap:10px;justify-content:center;">' +
+        '<button onclick="this.closest(\'div\').parentElement.parentElement.remove()" style="padding:8px 20px;background:transparent;border:1px solid #444;color:#999;border-radius:8px;cursor:pointer;font-size:13px;">Cancelar</button>' +
+        '<button id="confirm-delete-' + userId + '" style="padding:8px 20px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Excluir</button>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    document.getElementById('confirm-delete-' + userId).onclick = function() {
+        this.textContent = 'Excluindo...';
+        this.disabled = true;
+        fetch('/api/admin/delete-student', {
+            method: 'POST',
+            body: JSON.stringify({student_id: userId}),
+            headers: {'Content-Type': 'application/json', 'x-csrf-token': '{{ csrf_token }}'},
+        }).then(r => r.json()).then(d => {
+            overlay.remove();
+            if (d.ok) {
+                var row = document.getElementById('user-row-' + userId);
+                if (row) row.style.opacity = '0';
+                setTimeout(function() { if (row) row.remove(); }, 300);
+            } else {
+                alert('Erro: ' + (d.error || 'Falha'));
+            }
+        }).catch(function(e) {
+            overlay.remove();
+            alert('Erro: ' + e.message);
+        });
+    };
+}
+</script>
 {% endblock %}

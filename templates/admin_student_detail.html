@@ -130,6 +130,75 @@
     </div>
     {% endif %}
 
+    <!-- CANAIS DO ALUNO -->
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#127909;</span> Canais do Aluno ({{ channels|length }}/5)</span>
+            {% if channels|length < 5 %}
+            <button class="btn-success" onclick="document.getElementById('add-ch-form').style.display='block'" style="font-size:12px">+ Adicionar Canal</button>
+            {% endif %}
+        </div>
+
+        {% if channels %}
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Nome do Canal</th>
+                    <th>URL</th>
+                    <th>Nicho</th>
+                    <th>Idioma</th>
+                    <th>Acoes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ch in channels %}
+                <tr>
+                    <td style="font-weight:bold;color:#e0e0e0">{{ ch.channel_name }}</td>
+                    <td style="font-size:11px">{% if ch.channel_url %}<a href="{{ ch.channel_url }}" target="_blank" style="color:#a78bfa">{{ ch.channel_url[:40] }}</a>{% else %}-{% endif %}</td>
+                    <td><span style="color:#b388ff;font-size:12px">{{ ch.niche or '-' }}</span></td>
+                    <td style="font-size:12px">{{ ch.language }}</td>
+                    <td><button class="delete-file-btn" onclick="removeStudentChannel({{ ch.id }})" title="Remover canal">&#128465;</button></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:20px;color:#555;font-size:13px">Nenhum canal cadastrado para este aluno.</div>
+        {% endif %}
+
+        <div id="add-ch-form" style="display:none;margin-top:12px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:16px;">
+            <div style="font-size:13px;font-weight:600;color:var(--fg-primary);margin-bottom:10px">Novo Canal</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Nome do Canal *</label>
+                    <input type="text" id="ch-name" class="form-input" placeholder="Canal POV Dark">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">URL do Canal</label>
+                    <input type="text" id="ch-url" class="form-input" placeholder="https://youtube.com/@canal">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Nicho</label>
+                    <input type="text" id="ch-niche" class="form-input" placeholder="Ex: Dark Deals">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Idioma</label>
+                    <select id="ch-lang" class="form-input">
+                        <option value="pt-BR">Portugues (BR)</option>
+                        <option value="en">English</option>
+                        <option value="es">Espanol</option>
+                        <option value="fr">Francais</option>
+                        <option value="de">Deutsch</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+                <button onclick="document.getElementById('add-ch-form').style.display='none'" style="padding:6px 14px;border:1px solid var(--border);background:none;color:var(--fg-dim);border-radius:6px;cursor:pointer;font-size:12px">Cancelar</button>
+                <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="addStudentChannel()">Salvar Canal</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <div id="toast-container"></div>
@@ -175,6 +244,39 @@ function releaseMoreTitles(assignmentId, count) {
         .catch(e => {
             removeToast(loading);
             showToast('Erro: ' + e.message, 'error');
+        });
+    });
+}
+
+function addStudentChannel() {
+    var name = document.getElementById('ch-name').value.trim();
+    var url = document.getElementById('ch-url').value.trim();
+    var niche = document.getElementById('ch-niche').value.trim();
+    var lang = document.getElementById('ch-lang').value;
+    if (!name) { showToast('Nome do canal obrigatorio', 'warning'); return; }
+    apiPost('/api/admin/add-student-channel', {
+        student_id: {{ student.id }}, name: name, url: url, niche: niche, language: lang
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            showToast('Canal adicionado!', 'success');
+            setTimeout(function() { location.reload(); }, 1000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    });
+}
+
+function removeStudentChannel(channelId) {
+    showConfirm('Remover Canal', 'Remover este canal do aluno?', function() {
+        apiPost('/api/admin/remove-student-channel', {channel_id: channelId, student_id: {{ student.id }}})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                showToast('Canal removido!', 'success');
+                setTimeout(function() { location.reload(); }, 1000);
+            }
         });
     });
 }

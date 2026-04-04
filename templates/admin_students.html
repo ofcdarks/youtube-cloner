@@ -116,13 +116,13 @@
                 <input type="password" id="student-password" placeholder="Senha de acesso">
             </div>
             <div class="form-group">
-                <label>Nicho (clique para selecionar)</label>
+                <label>Nicho (clique para selecionar ou digite)</label>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
                     {% for n in nichos %}
                     <span class="niche-badge" onclick="selectNicheBadge(this, '{{ n.name }}')" style="cursor:pointer;padding:5px 12px;border-radius:6px;font-size:.78em;font-weight:bold;border:2px solid {{ n.color }};color:{{ n.color }};background:#0a0a1a;transition:.2s">{{ n.name }}</span>
                     {% endfor %}
                 </div>
-                <input type="text" id="student-niche" placeholder="Ou digite manualmente..." readonly style="cursor:pointer">
+                <input type="text" id="student-niche" placeholder="Selecione acima ou digite o nicho manualmente...">
             </div>
             <div class="form-group">
                 <label>Projeto</label>

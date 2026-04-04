@@ -22,9 +22,26 @@
     <h1>YT Channel Cloner</h1>
     <div class="links">
         {% if not impersonating %}
+        <span id="notif-bell" onclick="toggleNotifs()" style="position:relative;cursor:pointer;font-size:18px;padding:4px 8px;" title="Notificacoes">
+            &#128276;
+            {% if unread_notifs > 0 %}
+            <span id="notif-badge" style="position:absolute;top:-2px;right:0;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;">{{ unread_notifs }}</span>
+            {% endif %}
+        </span>
         <a href="/student" class="link-purple">Meu Painel</a>
         <a href="/logout" class="link-danger">Sair</a>
         {% endif %}
+    </div>
+</div>
+
+<!-- NOTIFICATION PANEL -->
+<div id="notif-panel" style="display:none;position:fixed;top:48px;right:16px;width:340px;max-height:400px;overflow-y:auto;background:var(--bg-card,#1a1a2e);border:1px solid var(--border,#2a2a4a);border-radius:10px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4);">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border,#2a2a4a);display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:600;font-size:14px;color:var(--fg-primary,#e0e0e0)">Notificacoes</span>
+        <button onclick="markAllRead()" style="background:none;border:none;color:#a78bfa;font-size:11px;cursor:pointer;">Marcar tudo como lido</button>
+    </div>
+    <div id="notif-list" style="padding:8px;">
+        <div style="text-align:center;padding:20px;color:var(--fg-dim,#666);font-size:12px;">Carregando...</div>
     </div>
 </div>
 
@@ -33,11 +50,14 @@
     <!-- STUDENT HEADER -->
     <div class="project-info">
         <span style="font-size:15px;font-weight:600;color:var(--fg-primary)">Bem-vindo, {{ user.name }}</span>
-        {% if assignments %}
-        <span class="sep">|</span> Nicho: <strong>{{ assignments[0].niche if assignments else 'Nenhum' }}</strong>
+        {% if active_channel %}
+        <span class="sep">|</span> Canal: <strong style="color:#a78bfa">{{ active_channel.channel_name }}</strong>
         {% endif %}
         {% if current_project %}
         <span class="sep">|</span> Projeto: <strong>{{ current_project.name }}</strong>
+        {% if current_project.language %}
+        <span class="sep">|</span> <span style="background:rgba(59,130,246,.15);color:#3b82f6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">&#127760; {{ current_project.language }}</span>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -82,185 +102,319 @@
     </div>
     {% endif %}
 
-    <!-- PROJECT FILES (SOP, SEO, etc — read only for students) -->
-    {% if current_project %}
+    <!-- MEUS CANAIS (clickable badges) -->
     <div class="section" style="margin-top:16px">
-        <div class="section-title"><span class="sec-icon">&#128194;</span> Arquivos do Projeto</div>
-        {% set project_files = [] %}
-        {% for a in assignments %}
-            {% if a.project_id == current_project.id %}
-                {% for idea in (a.ideas or []) %}{% endfor %}
-            {% endif %}
-        {% endfor %}
-        <div style="display:grid;gap:8px;">
-            {% if current_project.name %}
-            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;">
-                <div style="font-size:13px;color:var(--fg-primary);font-weight:500;">{{ current_project.name }}</div>
-                <div style="font-size:12px;color:var(--fg-muted);margin-top:4px;">Nicho: {{ assignments[0].niche if assignments else 'N/A' }}</div>
-            </div>
-            {% endif %}
-            {% if current_project.drive_folder_url %}
-            <a href="{{ current_project.drive_folder_url }}" target="_blank" style="display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;text-decoration:none;color:var(--fg-secondary);font-size:13px;transition:border-color .15s;">
-                <span>&#128193;</span> Google Drive do Projeto
-                <span style="margin-left:auto;color:var(--fg-dim);font-size:11px;">Abrir &#8599;</span>
-            </a>
-            {% endif %}
+        <div class="section-title">
+            <span><span class="sec-icon">&#127909;</span> Meus Canais ({{ channels|length }})</span>
         </div>
-        {% if not current_project.name and not current_project.drive_folder_url %}
-        <div style="text-align:center;padding:20px;color:var(--fg-dim);font-size:13px;">Nenhum arquivo do projeto disponivel</div>
+        {% if channels %}
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            {% for ch in channels %}
+            <a href="/student?channel={{ ch.id }}" style="text-decoration:none;flex:1;min-width:200px;">
+            <div class="channel-badge" style="background:var(--bg-surface);border:2px solid {{ '#7c3aed' if active_channel and active_channel.id == ch.id else 'var(--border)' }};border-radius:10px;padding:12px 18px;cursor:pointer;transition:border-color .2s;" id="ch-badge-{{ ch.id }}">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <span style="font-size:16px">&#127909;</span>
+                    <span style="font-weight:600;color:var(--fg-primary);font-size:13px">{{ ch.channel_name }}</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    {% if ch.niche %}<span style="font-size:10px;background:#7c3aed22;color:#a78bfa;padding:2px 8px;border-radius:4px;">{{ ch.niche }}</span>{% endif %}
+                    <span style="font-size:10px;background:#3b82f622;color:#60a5fa;padding:2px 8px;border-radius:4px;">{{ ch.language or 'pt-BR' }}</span>
+                </div>
+            </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:20px;color:var(--fg-dim);font-size:12px">
+            Nenhum canal atribuido. O administrador cadastra seus canais.
+        </div>
         {% endif %}
+    </div>
+
+    <!-- YOUTUBE API KEY (para trazer dados dos canais) -->
+    {% if not readonly and channels and not has_yt_key %}
+    <div class="section" style="margin-top:16px">
+        <div class="section-title"><span class="sec-icon">&#128273;</span> YouTube API Key</div>
+        <p style="color:var(--fg-dim);font-size:11px;margin-bottom:10px">Configure sua chave da YouTube Data API v3 para trazer dados dos seus canais (inscritos, views, videos).</p>
+        <div style="display:flex;gap:8px;align-items:center">
+            <input type="password" id="yt-api-key" class="form-input" placeholder="AIzaSy..." style="flex:1">
+            <button class="btn-primary" style="font-size:12px;padding:6px 14px" onclick="saveYtApiKey()">Salvar</button>
+        </div>
     </div>
     {% endif %}
 
+    <!-- YOUTUBE ANALYTICS -->
+    {% if channels %}
+    <div class="section" style="margin-top:16px">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128200;</span> Analytics dos Canais</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="btn-primary" style="font-size:11px;padding:4px 12px" onclick="fetchChannelStats()" id="fetch-stats-btn">&#8635; Atualizar Dados</button>
+            </div>
+        </div>
+
+        <div id="analytics-cards" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;">
+            <div class="stat-card" id="an-subs"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Inscritos</div></div>
+            <div class="stat-card" id="an-views"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Views Total</div></div>
+            <div class="stat-card" id="an-avg"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Media/Video</div></div>
+            <div class="stat-card" id="an-eng"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Engagement %</div></div>
+            <div class="stat-card" id="an-vids"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Videos</div></div>
+        </div>
+
+        <div id="analytics-videos" style="display:none;">
+            <div style="font-size:12px;font-weight:600;color:var(--fg-secondary);margin-bottom:8px;">Videos recentes</div>
+            <div id="video-list" style="display:grid;gap:6px;max-height:300px;overflow-y:auto;"></div>
+        </div>
+
+        <div id="analytics-empty" style="text-align:center;padding:16px;color:var(--fg-dim);font-size:12px;">
+            Clique "Atualizar Dados" para buscar analytics dos seus canais via YouTube API.
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CALENDARIO DE POSTAGEM -->
+    <div class="section" style="margin-top:16px">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128197;</span> Calendario de Postagem</span>
+            <button class="btn-primary" style="font-size:11px;padding:4px 12px" onclick="updateCalendar()" id="cal-update-btn">&#8635; Atualizar via Analytics</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center" id="cal-freq">
+                <div style="font-size:20px">&#128337;</div>
+                <div style="font-size:12px;color:var(--fg-primary);font-weight:600;margin-top:6px">Frequencia</div>
+                <div style="font-size:13px;color:#22c55e;margin-top:4px">{{ schedule.frequency }}</div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center" id="cal-days">
+                <div style="font-size:20px">&#128197;</div>
+                <div style="font-size:12px;color:var(--fg-primary);font-weight:600;margin-top:6px">Melhores Dias</div>
+                <div style="font-size:13px;color:#3b82f6;margin-top:4px">{{ schedule.best_days }}</div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center" id="cal-time">
+                <div style="font-size:20px">&#9200;</div>
+                <div style="font-size:12px;color:var(--fg-primary);font-weight:600;margin-top:6px">Horario Ideal</div>
+                <div style="font-size:13px;color:#f59e0b;margin-top:4px">{{ schedule.best_times }}</div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center" id="cal-dur">
+                <div style="font-size:20px">&#127916;</div>
+                <div style="font-size:12px;color:var(--fg-primary);font-weight:600;margin-top:6px">Duracao dos Videos</div>
+                <div style="font-size:13px;color:#a78bfa;margin-top:4px">{{ schedule.video_duration }}</div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center">
+                <div style="font-size:20px">&#127760;</div>
+                <div style="font-size:12px;color:var(--fg-primary);font-weight:600;margin-top:6px">Idioma do Canal</div>
+                {% set lang_labels = {"pt-BR":"Portugues BR","en":"English","es":"Espanol","fr":"Francais","de":"Deutsch","it":"Italiano","ja":"Japones","ko":"Coreano"} %}
+                <div style="font-size:13px;color:#e040fb;margin-top:4px">{{ lang_labels.get(schedule.language, schedule.language) }}</div>
+            </div>
+        </div>
+
+        <!-- Monetization Status + Daily Views -->
+        <div id="monetization-bar" style="display:none;margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div id="monet-status" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span id="monet-icon" style="font-size:18px">&#128176;</span>
+                    <span id="monet-label" style="font-size:13px;font-weight:600;color:var(--fg-primary)">Monetizacao</span>
+                </div>
+                <div id="monet-details" style="font-size:12px;color:var(--fg-dim);line-height:1.8;">
+                    Clique "Atualizar via Analytics" para ver status de monetizacao.
+                </div>
+            </div>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:18px">&#128200;</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--fg-primary)">Views Estimadas</span>
+                </div>
+                <div id="daily-views-info" style="font-size:12px;color:var(--fg-dim);line-height:1.8;">
+                    Clique "Atualizar via Analytics" para ver estimativa diaria.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RADAR DE TENDENCIAS -->
+    {% if trend_files %}
+    <div class="section" style="margin-top:16px">
+        <div class="section-title"><span class="sec-icon">&#128225;</span> Radar de Tendencias</div>
+        <div style="display:grid;gap:12px;">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:8px;">
+                <div style="background:linear-gradient(135deg,#7c3aed22,#7c3aed08);border:1px solid #7c3aed44;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:10px;color:#c4b5fd;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">O que fazer</div>
+                    <div style="font-size:12px;color:#e9d5ff;font-weight:600">Leia o radar e escolha 1-2 titulos urgentes pra produzir AGORA</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#f59e0b22,#f59e0b08);border:1px solid #f59e0b44;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:10px;color:#fcd34d;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Por que importa</div>
+                    <div style="font-size:12px;color:#fef3c7;font-weight:600">Quem posta primeiro sobre um assunto quente ganha 5-10x mais views</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#22c55e22,#22c55e08);border:1px solid #22c55e44;border-radius:8px;padding:10px;text-align:center">
+                    <div style="font-size:10px;color:#86efac;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Janela</div>
+                    <div style="font-size:12px;color:#dcfce7;font-weight:600">Tendencias duram 3-7 dias — nao deixe passar</div>
+                </div>
+            </div>
+
+            {% for tf in trend_files %}
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="font-size:13px;font-weight:600;color:var(--fg-primary)">&#128225; {{ tf.filename }}</div>
+                    <div style="font-size:10px;color:var(--fg-dim)">{{ tf.created_at[:10] if tf.created_at else '' }}</div>
+                </div>
+                <div id="trend-content-{{ tf.id }}" style="display:none;font-size:12px;color:var(--fg-secondary);line-height:1.7;max-height:400px;overflow-y:auto;white-space:pre-wrap;padding:8px;background:var(--bg-card);border-radius:6px;margin-top:8px;">{{ tf.content[:5000] if tf.content else 'Sem conteudo' }}</div>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                    <button style="background:#7c3aed;color:#fff;border:none;padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;" onclick="var el=document.getElementById('trend-content-{{ tf.id }}');el.style.display=el.style.display==='none'?'block':'none';this.textContent=el.style.display==='none'?'Ver Radar':'Fechar';">Ver Radar</button>
+                    <button style="background:transparent;color:var(--fg-dim);border:1px solid var(--border);padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;" onclick="navigator.clipboard.writeText(document.getElementById('trend-content-{{ tf.id }}').textContent);this.textContent='Copiado!';setTimeout(()=>this.textContent='Copiar',1500)">Copiar</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PROJECT FILES -->
+    {% if current_project %}
+    <div class="section" style="margin-top:16px">
+        <div class="section-title"><span class="sec-icon">&#128194;</span> Arquivos do Projeto</div>
+        <div style="display:grid;gap:8px;">
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;">
+                <div style="font-size:13px;color:var(--fg-primary);font-weight:500;">{{ current_project.name }}</div>
+                <div style="font-size:12px;color:var(--fg-muted);margin-top:4px;">Nicho: {{ current_project.niche or 'N/A' }}</div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    {% if active_channel %}
+    <div class="section" style="margin-top:16px">
+        <div style="text-align:center;padding:40px 20px;">
+            <div style="font-size:36px;margin-bottom:12px;">&#128679;</div>
+            <div style="font-size:16px;font-weight:600;color:var(--fg-primary);margin-bottom:8px;">Canal sem projeto atribuido</div>
+            <div style="font-size:13px;color:var(--fg-dim);max-width:400px;margin:0 auto;line-height:1.6;">
+                O canal <strong style="color:#a78bfa">{{ active_channel.channel_name }}</strong> ainda nao tem um projeto com titulos atribuidos.<br>
+                Peca ao administrador para criar um projeto e atribuir titulos a este canal.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
     <!-- KANBAN BOARD -->
+    {% if current_project %}
     <div class="section">
-        <div class="section-title"><span class="sec-icon">&#128203;</span> Quadro de Producao</div>
+        <div class="section-title">
+            <span class="sec-icon">&#128203;</span>
+            Quadro de Producao
+            {% if active_channel %}
+            — <strong style="color:#a78bfa">{{ active_channel.channel_name }}</strong>
+            <span style="font-size:10px;background:#7c3aed22;color:#a78bfa;padding:2px 8px;border-radius:4px;margin-left:6px;">{{ stats.total }} titulos</span>
+            {% endif %}
+        </div>
 
         <div class="kanban-board">
-            <!-- PENDENTE -->
-            <div class="kanban-col" id="col-pending" ondrop="dropCard(event, 'pending')" ondragover="event.preventDefault()">
-                <div class="kanban-col-header" style="background:#ffd74020;color:#ffd740">
-                    &#9203; Pendente <span class="col-count">{{ kanban.pending|length }}</span>
-                </div>
+            <div class="kanban-col" ondrop="dropCard(event, 'pending')" ondragover="event.preventDefault()">
+                <div class="kanban-col-header" style="background:#ffd74020;color:#ffd740">&#9203; Pendente <span class="col-count">{{ kanban.pending|length }}</span></div>
                 {% for item in kanban.pending %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'pending')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
-                    {% if item.hook %}
-                    <div class="kanban-card-hook" style="font-size:.75em;color:#94a3b8;margin:4px 0 6px;line-height:1.4;border-left:2px solid #334155;padding-left:8px;">{{ item.hook[:120] }}{% if item.hook|length > 120 %}...{% endif %}</div>
-                    {% endif %}
+                    {% if item.hook %}<div class="kanban-card-hook" style="font-size:.75em;color:#94a3b8;margin:4px 0 6px;line-height:1.4;border-left:2px solid #334155;padding-left:8px;">{{ item.hook[:120] }}{% if item.hook|length > 120 %}...{% endif %}</div>{% endif %}
                     <div class="kanban-card-meta">
                         <span style="color:#b388ff">{{ item.pillar }}</span>
-                        {% if item.score and item.score > 0 %}
-                        <span style="color:{% if item.score >= 80 %}#4caf50{% elif item.score >= 60 %}#448aff{% elif item.score >= 40 %}#ffd740{% else %}#ff5252{% endif %}">Score: {{ item.score }}</span>
-                        {% endif %}
+                        {% if item.score and item.score > 0 %}<span style="color:{% if item.score >= 80 %}#4caf50{% elif item.score >= 60 %}#448aff{% elif item.score >= 40 %}#ffd740{% else %}#ff5252{% endif %}">Score: {{ item.score }}</span>{% endif %}
                         <span style="color:{{ '#ff5252' if item.priority == 'ALTA' else '#ffd740' if item.priority == 'MEDIA' else '#69f0ae' }}">{{ item.priority }}</span>
                     </div>
-                    {% if not readonly %}
-                    <div class="kanban-card-actions">
+                    {% if not readonly %}<div class="kanban-card-actions">
                         <button onclick="moveCard({{ item.id }}, 'writing')">Comecar &#10132;</button>
-                        {% if has_api_key %}
-                        <button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>
-                        {% endif %}
-                    </div>
-                    {% endif %}
+                        {% if has_api_key %}<button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>{% endif %}
+                    </div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
-
-            <!-- ESCREVENDO -->
-            <div class="kanban-col" id="col-writing" ondrop="dropCard(event, 'writing')" ondragover="event.preventDefault()">
-                <div class="kanban-col-header" style="background:#448aff20;color:#448aff">
-                    &#9998; Escrevendo <span class="col-count">{{ kanban.writing|length }}</span>
-                </div>
+            <div class="kanban-col" ondrop="dropCard(event, 'writing')" ondragover="event.preventDefault()">
+                <div class="kanban-col-header" style="background:#448aff20;color:#448aff">&#9998; Escrevendo <span class="col-count">{{ kanban.writing|length }}</span></div>
                 {% for item in kanban.writing %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'writing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
-                    <div class="kanban-card-meta">
-                        <span style="color:#b388ff">{{ item.pillar }}</span>
-                        {% if item.script_generated %}<span style="color:#4caf50">Roteiro &#10003;</span>{% endif %}
-                    </div>
-                    {% if not readonly %}
-                    <div class="kanban-card-actions">
+                    <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.script_generated %}<span style="color:#4caf50">Roteiro &#10003;</span>{% endif %}</div>
+                    {% if not readonly %}<div class="kanban-card-actions">
                         <button onclick="moveCard({{ item.id }}, 'pending')">&#10094; Voltar</button>
                         <button onclick="moveCard({{ item.id }}, 'recording')">Gravar &#10132;</button>
-                        {% if has_api_key and not item.script_generated %}
-                        <button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>
-                        {% endif %}
-                    </div>
-                    {% endif %}
+                        {% if has_api_key and not item.script_generated %}<button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>{% endif %}
+                    </div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
-
-            <!-- GRAVANDO -->
-            <div class="kanban-col" id="col-recording" ondrop="dropCard(event, 'recording')" ondragover="event.preventDefault()">
-                <div class="kanban-col-header" style="background:#e040fb20;color:#e040fb">
-                    &#127908; Gravando <span class="col-count">{{ kanban.recording|length }}</span>
-                </div>
+            <div class="kanban-col" ondrop="dropCard(event, 'recording')" ondragover="event.preventDefault()">
+                <div class="kanban-col-header" style="background:#e040fb20;color:#e040fb">&#127908; Gravando <span class="col-count">{{ kanban.recording|length }}</span></div>
                 {% for item in kanban.recording %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'recording')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
-                    <div class="kanban-card-meta">
-                        <span style="color:#b388ff">{{ item.pillar }}</span>
-                    </div>
-                    {% if not readonly %}
-                    <div class="kanban-card-actions">
-                        <button onclick="moveCard({{ item.id }}, 'writing')">&#10094; Voltar</button>
-                        <button onclick="moveCard({{ item.id }}, 'editing')">Editar &#10132;</button>
-                    </div>
-                    {% endif %}
+                    <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
+                    {% if not readonly %}<div class="kanban-card-actions"><button onclick="moveCard({{ item.id }}, 'writing')">&#10094; Voltar</button><button onclick="moveCard({{ item.id }}, 'editing')">Editar &#10132;</button></div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
-
-            <!-- EDITANDO -->
-            <div class="kanban-col" id="col-editing" ondrop="dropCard(event, 'editing')" ondragover="event.preventDefault()">
-                <div class="kanban-col-header" style="background:#ff6e4020;color:#ff6e40">
-                    &#127916; Editando <span class="col-count">{{ kanban.editing|length }}</span>
-                </div>
+            <div class="kanban-col" ondrop="dropCard(event, 'editing')" ondragover="event.preventDefault()">
+                <div class="kanban-col-header" style="background:#ff6e4020;color:#ff6e40">&#128396; Editando <span class="col-count">{{ kanban.editing|length }}</span></div>
                 {% for item in kanban.editing %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'editing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
-                    <div class="kanban-card-meta">
-                        <span style="color:#b388ff">{{ item.pillar }}</span>
-                    </div>
-                    {% if not readonly %}
-                    <div class="kanban-card-actions">
-                        <button onclick="moveCard({{ item.id }}, 'recording')">&#10094; Voltar</button>
-                        <button onclick="showPublishDialog({{ item.id }})">Publicar &#10132;</button>
-                    </div>
-                    {% endif %}
+                    <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
+                    {% if not readonly %}<div class="kanban-card-actions"><button onclick="moveCard({{ item.id }}, 'recording')">&#10094; Voltar</button><button onclick="showPublishDialog({{ item.id }})">Publicar &#10132;</button></div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
-
-            <!-- PUBLICADO -->
-            <div class="kanban-col" id="col-published" ondrop="dropCard(event, 'published')" ondragover="event.preventDefault()">
-                <div class="kanban-col-header" style="background:#4caf5020;color:#4caf50">
-                    &#10003; Publicado <span class="col-count">{{ kanban.published|length }}</span>
-                </div>
+            <div class="kanban-col" ondrop="dropCard(event, 'published')" ondragover="event.preventDefault()">
+                <div class="kanban-col-header" style="background:#4caf5020;color:#4caf50">&#10003; Publicado <span class="col-count">{{ kanban.published|length }}</span></div>
                 {% for item in kanban.published %}
                 <div class="kanban-card" id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
-                    <div class="kanban-card-meta">
-                        <span style="color:#b388ff">{{ item.pillar }}</span>
-                        {% if item.video_url %}
-                        <a href="{{ item.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.75em">&#127909; Assistir</a>
-                        {% endif %}
-                    </div>
-                    {% if not item.video_url and not readonly %}
-                    <div class="kanban-card-actions">
-                        <button class="btn-link" onclick="addVideoLink({{ item.id }})">&#128279; Adicionar Link</button>
-                    </div>
-                    {% endif %}
+                    <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.video_url %}<a href="{{ item.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.75em">&#127909; Assistir</a>{% endif %}</div>
+                    {% if not item.video_url and not readonly %}<div class="kanban-card-actions"><button class="btn-link" onclick="addVideoLink({{ item.id }})">&#128279; Adicionar Link</button></div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- MEUS ROTEIROS (somente os gerados pelo aluno) -->
-    {% if categories and categories.roteiros and categories.roteiros.files %}
+    <!-- MEUS ARQUIVOS -->
+    {% if categories %}
     <div class="section">
-        <div class="section-title"><span class="sec-icon">&#128221;</span> Meus Roteiros</div>
-        <div class="category-card">
-            <div class="category-header" style="border-color:#eab308">
-                <span class="cat-icon">&#128221;</span>
-                <span class="cat-label">Roteiros Gerados</span>
-                <span class="cat-count">{{ categories.roteiros.files|length }}</span>
+        <div class="section-title"><span class="sec-icon">&#128193;</span> Meus Arquivos</div>
+        {% for cat_key, cat in categories.items() %}
+        <div class="category-card" style="margin-bottom:12px;">
+            <div class="category-header" style="border-color:{{ cat.color }}">
+                <span class="cat-icon">{{ cat.icon }}</span>
+                <span class="cat-label">{{ cat.label }}</span>
+                <span class="cat-count">{{ cat.files|length }}</span>
             </div>
             <div class="category-files">
-                {% for f in categories.roteiros.files %}
-                <div class="file-item" id="file-{{ f.id }}">
-                    <span class="file-dot" style="background:#eab308"></span>
+                {% for f in cat.files %}
+                <div class="file-item" id="file-{{ f.id or f.name }}">
+                    <span class="file-dot" style="background:{{ cat.color }}"></span>
                     <span class="file-label" onclick="loadFile('{{ f.path }}')" role="button" tabindex="0" style="cursor:pointer">{{ f.label }}</span>
                     <span class="file-size">{{ (f.size // 1024) }}KB</span>
+                    {% if f.words and f.words > 0 and cat_key in ('roteiro', 'narracao') %}
+                    <span style="font-size:10px;color:#22c55e;background:#22c55e18;padding:2px 6px;border-radius:3px;">{{ f.words }} palavras</span>
+                    <span style="font-size:10px;color:#a78bfa;background:#a78bfa18;padding:2px 6px;border-radius:3px;">{{ f.duration }}</span>
+                    {% endif %}
                     <button type="button" class="copy-file-btn" onclick="copyFile('{{ f.path }}')" title="Copiar conteudo" aria-label="Copiar conteudo">&#128203;</button>
-                    <button type="button" class="delete-file-btn" onclick="deleteFile({{ f.id }}, '{{ f.label|replace("'", "") }}')" title="Excluir roteiro" aria-label="Excluir roteiro">&#128465;</button>
+                    {% if cat_key == 'roteiro' and f.id %}
+                    <button type="button" style="background:#7c3aed;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer" onclick="scoreScript({{ f.id }}, this)" title="Avaliar qualidade do roteiro" id="score-btn-{{ f.id }}">&#9733; Score</button>
+                    {% endif %}
+                    {% if cat_key in ('roteiro', 'narracao') and f.id %}
+                    <button type="button" class="delete-file-btn" onclick="deleteFile({{ f.id }}, '{{ f.label|replace("'", "") }}')" title="Excluir" aria-label="Excluir">&#128465;</button>
+                    {% endif %}
                 </div>
+                {% if cat_key == 'roteiro' and f.id %}
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px 20px;">
+                    <button type="button" style="background:#22c55e;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="copyNarration({{ f.id }})" title="Copiar narracao limpa (sem marcacoes) para ElevenLabs">&#127908; Copiar Narracao</button>
+                    <button type="button" style="background:#3b82f6;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'seo', this)">&#128200; Gerar SEO</button>
+                    <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)">&#127912; Thumbnail</button>
+                    <button type="button" style="background:#e040fb;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'music', this)">&#127925; Music</button>
+                    <button type="button" style="background:#00d4ff;color:#000;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'teaser', this)">&#127916; Teaser</button>
+                </div>
+                {% endif %}
+                <div id="score-result-{{ f.id }}" style="display:none;margin:6px 0 10px 20px;padding:12px;background:var(--bg-surface,#12122a);border:1px solid var(--border,#2a2a4a);border-radius:8px;"></div>
                 {% endfor %}
             </div>
         </div>
+        {% endfor %}
     </div>
     {% endif %}
 
@@ -429,32 +583,408 @@ function deleteFile(fileId, label) {
 
 function studentGenerateScript(progressId) {
     showConfirm('Gerar Roteiro', 'Gerar roteiro usando sua API key?<br><br>Isso pode levar 1-2 minutos e consumir creditos da sua API.', function() {
-        const loading = showToast('Gerando roteiro...', 'loading');
-        const controller = new AbortController();
-        const scriptTimeout = setTimeout(() => controller.abort(), 180000);
+        // Show centered modal with progress bar
+        var modal = document.createElement('div');
+        modal.id = 'script-gen-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:999;';
+        modal.innerHTML = '<div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:16px;padding:32px;max-width:440px;width:90%;text-align:center;">' +
+            '<div id="sg-icon" style="font-size:36px;margin-bottom:12px;">&#9998;</div>' +
+            '<div id="sg-title" style="font-size:18px;font-weight:600;color:#fff;margin-bottom:6px;">Gerando Roteiro</div>' +
+            '<div id="sg-status" style="font-size:13px;color:#888;margin-bottom:16px;">Enviando SOP completo para a AI...</div>' +
+            '<div style="background:#0a0a1a;border-radius:10px;height:14px;overflow:hidden;margin-bottom:8px;">' +
+            '<div id="sg-bar" style="width:5%;height:100%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:10px;transition:width 0.5s ease;"></div>' +
+            '</div>' +
+            '<div id="sg-pct" style="font-size:12px;color:#7c3aed;font-weight:600;">5%</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+
+        // Simulate progress steps
+        var steps = [
+            {pct:10, msg:'Carregando SOP do projeto...', t:2000},
+            {pct:20, msg:'Analisando hooks e open loops...', t:4000},
+            {pct:35, msg:'Construindo estrutura do roteiro...', t:8000},
+            {pct:50, msg:'Escrevendo ato 1 (hook + setup)...', t:15000},
+            {pct:65, msg:'Escrevendo ato 2 (desenvolvimento)...', t:25000},
+            {pct:75, msg:'Escrevendo ato 3 (climax + resolucao)...', t:40000},
+            {pct:85, msg:'Aplicando regras de ouro do SOP...', t:55000},
+            {pct:90, msg:'Gerando narracao limpa (sem marcacoes)...', t:70000},
+            {pct:95, msg:'Finalizando e salvando...', t:90000},
+        ];
+        var timers = [];
+        steps.forEach(function(s) {
+            timers.push(setTimeout(function() {
+                var bar = document.getElementById('sg-bar');
+                var pct = document.getElementById('sg-pct');
+                var status = document.getElementById('sg-status');
+                if (bar) { bar.style.width = s.pct + '%'; }
+                if (pct) { pct.textContent = s.pct + '%'; }
+                if (status) { status.textContent = s.msg; }
+            }, s.t));
+        });
+
+        var controller = new AbortController();
+        var scriptTimeout = setTimeout(function() { controller.abort(); }, 240000);
 
         apiFetch('/api/student/generate-script', {
             method: 'POST',
-            
             body: JSON.stringify({progress_id: progressId}),
             signal: controller.signal
         })
-        .then(r => r.json())
-        .then(data => {
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
             clearTimeout(scriptTimeout);
-            removeToast(loading);
+            timers.forEach(clearTimeout);
+            var bar = document.getElementById('sg-bar');
+            var pct = document.getElementById('sg-pct');
+            var status = document.getElementById('sg-status');
+            var icon = document.getElementById('sg-icon');
+            var title = document.getElementById('sg-title');
+
             if (data.ok) {
-                showToast('Roteiro gerado! ' + data.words + ' palavras (' + data.duration_estimate + ')', 'success', 5000);
-                setTimeout(() => location.reload(), 2000);
+                if (bar) bar.style.width = '100%';
+                if (pct) pct.textContent = '100%';
+                if (pct) pct.style.color = '#22c55e';
+                if (icon) icon.textContent = '\u2714';
+                if (title) { title.textContent = 'Roteiro Gerado!'; title.style.color = '#22c55e'; }
+                if (status) status.textContent = data.words + ' palavras (' + data.duration_estimate + ')';
+                setTimeout(function() {
+                    var m = document.getElementById('script-gen-modal');
+                    if (m) m.remove();
+                    location.reload();
+                }, 2500);
             } else {
-                showToast('Erro: ' + (data.error || 'desconhecido'), 'error', 6000);
+                if (bar) { bar.style.width = '100%'; bar.style.background = '#ef4444'; }
+                if (pct) { pct.textContent = 'ERRO'; pct.style.color = '#ef4444'; }
+                if (icon) icon.textContent = '\u2718';
+                if (title) { title.textContent = 'Falha na Geracao'; title.style.color = '#ef4444'; }
+                if (status) status.textContent = data.error || 'Erro desconhecido. Verifique sua API key.';
+                setTimeout(function() {
+                    var m = document.getElementById('script-gen-modal');
+                    if (m) m.remove();
+                }, 6000);
             }
         })
-        .catch(e => {
+        .catch(function(e) {
             clearTimeout(scriptTimeout);
-            removeToast(loading);
-            showToast('Erro: ' + e.message, 'error');
+            timers.forEach(clearTimeout);
+            var bar = document.getElementById('sg-bar');
+            var pct = document.getElementById('sg-pct');
+            var status = document.getElementById('sg-status');
+            var icon = document.getElementById('sg-icon');
+            var title = document.getElementById('sg-title');
+            if (bar) { bar.style.width = '100%'; bar.style.background = '#ef4444'; }
+            if (pct) { pct.textContent = 'ERRO'; pct.style.color = '#ef4444'; }
+            if (icon) icon.textContent = '\u2718';
+            if (title) { title.textContent = 'Falha na Geracao'; title.style.color = '#ef4444'; }
+            if (status) status.textContent = e.name === 'AbortError' ? 'Timeout (4 min). Tente novamente.' : e.message;
+            setTimeout(function() {
+                var m = document.getElementById('script-gen-modal');
+                if (m) m.remove();
+            }, 6000);
         });
+    });
+}
+
+/* ── Notifications ────────────────────── */
+var notifOpen = false;
+function toggleNotifs() {
+    notifOpen = !notifOpen;
+    var panel = document.getElementById('notif-panel');
+    panel.style.display = notifOpen ? 'block' : 'none';
+    if (notifOpen) loadNotifs();
+}
+function loadNotifs() {
+    fetch('/api/student/notifications', {headers:{'Cookie': document.cookie}})
+    .then(function(r){return r.json();})
+    .then(function(data) {
+        var list = document.getElementById('notif-list');
+        if (!data.notifications || data.notifications.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:#666;font-size:12px;">Nenhuma notificacao</div>';
+            return;
+        }
+        var html = '';
+        data.notifications.forEach(function(n) {
+            var bg = n.read ? 'transparent' : 'rgba(167,139,250,.08)';
+            var dot = n.read ? '' : '<span style="width:6px;height:6px;border-radius:50%;background:#a78bfa;flex-shrink:0;"></span>';
+            var time = n.created_at ? n.created_at.substring(5,16).replace('T',' ') : '';
+            html += '<div style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:6px;background:'+bg+';margin-bottom:4px;cursor:pointer;" onclick="markRead('+n.id+')">';
+            html += dot;
+            html += '<div style="flex:1;min-width:0;">';
+            html += '<div style="font-size:13px;font-weight:'+(n.read?'400':'600')+';color:var(--fg-primary,#e0e0e0);">'+n.title+'</div>';
+            if(n.message) html += '<div style="font-size:11px;color:var(--fg-dim,#888);margin-top:2px;line-height:1.4;">'+n.message+'</div>';
+            html += '<div style="font-size:10px;color:var(--fg-dim,#555);margin-top:4px;">'+time+'</div>';
+            html += '</div></div>';
+        });
+        list.innerHTML = html;
+    });
+}
+function markRead(nid) {
+    apiPost('/api/student/mark-notification-read', {notification_id: nid})
+    .then(function(){loadNotifs(); updateBadge();});
+}
+function markAllRead() {
+    apiPost('/api/student/mark-notification-read', {notification_id: 'all'})
+    .then(function(){loadNotifs(); updateBadge();});
+}
+function updateBadge() {
+    var badge = document.getElementById('notif-badge');
+    if(badge) badge.style.display='none';
+}
+document.addEventListener('click', function(e) {
+    var panel = document.getElementById('notif-panel');
+    var bell = document.getElementById('notif-bell');
+    if(notifOpen && panel && !panel.contains(e.target) && !bell.contains(e.target)) {
+        notifOpen = false; panel.style.display = 'none';
+    }
+});
+
+/* ── Analytics Cache + Fetch ────────────────── */
+function displayAnalytics(data) {
+    if (!data.channel) return;
+    document.getElementById('analytics-empty').style.display = 'none';
+    var c = data.channel;
+    var ins = data.insights;
+    document.querySelector('#an-subs .stat-num').textContent = formatNum(c.subscribers);
+    document.querySelector('#an-views .stat-num').textContent = formatNum(c.total_views);
+    document.querySelector('#an-avg .stat-num').textContent = formatNum(ins.avg_views);
+    document.querySelector('#an-eng .stat-num').textContent = ins.avg_engagement + '%';
+    document.querySelector('#an-vids .stat-num').textContent = c.total_videos;
+    if (data.videos && data.videos.length > 0) {
+        document.getElementById('analytics-videos').style.display = 'block';
+        var html = '';
+        data.videos.forEach(function(v) {
+            var engRate = v.views > 0 ? ((v.likes + v.comments) / v.views * 100).toFixed(1) : '0';
+            html += '<div style="display:flex;gap:10px;align-items:center;padding:8px;background:var(--bg-surface,#12122a);border-radius:6px;">';
+            html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;color:var(--fg-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + v.title + '</div>';
+            html += '<div style="display:flex;gap:12px;margin-top:3px;font-size:11px;color:var(--fg-dim);">';
+            html += '<span>' + formatNum(v.views) + ' views</span><span>' + formatNum(v.likes) + ' likes</span><span>' + v.comments + ' comments</span>';
+            html += '<span style="color:' + (parseFloat(engRate) > 5 ? '#22c55e' : parseFloat(engRate) > 2 ? '#f59e0b' : '#ef4444') + '">' + engRate + '% eng</span>';
+            html += '<span>' + v.published_at + '</span></div></div></div>';
+        });
+        document.getElementById('video-list').innerHTML = html;
+    }
+}
+
+// Load cached analytics from DB on page load
+(function() {
+    {% if active_channel and active_channel.cached_stats %}
+    try {
+        var cached = JSON.parse('{{ active_channel.cached_stats|replace("'", "\\'")|safe }}');
+        if (cached && cached.channel) displayAnalytics(cached);
+    } catch(e) {}
+    {% endif %}
+})();
+
+/* ── YouTube Analytics Fetch ────────────────── */
+function fetchChannelStats() {
+    var btn = document.getElementById('fetch-stats-btn');
+    btn.disabled = true;
+    btn.textContent = 'Buscando...';
+
+    {% if active_channel %}
+    var channelId = {{ active_channel.id }};
+    var channelUrl = '{{ active_channel.channel_url }}';
+    {% else %}
+    var channelId = 0;
+    var channelUrl = '';
+    {% endif %}
+
+    if (!channelUrl) { btn.disabled = false; btn.innerHTML = '&#8635; Atualizar Dados'; showToast('Nenhum canal selecionado', 'warning'); return; }
+
+    apiPost('/api/student/fetch-channel-stats', {channel_url: channelUrl, channel_id: channelId})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = '&#8635; Atualizar Dados';
+        if (!data.ok) { showToast('Erro: ' + (data.error || ''), 'error'); return; }
+        localStorage.setItem('yt_analytics_' + channelId, JSON.stringify(data));
+        displayAnalytics(data);
+        showToast('Analytics atualizado!', 'success', 3000);
+    })
+    .catch(function(e) {
+        btn.disabled = false;
+        btn.innerHTML = '&#8635; Atualizar Dados';
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+function formatNum(n) {
+    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+    return String(n);
+}
+
+/* ── Update Calendar from Analytics ────────── */
+function updateCalendar() {
+    var btn = document.getElementById('cal-update-btn');
+    btn.disabled = true;
+    btn.textContent = 'Analisando...';
+    var loading = showToast('AI analisando analytics do canal...', 'loading');
+
+    apiPost('/api/student/update-calendar', {channel_id: {{ active_channel.id if active_channel else 0 }} })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.innerHTML = '&#8635; Atualizar via Analytics';
+        if (!data.ok) { showToast('Erro: ' + (data.error || ''), 'error', 5000); return; }
+
+        var s = data.schedule || {};
+        if (s.frequency) document.querySelector('#cal-freq div:last-child').textContent = s.frequency;
+        if (s.best_days) document.querySelector('#cal-days div:last-child').textContent = s.best_days;
+        if (s.best_times) document.querySelector('#cal-time div:last-child').textContent = s.best_times;
+        if (s.video_duration) document.querySelector('#cal-dur div:last-child').textContent = s.video_duration;
+
+        // Monetization
+        var m = data.monetization || {};
+        document.getElementById('monetization-bar').style.display = 'grid';
+        var monet = document.getElementById('monet-details');
+        var mIcon = document.getElementById('monet-icon');
+        var mLabel = document.getElementById('monet-label');
+
+        if (m.monetized) {
+            mIcon.textContent = '\u2705';
+            mLabel.innerHTML = '<span style="color:#22c55e;">MONETIZADO</span>';
+            monet.innerHTML = '<div style="color:#22c55e;font-weight:600;">Canal elegivel ao YouTube Partner Program!</div>' +
+                '<div>Inscritos: ' + formatNum(m.subscribers) + '/1K ✓</div>' +
+                '<div>Watch Hours: ~' + formatNum(m.watch_hours) + '/4K ✓</div>';
+        } else {
+            mIcon.textContent = '\u23F3';
+            mLabel.innerHTML = '<span style="color:#f59e0b;">Em progresso</span>';
+            var html = '<div style="margin-bottom:6px;">Faltam para monetizar:</div>';
+            html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="min-width:80px;">Inscritos:</span>';
+            html += '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="width:' + m.subs_pct + '%;height:100%;background:' + (m.subs_pct >= 100 ? '#22c55e' : '#f59e0b') + ';border-radius:4px;"></div></div>';
+            html += '<span style="min-width:60px;text-align:right;">' + formatNum(m.subscribers) + '/1K</span></div>';
+            html += '<div style="display:flex;align-items:center;gap:6px;"><span style="min-width:80px;">Watch Hours:</span>';
+            html += '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="width:' + m.hours_pct + '%;height:100%;background:' + (m.hours_pct >= 100 ? '#22c55e' : '#f59e0b') + ';border-radius:4px;"></div></div>';
+            html += '<span style="min-width:60px;text-align:right;">~' + formatNum(m.watch_hours) + '/4K</span></div>';
+            monet.innerHTML = html;
+        }
+
+        // Daily views
+        var dvInfo = document.getElementById('daily-views-info');
+        dvInfo.innerHTML = '<div style="display:flex;gap:16px;">' +
+            '<div><span style="color:var(--fg-dim);">Views totais:</span> <strong style="color:#fff;">' + formatNum(m.total_views) + '</strong></div>' +
+            '<div><span style="color:var(--fg-dim);">Views diarias (est.):</span> <strong style="color:#22c55e;">' + (m.daily_views || 'N/A') + '</strong></div>' +
+            '</div>';
+
+        showToast('Calendario atualizado com dados reais!', 'success', 3000);
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.innerHTML = '&#8635; Atualizar via Analytics';
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+/* ── Copy Narration for ElevenLabs ────────── */
+function copyNarration(fileId) {
+    apiFetch('/file?id=' + fileId).then(function(r) { return r.text(); })
+    .then(function(content) {
+        // Remove [MUSICA:...], [SFX:...], [B-ROLL:...] markers
+        var clean = content.replace(/\[.*?\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+        navigator.clipboard.writeText(clean).then(function() {
+            showToast('Narracao copiada! Cole no ElevenLabs.', 'success', 3000);
+        });
+    }).catch(function(e) { showToast('Erro: ' + e.message, 'error'); });
+}
+
+/* ── Generate Companion Content ────────── */
+function generateCompanion(fileId, type, btn) {
+    var labels = {seo:'SEO Pack', thumbnail:'Thumbnail Prompts', music:'Music Prompts', teaser:'Teaser Prompts'};
+    btn.disabled = true;
+    var origText = btn.textContent;
+    btn.textContent = 'Gerando...';
+
+    apiPost('/api/student/generate-companion', {file_id: fileId, type: type})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.textContent = origText;
+        if (data.ok) {
+            showToast(labels[type] + ' gerado! Salvo nos arquivos.', 'success', 3000);
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    }).catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = origText;
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+/* ── AI Script Judge ────────────────────── */
+function scoreScript(fileId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Avaliando...';
+    var resultDiv = document.getElementById('score-result-' + fileId);
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<div style="text-align:center;color:var(--fg-dim);font-size:12px;padding:8px;">Avaliando roteiro contra o SOP... (30-60s)</div>';
+
+    apiPost('/api/student/score-script', {file_id: fileId})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.textContent = '★ Score';
+        if (!data.ok || !data.score) {
+            resultDiv.innerHTML = '<div style="color:#ef4444;font-size:12px;">Erro: ' + (data.error || 'Falha na avaliacao') + '</div>';
+            return;
+        }
+        var s = data.score;
+        var gradeColor = s.score >= 90 ? '#22c55e' : s.score >= 80 ? '#3b82f6' : s.score >= 70 ? '#f59e0b' : '#ef4444';
+        var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">';
+        html += '<div style="width:56px;height:56px;border-radius:50%;border:3px solid ' + gradeColor + ';display:flex;align-items:center;justify-content:center;flex-direction:column;">';
+        html += '<div style="font-size:20px;font-weight:700;color:' + gradeColor + ';">' + Math.round(s.score) + '</div>';
+        html += '<div style="font-size:10px;color:' + gradeColor + ';">' + s.grade + '</div></div>';
+        html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:' + (s.aprovado ? '#22c55e' : '#ef4444') + '">' + (s.aprovado ? '✓ APROVADO' : '✗ PRECISA MELHORAR') + '</div>';
+        html += '<div style="font-size:11px;color:var(--fg-dim,#888);margin-top:2px;">' + (s.resumo || '') + '</div></div></div>';
+
+        // Criteria bars
+        if (s.criterios) {
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px;">';
+            s.criterios.forEach(function(c) {
+                var barColor = c.nota >= 9 ? '#22c55e' : c.nota >= 7 ? '#3b82f6' : c.nota >= 5 ? '#f59e0b' : '#ef4444';
+                html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;" title="' + (c.feedback || '').replace(/"/g, "'") + '">';
+                html += '<span style="font-size:11px;color:var(--fg-dim);min-width:80px;">' + c.nome + '</span>';
+                html += '<div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">';
+                html += '<div style="width:' + (c.nota * 10) + '%;height:100%;background:' + barColor + ';border-radius:3px;"></div></div>';
+                html += '<span style="font-size:11px;font-weight:600;color:' + barColor + ';min-width:20px;text-align:right;">' + c.nota + '</span></div>';
+            });
+            html += '</div>';
+        }
+
+        // Suggestions
+        if (s.sugestoes && s.sugestoes.length > 0) {
+            html += '<div style="font-size:11px;font-weight:600;color:var(--fg-secondary,#ccc);margin-bottom:4px;">Sugestoes de melhoria:</div>';
+            s.sugestoes.forEach(function(sug) {
+                html += '<div style="font-size:11px;color:var(--fg-dim,#888);padding:2px 0 2px 12px;border-left:2px solid #7c3aed;">• ' + sug + '</div>';
+            });
+        }
+
+        resultDiv.innerHTML = html;
+    })
+    .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = '★ Score';
+        resultDiv.innerHTML = '<div style="color:#ef4444;font-size:12px;">Erro: ' + e.message + '</div>';
+    });
+}
+
+/* ── YouTube API Key ────────────────────── */
+function saveYtApiKey() {
+    var key = document.getElementById('yt-api-key').value.trim();
+    if (!key) { showToast('Cole sua YouTube API Key', 'warning'); return; }
+    apiPost('/api/student/save-youtube-key', {api_key: key})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            showToast('YouTube API Key salva! Recarregando...', 'success');
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
     });
 }
 </script>

@@ -222,6 +222,85 @@ def _run_migrations():
         ("ideas_rating", "ALTER TABLE ideas ADD COLUMN rating TEXT DEFAULT ''"),
         ("ideas_used", "ALTER TABLE ideas ADD COLUMN used INTEGER DEFAULT 0"),
         ("ideas_score_details", "ALTER TABLE ideas ADD COLUMN score_details TEXT DEFAULT '{}'"),
+        ("projects_language", "ALTER TABLE projects ADD COLUMN language TEXT DEFAULT 'pt-BR'"),
+        ("files_visible", "ALTER TABLE files ADD COLUMN visible_to_students INTEGER DEFAULT 0"),
+        # v8.7: Student channels
+        ("create_student_channels", """CREATE TABLE IF NOT EXISTS student_channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            channel_name TEXT NOT NULL,
+            channel_url TEXT DEFAULT '',
+            channel_id TEXT DEFAULT '',
+            niche TEXT DEFAULT '',
+            language TEXT DEFAULT 'pt-BR',
+            active INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (student_id) REFERENCES users(id)
+        )"""),
+        # v8.7: Student drive files (track what's in their Drive folder)
+        ("create_student_drive_files", """CREATE TABLE IF NOT EXISTS student_drive_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            file_id INTEGER,
+            drive_file_id TEXT DEFAULT '',
+            drive_folder_id TEXT DEFAULT '',
+            filename TEXT NOT NULL,
+            label TEXT DEFAULT '',
+            category TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (student_id) REFERENCES users(id),
+            FOREIGN KEY (file_id) REFERENCES files(id)
+        )"""),
+        # v8.7: Student Drive folder ID on users table
+        ("users_drive_folder", "ALTER TABLE users ADD COLUMN drive_folder_id TEXT DEFAULT ''"),
+        # v8.7: Schedule info on assignments
+        ("assignments_schedule", "ALTER TABLE assignments ADD COLUMN schedule TEXT DEFAULT '{}'"),
+        # v8.7: Channel ID on progress (which channel this title is for)
+        ("progress_channel_id", "ALTER TABLE progress ADD COLUMN channel_id INTEGER DEFAULT 0"),
+        # v8.9: Notifications
+        ("create_notifications", """CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT DEFAULT '',
+            read INTEGER DEFAULT 0,
+            link TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )"""),
+        # v8.9: AI usage tracking
+        ("create_ai_usage", """CREATE TABLE IF NOT EXISTS ai_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT DEFAULT '',
+            user_id INTEGER DEFAULT 0,
+            model TEXT DEFAULT '',
+            prompt_tokens INTEGER DEFAULT 0,
+            completion_tokens INTEGER DEFAULT 0,
+            total_tokens INTEGER DEFAULT 0,
+            estimated_cost REAL DEFAULT 0.0,
+            operation TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        )"""),
+        ("files_score_json", "ALTER TABLE files ADD COLUMN score_json TEXT DEFAULT ''"),
+        # v9.2: Video performance tracking
+        ("create_video_performance", """CREATE TABLE IF NOT EXISTS video_performance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id INTEGER NOT NULL,
+            channel_id INTEGER DEFAULT 0,
+            video_id TEXT NOT NULL,
+            title TEXT DEFAULT '',
+            published_at TEXT DEFAULT '',
+            views INTEGER DEFAULT 0,
+            likes INTEGER DEFAULT 0,
+            comments INTEGER DEFAULT 0,
+            duration TEXT DEFAULT '',
+            thumbnail_url TEXT DEFAULT '',
+            fetched_at TEXT NOT NULL,
+            FOREIGN KEY (student_id) REFERENCES users(id)
+        )"""),
+        ("student_channels_project_id", "ALTER TABLE student_channels ADD COLUMN project_id TEXT DEFAULT ''"),
+        ("student_channels_stats", "ALTER TABLE student_channels ADD COLUMN cached_stats TEXT DEFAULT ''"),
     ]
     with get_db() as conn:
         for migration_id, sql in migrations:
@@ -301,6 +380,7 @@ def create_project(
     niche_chosen: str = "",
     drive_folder_id: str = "",
     meta: dict | None = None,
+    language: str = "pt-BR",
 ) -> str:
     now = datetime.now().isoformat()
     pid = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{name.lower().replace(' ', '_')[:50]}"
@@ -308,10 +388,10 @@ def create_project(
 
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO projects (id, name, channel_original, niche_chosen, drive_folder_id, drive_folder_url, created_at, updated_at, meta) VALUES (?,?,?,?,?,?,?,?,?)",
-            (pid, name, channel_original, niche_chosen, drive_folder_id, drive_url, now, now, json.dumps(meta or {})),
+            "INSERT INTO projects (id, name, channel_original, niche_chosen, drive_folder_id, drive_folder_url, created_at, updated_at, meta, language) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (pid, name, channel_original, niche_chosen, drive_folder_id, drive_url, now, now, json.dumps(meta or {}), language),
         )
-        log_activity(pid, "project_created", f"Projeto '{name}' criado", conn)
+        log_activity(pid, "project_created", f"Projeto '{name}' criado ({language})", conn)
     return pid
 
 
@@ -331,7 +411,7 @@ def get_project(project_id: str) -> dict | None:
 
 def update_project(project_id: str, **kwargs):
     """Update project fields. Only allowed fields are updated."""
-    allowed = {"name", "channel_original", "niche_chosen", "drive_folder_id", "drive_folder_url", "status", "meta"}
+    allowed = {"name", "channel_original", "niche_chosen", "drive_folder_id", "drive_folder_url", "status", "meta", "language"}
     updates, values = [], []
     for k, v in kwargs.items():
         if k in allowed:
@@ -368,12 +448,12 @@ def delete_project(project_id: str):
 
 # ── Files ────────────────────────────────────────────────
 
-def save_file(project_id: str, category: str, label: str, filename: str, content: str = "", drive_url: str = ""):
+def save_file(project_id: str, category: str, label: str, filename: str, content: str = "", drive_url: str = "", visible_to_students: bool = False):
     now = datetime.now().isoformat()
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO files (project_id, category, label, filename, content, drive_url, created_at) VALUES (?,?,?,?,?,?,?)",
-            (project_id, category, label, filename, content, drive_url, now),
+            "INSERT INTO files (project_id, category, label, filename, content, drive_url, created_at, visible_to_students) VALUES (?,?,?,?,?,?,?,?)",
+            (project_id, category, label, filename, content, drive_url, now, 1 if visible_to_students else 0),
         )
 
 
@@ -689,11 +769,27 @@ def update_user(user_id: int, **kwargs):
 
 
 def delete_user(user_id: int):
-    """Delete user and all assignments/progress."""
+    """Delete user and all related data across all tables."""
     with get_db() as conn:
         conn.execute("DELETE FROM progress WHERE student_id=?", (user_id,))
         conn.execute("DELETE FROM assignments WHERE student_id=?", (user_id,))
         conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+        try:
+            conn.execute("DELETE FROM notifications WHERE user_id=?", (user_id,))
+        except Exception:
+            pass
+        try:
+            conn.execute("DELETE FROM student_channels WHERE student_id=?", (user_id,))
+        except Exception:
+            pass
+        try:
+            conn.execute("DELETE FROM student_drive_files WHERE student_id=?", (user_id,))
+        except Exception:
+            pass
+        try:
+            conn.execute("DELETE FROM video_performance WHERE student_id=?", (user_id,))
+        except Exception:
+            pass
         conn.execute("DELETE FROM users WHERE id=?", (user_id,))
 
 
@@ -924,3 +1020,202 @@ def get_setting(key: str) -> str:
 def set_setting(key: str, value: str):
     with get_db() as conn:
         conn.execute("INSERT OR REPLACE INTO admin_settings (key, value) VALUES (?, ?)", (key, value))
+
+
+# ── Student Channels ────────────────────────────────────
+
+def create_student_channel(student_id: int, channel_name: str, channel_url: str = "",
+                           niche: str = "", language: str = "pt-BR", project_id: str = "") -> int:
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        # Max 5 channels per student
+        count = conn.execute("SELECT COUNT(*) FROM student_channels WHERE student_id=? AND active=1",
+                            (student_id,)).fetchone()[0]
+        if count >= 5:
+            raise ValueError("Limite de 5 canais por aluno")
+        cur = conn.execute(
+            "INSERT INTO student_channels (student_id, channel_name, channel_url, niche, language, project_id, created_at) VALUES (?,?,?,?,?,?,?)",
+            (student_id, channel_name, channel_url, niche, language, project_id, now),
+        )
+        return cur.lastrowid
+
+
+def get_student_channels(student_id: int) -> list[dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM student_channels WHERE student_id=? AND active=1 ORDER BY created_at",
+            (student_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_student_channel(channel_id: int, student_id: int):
+    with get_db() as conn:
+        conn.execute("UPDATE student_channels SET active=0 WHERE id=? AND student_id=?",
+                    (channel_id, student_id))
+
+
+# ── Student Drive Files ─────────────────────────────────
+
+def save_student_drive_file(student_id: int, file_id: int | None, drive_file_id: str,
+                            drive_folder_id: str, filename: str, label: str = "",
+                            category: str = "") -> int:
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        cur = conn.execute(
+            "INSERT INTO student_drive_files (student_id, file_id, drive_file_id, drive_folder_id, filename, label, category, created_at) VALUES (?,?,?,?,?,?,?,?)",
+            (student_id, file_id, drive_file_id, drive_folder_id, filename, label, category, now),
+        )
+        return cur.lastrowid
+
+
+def get_student_drive_files(student_id: int) -> list[dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM student_drive_files WHERE student_id=? ORDER BY created_at DESC",
+            (student_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_student_drive_file(drive_file_id: str, student_id: int):
+    with get_db() as conn:
+        conn.execute("DELETE FROM student_drive_files WHERE drive_file_id=? AND student_id=?",
+                    (drive_file_id, student_id))
+
+
+def get_student_drive_folder(student_id: int) -> str:
+    """Get or return empty string for student's Drive folder ID."""
+    with get_db() as conn:
+        row = conn.execute("SELECT drive_folder_id FROM users WHERE id=?", (student_id,)).fetchone()
+    return (row["drive_folder_id"] or "") if row else ""
+
+
+def set_student_drive_folder(student_id: int, folder_id: str):
+    with get_db() as conn:
+        conn.execute("UPDATE users SET drive_folder_id=? WHERE id=?", (folder_id, student_id))
+
+
+# ── Notifications ───────────────────────────────────────
+
+def create_notification(user_id: int, ntype: str, title: str, message: str = "", link: str = ""):
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO notifications (user_id, type, title, message, link, created_at) VALUES (?,?,?,?,?,?)",
+            (user_id, ntype, title, message, link, now),
+        )
+
+
+def get_notifications(user_id: int, unread_only: bool = False, limit: int = 20) -> list[dict]:
+    with get_db() as conn:
+        if unread_only:
+            rows = conn.execute(
+                "SELECT * FROM notifications WHERE user_id=? AND read=0 ORDER BY created_at DESC LIMIT ?",
+                (user_id, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+                (user_id, limit),
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def mark_notification_read(notification_id: int, user_id: int):
+    with get_db() as conn:
+        conn.execute("UPDATE notifications SET read=1 WHERE id=? AND user_id=?", (notification_id, user_id))
+
+
+def mark_all_notifications_read(user_id: int):
+    with get_db() as conn:
+        conn.execute("UPDATE notifications SET read=1 WHERE user_id=? AND read=0", (user_id,))
+
+
+def count_unread_notifications(user_id: int) -> int:
+    with get_db() as conn:
+        row = conn.execute("SELECT COUNT(*) FROM notifications WHERE user_id=? AND read=0", (user_id,)).fetchone()
+    return row[0] if row else 0
+
+
+# ── AI Usage Tracking ───────────────────────────────────
+
+def log_ai_usage(project_id: str = "", user_id: int = 0, model: str = "",
+                 prompt_tokens: int = 0, completion_tokens: int = 0,
+                 estimated_cost: float = 0.0, operation: str = ""):
+    now = datetime.now().isoformat()
+    total = prompt_tokens + completion_tokens
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO ai_usage (project_id, user_id, model, prompt_tokens, completion_tokens, total_tokens, estimated_cost, operation, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            (project_id, user_id, model, prompt_tokens, completion_tokens, total, estimated_cost, operation, now),
+        )
+
+
+def get_ai_usage_summary() -> dict:
+    with get_db() as conn:
+        total = conn.execute("SELECT COALESCE(SUM(total_tokens),0) as tokens, COALESCE(SUM(estimated_cost),0) as cost, COUNT(*) as calls FROM ai_usage").fetchone()
+        by_project = conn.execute(
+            "SELECT project_id, SUM(total_tokens) as tokens, SUM(estimated_cost) as cost, COUNT(*) as calls FROM ai_usage WHERE project_id!='' GROUP BY project_id ORDER BY cost DESC LIMIT 10"
+        ).fetchall()
+        by_operation = conn.execute(
+            "SELECT operation, SUM(total_tokens) as tokens, SUM(estimated_cost) as cost, COUNT(*) as calls FROM ai_usage GROUP BY operation ORDER BY cost DESC"
+        ).fetchall()
+    return {
+        "total_tokens": total["tokens"],
+        "total_cost": round(total["cost"], 4),
+        "total_calls": total["calls"],
+        "by_project": [dict(r) for r in by_project],
+        "by_operation": [dict(r) for r in by_operation],
+    }
+
+
+# ── Video Performance ───────────────────────────────────
+
+def upsert_video_performance(student_id: int, video_id: str, channel_id: int = 0,
+                              title: str = "", published_at: str = "",
+                              views: int = 0, likes: int = 0, comments: int = 0,
+                              duration: str = "", thumbnail_url: str = ""):
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        existing = conn.execute("SELECT id FROM video_performance WHERE student_id=? AND video_id=?",
+                               (student_id, video_id)).fetchone()
+        if existing:
+            conn.execute("""UPDATE video_performance SET views=?, likes=?, comments=?, fetched_at=?
+                           WHERE student_id=? AND video_id=?""",
+                        (views, likes, comments, now, student_id, video_id))
+        else:
+            conn.execute("""INSERT INTO video_performance
+                           (student_id, channel_id, video_id, title, published_at, views, likes, comments, duration, thumbnail_url, fetched_at)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                        (student_id, channel_id, video_id, title, published_at, views, likes, comments, duration, thumbnail_url, now))
+
+
+def get_video_performance(student_id: int, limit: int = 30) -> list[dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM video_performance WHERE student_id=? ORDER BY published_at DESC LIMIT ?",
+            (student_id, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_performance_summary(student_id: int) -> dict:
+    with get_db() as conn:
+        row = conn.execute("""SELECT COUNT(*) as total_videos,
+            COALESCE(SUM(views),0) as total_views,
+            COALESCE(SUM(likes),0) as total_likes,
+            COALESCE(SUM(comments),0) as total_comments,
+            COALESCE(AVG(views),0) as avg_views,
+            COALESCE(MAX(views),0) as best_views
+            FROM video_performance WHERE student_id=?""", (student_id,)).fetchone()
+        top = conn.execute("""SELECT title, views FROM video_performance
+            WHERE student_id=? ORDER BY views DESC LIMIT 3""", (student_id,)).fetchall()
+    return {
+        "total_videos": row["total_videos"],
+        "total_views": row["total_views"],
+        "total_likes": row["total_likes"],
+        "avg_views": round(row["avg_views"]),
+        "best_views": row["best_views"],
+        "top_videos": [dict(r) for r in top],
+    }

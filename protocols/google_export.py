@@ -10,7 +10,6 @@ from pathlib import Path
 from datetime import datetime
 
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -26,10 +25,23 @@ SCOPES = [
 
 
 def get_credentials():
-    """Authenticate via OAuth. Uses env vars or files for credentials."""
+    """Authenticate via web OAuth (DB token) or env var. No local browser needed.
+
+    Priority:
+    1. Web OAuth token from DB (set via /api/admin/gdrive/auth flow)
+    2. GOOGLE_TOKEN_JSON env var
+    3. Legacy token.json file
+    """
     creds = None
 
-    # Try loading token from env var first (for Docker/production)
+    # Priority 1: Web OAuth token from DB
+    try:
+        from routes.gdrive_routes import get_oauth_credentials
+        return get_oauth_credentials()
+    except (ImportError, RuntimeError, Exception) as e:
+        logger.debug(f"Web OAuth not available: {e}")
+
+    # Priority 2: Env var
     token_json = os.environ.get("GOOGLE_TOKEN_JSON", "")
     if token_json:
         try:
@@ -37,29 +49,23 @@ def get_credentials():
         except Exception as e:
             logger.warning(f"Failed to load token from env: {e}")
 
-    # Fall back to file
+    # Priority 3: Legacy file
     if not creds and TOKEN_PATH.exists():
         creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
+            # Save refreshed token
+            try:
+                TOKEN_PATH.write_text(creds.to_json(), encoding="utf-8")
+            except Exception:
+                pass
         else:
-            if not CREDENTIALS_PATH.exists():
-                raise FileNotFoundError(
-                    "Google credentials not found. Copy credentials.json.example to credentials.json "
-                    "and fill in your OAuth client ID/secret, or set GOOGLE_TOKEN_JSON env var."
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(
-                str(CREDENTIALS_PATH), SCOPES
+            raise RuntimeError(
+                "Google Drive nao conectado. Conecte via Admin Panel > Google Drive, "
+                "ou defina GOOGLE_TOKEN_JSON nas env vars."
             )
-            creds = flow.run_local_server(port=8090)
-
-        # Save refreshed/new token
-        try:
-            TOKEN_PATH.write_text(creds.to_json(), encoding="utf-8")
-        except Exception:
-            pass
 
     return creds
 

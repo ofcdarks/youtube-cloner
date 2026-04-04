@@ -2,6 +2,14 @@
 
 {% block title %}YT Cloner - Dashboard{% endblock %}
 
+{% block extra_style %}
+.visibility-toggle{background:none;border:1px solid #333;padding:2px 6px;border-radius:4px;cursor:pointer;font-size:12px;min-width:28px;text-align:center;transition:all .2s}
+.vis-on{border-color:#22c55e;color:#22c55e}
+.vis-off{border-color:#ef4444;color:#ef4444;opacity:.5}
+.vis-on:hover{background:rgba(34,197,94,.1)}
+.vis-off:hover{background:rgba(239,68,68,.1);opacity:1}
+{% endblock %}
+
 {% block body %}
 <div class="topbar">
     <h1>YT Channel Cloner</h1>
@@ -30,7 +38,6 @@
         <a href="/admin/projects" class="link-accent">Projetos</a>
         <a href="/admin/panel" class="link-accent" style="color:#f59e0b">&#9881; Admin</a>
         <a href="/admin/students" class="link-purple">Alunos</a>
-        <a href="/admin/notebooklm" style="color:#06b6d4">NotebookLM</a>
         {% endif %}
         <a href="/logout" class="link-danger">Sair</a>
     </div>
@@ -43,7 +50,10 @@
     <div class="project-info">
         Projeto: <strong>{{ current_project.name }}</strong>
         {% if current_project.channel_original %}
-        <span class="sep">|</span> Canal: <a href="{{ current_project.channel_original }}" target="_blank">{{ current_project.channel_original }}</a>
+        <span class="sep">|</span> Canal: <a href="{{ current_project.channel_original }}" target="_blank" style="color:#a78bfa;text-decoration:underline">{{ current_project.channel_original }}</a>
+        {% endif %}
+        {% if current_project.language %}
+        <span class="sep">|</span> <span style="background:rgba(59,130,246,.15);color:#3b82f6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">&#127760; {{ current_project.language }}</span>
         {% endif %}
         {% if sop_source %}
         <span class="sep">|</span> <span class="sop-badge">SOP via {{ sop_source }}</span>
@@ -127,6 +137,19 @@
                     <label for="niche-name">Nome do Nicho</label>
                     <input type="text" id="niche-name" class="form-input" placeholder="Ex: Dark Deals, Heist Architects...">
                 </div>
+                <div class="form-group" style="min-width:140px">
+                    <label for="project-lang">Idioma do Canal</label>
+                    <select id="project-lang" class="form-input">
+                        <option value="pt-BR">Portugues (BR)</option>
+                        <option value="en">English</option>
+                        <option value="es">Espanol</option>
+                        <option value="fr">Francais</option>
+                        <option value="de">Deutsch</option>
+                        <option value="it">Italiano</option>
+                        <option value="ja">Japones</option>
+                        <option value="ko">Coreano</option>
+                    </select>
+                </div>
                 <div>
                     <button class="btn-primary" id="analyze-btn" onclick="analyzeChannel()">
                         &#128269; Analisar Canal
@@ -134,18 +157,20 @@
                 </div>
             </div>
 
-            <!-- NotebookLM SOP Section -->
+            <!-- SOP Manual Section -->
             <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                     <label style="font-size:13px;font-weight:600;color:var(--fg-primary);display:flex;align-items:center;gap:6px;">
-                        &#129302; SOP via NotebookLM <span style="font-size:10px;color:var(--fg-dim);font-weight:400;">(opcional — melhora a qualidade)</span>
+                        &#128203; SOP Manual <span style="font-size:10px;color:var(--fg-dim);font-weight:400;">(opcional — melhora a qualidade)</span>
                     </label>
-                    <button type="button" onclick="generateNlmPrompt()" style="padding:5px 12px;font-size:11px;background:#7c3aed;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:500;">&#128203; Copiar Prompt 1/5</button>
+                    <div style="display:flex;gap:6px;">
+                        <button type="button" onclick="generateNlmPrompt()" style="padding:5px 12px;font-size:11px;background:#7c3aed;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:500;">&#128203; Copiar Prompt 1/5</button>
+                    </div>
                 </div>
                 <p style="font-size:11px;color:var(--fg-dim);margin-bottom:8px;line-height:1.5;">
-                    <strong>Como usar:</strong> 1) Clique "Copiar Prompt 1/5" &rarr; 2) Cole no NotebookLM e aguarde resposta &rarr; 3) Clique "Proximo Prompt" e repita ate 5/5 &rarr; 4) Copie TODAS as respostas e cole abaixo &rarr; 5) "Analisar Canal"
+                    <strong>Como usar:</strong> 1) Clique "Copiar Prompt 1/5" &rarr; 2) Cole no NotebookLM (ou qualquer AI) e aguarde resposta &rarr; 3) Clique "Proximo Prompt" e repita ate 5/5 &rarr; 4) Copie TODAS as respostas e cole abaixo &rarr; 5) "Analisar Canal"
                 </p>
-                <textarea id="nlm-sop-response" class="form-input" style="min-height:100px;resize:vertical;font-size:12px;font-family:monospace;" placeholder="Cole aqui a resposta do NotebookLM (o SOP gerado). Se deixar vazio, a IA gera automaticamente via transcricoes." oninput="updateNlmInfo()"></textarea>
+                <textarea id="nlm-sop-response" class="form-input" style="min-height:100px;resize:vertical;font-size:12px;font-family:monospace;" placeholder="Cole aqui o SOP gerado (respostas dos 5 prompts). Se deixar vazio, a IA gera automaticamente via transcricoes." oninput="updateNlmInfo()"></textarea>
                 <div id="nlm-sop-info" style="font-size:10px;color:var(--fg-dim);margin-top:4px;"></div>
             </div>
         </div>
@@ -189,7 +214,16 @@
         <div>
             <!-- ARQUIVOS POR CATEGORIA -->
             <div class="section">
-                <div class="section-title"><span class="sec-icon">&#128193;</span> Arquivos do Projeto</div>
+                <div class="section-title" style="justify-content:space-between">
+                    <span><span class="sec-icon">&#128193;</span> Arquivos do Projeto</span>
+                    {% if current_project and user and user.role == 'admin' %}
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-primary" style="font-size:11px;padding:4px 12px;background:#f59e0b;border-color:#f59e0b;" onclick="trendRadar()" id="trend-radar-btn" title="Detectar tendencias quentes no nicho">&#128225; Radar</button>
+                        <button class="btn-primary" style="font-size:11px;padding:4px 12px;background:#3b82f6;border-color:#3b82f6;" onclick="evolveSOP('canal')" id="evolve-canal-btn" title="Evoluir SOP baseado no canal original modelado">&#128202; SOP Canal</button>
+                        <button class="btn-primary" style="font-size:11px;padding:4px 12px;background:#7c3aed;border-color:#7c3aed;" onclick="evolveSOP('alunos')" id="evolve-alunos-btn" title="Evoluir SOP baseado nos resultados dos alunos">&#129504; SOP Alunos</button>
+                    </div>
+                    {% endif %}
+                </div>
                 {% for key, cat in categories.items() %}
                 {% if cat.files %}
                 {% if key == 'analise' and (not user or user.role != 'admin') %}
@@ -199,14 +233,24 @@
                         <span class="cat-icon">{{ cat.icon|safe }}</span>
                         <span class="cat-label">{{ cat.label }}</span>
                         <span class="cat-count">{{ cat.files|length }}</span>
+                        {% if user and user.role == 'admin' %}
+                        <button type="button" onclick="bulkVisibility('{{ current_project.id if current_project else '' }}', '{{ key }}', true)" style="margin-left:auto;background:none;border:1px solid #22c55e;color:#22c55e;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer" title="Liberar todos para alunos">&#128065; Todos</button>
+                        <button type="button" onclick="bulkVisibility('{{ current_project.id if current_project else '' }}', '{{ key }}', false)" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer" title="Ocultar todos dos alunos">&#128683; Todos</button>
+                        {% endif %}
                     </div>
                     <div class="category-files">
                         {% for f in cat.files %}
-                        <div class="file-item">
+                        <div class="file-item" id="file-row-{{ f.id }}">
                             <span class="file-dot" style="background:{{ cat.color }}"></span>
                             <span class="file-label" onclick="loadFile('{{ f.path }}')" style="cursor:pointer" role="button" tabindex="0">{{ f.name|replace("loaded_dice_", "")|replace("_", " ")|title }}</span>
                             <span class="file-size">{{ (f.size // 1024) }}KB</span>
                             <button type="button" class="copy-file-btn" onclick="copyFile('{{ f.path }}')" title="Copiar conteudo" aria-label="Copiar conteudo">&#128203;</button>
+                            {% if user and user.role == 'admin' and f.id %}
+                            <button type="button" class="visibility-toggle {% if f.visible %}vis-on{% else %}vis-off{% endif %}" id="vis-{{ f.id }}" onclick="toggleVisibility({{ f.id }})" title="{{ 'Visivel para alunos' if f.visible else 'Oculto dos alunos' }}">
+                                {{ '&#128065;' if f.visible else '&#128683;' }}
+                            </button>
+                            <button type="button" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 4px;opacity:.5" onclick="deleteFile({{ f.id }}, '{{ f.name|replace("'", "")|truncate(30) }}')" title="Excluir arquivo">&#128465;</button>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -588,6 +632,7 @@ function analyzeChannel() {
     const url = document.getElementById('channel-url').value.trim();
     const nicheName = document.getElementById('niche-name').value.trim();
     const nlmSop = (document.getElementById('nlm-sop-response') || {}).value || '';
+    const lang = document.getElementById('project-lang').value;
 
     if (!url) { showToast('Informe a URL do canal', 'warning'); return; }
     if (!nicheName) { showToast('Informe o nome do nicho', 'warning'); return; }
@@ -597,40 +642,29 @@ function analyzeChannel() {
     btn.innerHTML = '&#9881; Analisando...';
 
     showProgressModal('Analisando Canal');
-    updateProgress(5, 'Criando projeto...');
+    updateProgress(5, 'Iniciando pipeline...');
 
-    let pct = 5;
-    const hasNlmSop = nlmSop.trim().length > 200;
-    const steps = hasNlmSop ? [
-        {at: 10, msg: '&#129302; Usando SOP do NotebookLM...'},
-        {at: 30, msg: 'Processando SOP (' + (nlmSop.length/1000).toFixed(0) + 'KB)...'},
-        {at: 50, msg: 'Gerando nichos derivados...'},
-        {at: 70, msg: 'Gerando 30 titulos virais...'},
-        {at: 85, msg: 'Gerando SEO Pack + Mind Map...'},
-        {at: 95, msg: 'Salvando no banco de dados...'},
-    ] : [
-        {at: 10, msg: 'Baixando transcricoes do canal...'},
-        {at: 25, msg: 'Gerando SOP via AI...'},
-        {at: 45, msg: 'Analisando conceito e estrategia...'},
-        {at: 60, msg: 'Gerando nichos derivados...'},
-        {at: 75, msg: 'Gerando 30 titulos virais...'},
-        {at: 85, msg: 'Gerando SEO Pack + Mind Map...'},
-        {at: 95, msg: 'Salvando no banco de dados...'},
-    ];
-    let stepIdx = 0;
-    const stepDelay = hasNlmSop ? 3000 : 5000;
-    const analyzeInterval = setInterval(() => {
-        if (stepIdx < steps.length) {
-            pct = steps[stepIdx].at;
-            updateProgress(pct, steps[stepIdx].msg);
-            stepIdx++;
-        } else {
-            // Keep showing "processing" animation after all steps
-            updateProgress(96, '&#9881; Processando... aguarde (pode levar 1-3 min)');
-        }
-    }, stepDelay);
+    // SSE — real-time progress from server
+    var sse = null;
+    try {
+        sse = new EventSource('/api/admin/pipeline-progress?niche=' + encodeURIComponent(nicheName));
+        sse.onmessage = function(e) {
+            try {
+                var d = JSON.parse(e.data);
+                if (d.done) { sse.close(); return; }
+                if (d.error) { sse.close(); return; }
+                if (d.pct !== undefined) {
+                    var icon = d.step >= d.total ? '&#10003;' : '&#9881;';
+                    updateProgress(d.pct, icon + ' [' + d.step + '/' + d.total + '] ' + d.label + (d.detail ? ' — ' + d.detail : ''));
+                }
+            } catch(err) {}
+        };
+        sse.onerror = function() { sse.close(); };
+    } catch(err) {
+        console.warn('SSE not available, falling back');
+    }
 
-    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, nlm_sop: nlmSop.trim()})
+    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, nlm_sop: nlmSop.trim(), language: lang})
     .then(r => {
         if (!r.ok) {
             return r.text().then(txt => {
@@ -640,7 +674,7 @@ function analyzeChannel() {
         return r.json();
     })
     .then(data => {
-        clearInterval(analyzeInterval);
+        if (sse) sse.close();
         if (data.ok) {
             const source = data.sop_source || 'AI';
             updateProgress(100, '&#10003; Concluido! SOP via ' + source + ' + ' + data.niches_generated + ' nichos + ' + data.titles_generated + ' titulos');
@@ -658,7 +692,7 @@ function analyzeChannel() {
         }
     })
     .catch(e => {
-        clearInterval(analyzeInterval);
+        if (sse) sse.close();
         updateProgress(0, '&#10007; Erro');
         closeProgressModal();
         showToast('Erro na analise: ' + (e.message || 'timeout/rede'), 'error', 8000);
@@ -747,5 +781,129 @@ document.addEventListener('DOMContentLoaded', function() {
         refreshYoutubeStats();
     }
 });
+
+/* ── File Visibility Toggle ─────────────────── */
+function toggleVisibility(fileId) {
+    apiPost('/api/admin/toggle-file-visibility', {file_id: fileId})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            var btn = document.getElementById('vis-' + fileId);
+            if (btn) {
+                if (data.visible) {
+                    btn.innerHTML = '&#128065;';
+                    btn.className = 'visibility-toggle vis-on';
+                    btn.title = 'Visivel para alunos';
+                } else {
+                    btn.innerHTML = '&#128683;';
+                    btn.className = 'visibility-toggle vis-off';
+                    btn.title = 'Oculto dos alunos';
+                }
+            }
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    });
+}
+
+function bulkVisibility(projectId, category, visible) {
+    if (!projectId) return;
+    apiPost('/api/admin/bulk-file-visibility', {project_id: projectId, category: category, visible: visible})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            showToast(visible ? 'Todos liberados para alunos' : 'Todos ocultados', 'success', 2000);
+            setTimeout(function() { location.reload(); }, 1000);
+        }
+    });
+}
+
+function evolveSOP(mode) {
+    var projectId = window.__CURRENT_PROJECT_ID;
+    if (!projectId) { showToast('Selecione um projeto primeiro', 'warning'); return; }
+
+    var btnId = mode === 'canal' ? 'evolve-canal-btn' : 'evolve-alunos-btn';
+    var btn = document.getElementById(btnId);
+    var label = mode === 'canal' ? 'canal modelo (YouTube API)' : 'resultados dos alunos';
+    btn.disabled = true;
+    btn.textContent = 'Analisando...';
+    var loading = showToast('Evoluindo SOP baseado no ' + label + '...', 'loading');
+
+    apiPost('/api/admin/evolve-sop', {project_id: projectId, mode: mode})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.innerHTML = mode === 'canal' ? '&#128202; SOP Canal' : '&#129504; SOP Alunos';
+        if (data.ok) {
+            showToast('SOP evoluido! Fonte: ' + data.source + ' (' + data.videos_analyzed + ' videos). Relatorio salvo.', 'success', 5000);
+            setTimeout(function() { location.reload(); }, 2000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error', 6000);
+        }
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.innerHTML = mode === 'canal' ? '&#128202; SOP Canal' : '&#129504; SOP Alunos';
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+function deleteFile(fileId, name) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:999;';
+    overlay.innerHTML = '<div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:24px;max-width:400px;width:90%;text-align:center;">' +
+        '<div style="font-size:24px;margin-bottom:8px;">&#128465;</div>' +
+        '<div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:6px;">Excluir arquivo</div>' +
+        '<div style="font-size:13px;color:#888;margin-bottom:16px;">"' + name + '"</div>' +
+        '<div style="display:flex;gap:10px;justify-content:center;">' +
+        '<button onclick="this.closest(\'div\').parentElement.parentElement.remove()" style="padding:7px 18px;background:transparent;border:1px solid #444;color:#999;border-radius:8px;cursor:pointer;font-size:13px;">Cancelar</button>' +
+        '<button id="cf-del-' + fileId + '" style="padding:7px 18px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;">Excluir</button>' +
+        '</div></div>';
+    document.body.appendChild(overlay);
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    document.getElementById('cf-del-' + fileId).onclick = function() {
+        this.textContent = '...';
+        apiPost('/api/admin/delete-file', {file_id: fileId})
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            overlay.remove();
+            if (d.ok) {
+                var row = document.getElementById('file-row-' + fileId);
+                if (row) { row.style.opacity = '0'; setTimeout(function() { row.remove(); }, 300); }
+            } else { showToast('Erro: ' + (d.error || ''), 'error'); }
+        }).catch(function(e) { overlay.remove(); showToast('Erro: ' + e.message, 'error'); });
+    };
+}
+
+function trendRadar() {
+    var projectId = window.__CURRENT_PROJECT_ID;
+    if (!projectId) { showToast('Selecione um projeto primeiro', 'warning'); return; }
+    var btn = document.getElementById('trend-radar-btn');
+    btn.disabled = true;
+    btn.textContent = 'Escaneando...';
+    var loading = showToast('Escaneando YouTube + Google Trends...', 'loading');
+
+    apiPost('/api/admin/trend-radar', {project_id: projectId})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.innerHTML = '&#128225; Radar';
+        if (data.ok) {
+            showToast('Radar concluido! ' + data.trending_count + ' videos analisados. Relatorio salvo nos arquivos.', 'success', 5000);
+            setTimeout(function() { location.reload(); }, 2000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.innerHTML = '&#128225; Radar';
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
 </script>
 {% endblock %}

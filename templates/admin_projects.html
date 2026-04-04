@@ -44,9 +44,12 @@
                     <td style="text-align:center">{{ p.script_count or 0 }}</td>
                     <td>
                         {% if p.drive_folder_url %}
-                        <a href="{{ p.drive_folder_url }}" target="_blank" class="badge badge-api" style="text-decoration:none">Abrir</a>
+                        <div style="display:flex;gap:4px">
+                            <a href="{{ p.drive_folder_url }}" target="_blank" class="badge badge-api" style="text-decoration:none">Abrir</a>
+                            <button class="badge" style="background:#f59e0b;color:#000;border:none;cursor:pointer;font-size:10px" onclick="syncDrive('{{ p.id }}', '{{ p.name }}')" id="sync-btn-{{ p.id }}" title="Re-sincronizar arquivos no Drive">&#8635;</button>
+                        </div>
                         {% else %}
-                        <span class="badge badge-no-api">-</span>
+                        <button class="badge" style="background:#7c3aed;color:#fff;border:none;cursor:pointer;font-size:11px" onclick="connectDrive('{{ p.id }}', '{{ p.name }}')" id="drive-btn-{{ p.id }}">&#128193; Conectar</button>
                         {% endif %}
                     </td>
                     <td>
@@ -54,8 +57,9 @@
                     </td>
                     <td style="font-size:.78em;color:#666">{{ p.created_at[:10] if p.created_at else '-' }}</td>
                     <td>
-                        <div style="display:flex;gap:6px">
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <a href="/?project={{ p.id }}" class="btn-primary" style="font-size:.72em;padding:4px 10px;text-decoration:none">Dashboard</a>
+                            <button style="font-size:.72em;padding:4px 10px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer" onclick="cloneProject('{{ p.id }}', '{{ p.name }}')" title="Clonar para outro idioma">&#127760; Clone</button>
                             <button class="btn-danger" style="font-size:.72em;padding:4px 10px" onclick="deleteProject('{{ p.id }}', '{{ p.name }}')" aria-label="Excluir projeto {{ p.name }}">Excluir</button>
                         </div>
                     </td>
@@ -93,6 +97,91 @@ function deleteProject(projectId, name) {
             }
         })
         .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function connectDrive(projectId, name) {
+    var btn = document.getElementById('drive-btn-' + projectId);
+    if (btn) { btn.disabled = true; btn.textContent = 'Conectando...'; }
+    var loading = showToast('Criando pasta no Drive e enviando arquivos...', 'loading');
+    apiPost('/api/admin/connect-drive', {project_id: projectId})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        if (data.ok) {
+            if (data.already_connected) {
+                showToast('Drive ja conectado!', 'success');
+            } else {
+                showToast('Drive conectado! ' + (data.uploaded || 0) + ' arquivos enviados.', 'success', 4000);
+            }
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+            if (btn) { btn.disabled = false; btn.textContent = '📁 Conectar'; }
+        }
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        showToast('Erro: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '📁 Conectar'; }
+    });
+}
+
+function cloneProject(projectId, name) {
+    var langs = [
+        {code:'en', label:'English'},
+        {code:'es', label:'Espanol'},
+        {code:'pt-BR', label:'Portugues BR'},
+        {code:'fr', label:'Francais'},
+        {code:'de', label:'Deutsch'},
+        {code:'it', label:'Italiano'},
+        {code:'ja', label:'Japones'},
+        {code:'ko', label:'Coreano'}
+    ];
+    var html = 'Clonar <strong>"' + name + '"</strong> para outro idioma:<br><br>';
+    html += '<select id="clone-lang" class="form-input" style="margin-bottom:8px">';
+    langs.forEach(function(l) { html += '<option value="' + l.code + '">' + l.label + '</option>'; });
+    html += '</select>';
+    html += '<input type="text" id="clone-name" class="form-input" placeholder="Nome do novo projeto (opcional)" style="margin-bottom:8px">';
+    html += '<br><small style="color:#888">Nao e traducao — e ADAPTACAO CULTURAL completa (hooks, expressoes, SEO).</small>';
+    showConfirm('Clonar Projeto', html, function() {
+        var lang = document.getElementById('clone-lang').value;
+        var newName = document.getElementById('clone-name').value.trim();
+        var loading = showToast('Clonando e adaptando SOP + 30 titulos para ' + lang + '...', 'loading');
+        apiPost('/api/admin/clone-language', {project_id: projectId, target_language: lang, new_name: newName})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Projeto clonado! "' + data.name + '" (' + data.target_lang + ')', 'success', 4000);
+                setTimeout(function() { location.reload(); }, 2000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function syncDrive(projectId, name) {
+    var btn = document.getElementById('sync-btn-' + projectId);
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    var loading = showToast('Sincronizando arquivos no Drive...', 'loading');
+    apiPost('/api/admin/sync-drive', {project_id: projectId})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        if (data.ok) {
+            showToast('Drive sincronizado! ' + (data.uploaded || 0) + '/14 arquivos.', 'success', 4000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#8635;'; }
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        showToast('Erro: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#8635;'; }
     });
 }
 </script>

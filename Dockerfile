@@ -13,17 +13,13 @@ FROM python:3.11-slim
 
 LABEL maintainer="YT Cloner Team"
 LABEL description="YouTube Channel Cloner - AI-powered channel analysis and content generation"
-LABEL version="3.3"
+LABEL version="8.5"
 
 WORKDIR /app
 
-# System deps + Playwright browser deps
+# System deps (no Playwright needed)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg curl ca-certificates gosu \
-    # Playwright Chromium deps
-    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
-    libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 \
-    libpango-1.0-0 libcairo2 libasound2 libxshmfence1 \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -31,17 +27,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Python deps from stage 1
 COPY --from=deps /install /usr/local
 
-# Playwright browsers go to a shared path (not user-specific)
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-
-# Install Playwright Chromium browser
-RUN python -m playwright install --with-deps chromium && \
-    chmod -R 755 /ms-playwright
-
 # Application code
 COPY . .
 
-# Remove sensitive files
+# Remove sensitive credential files from image
 RUN rm -f credentials.json token.json service_account.json .env 2>/dev/null || true
 
 # Seed data
@@ -51,7 +40,7 @@ RUN cp -r output/ /app/seed_output/ 2>/dev/null || true
 RUN useradd -m -r appuser && \
     chown -R appuser:appuser /app && \
     mkdir -p /app/output && chown -R appuser:appuser /app/output && \
-    mkdir -p /home/appuser/.notebooklm && chown -R appuser:appuser /home/appuser
+    chown -R appuser:appuser /home/appuser
 
 # Entrypoint fixes volume permissions then starts as appuser
 COPY entrypoint.sh /entrypoint.sh

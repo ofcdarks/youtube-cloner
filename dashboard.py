@@ -34,7 +34,7 @@ from auth import (
 from services import (
     get_filesystem_projects, get_project_files, get_output_files,
     build_categories, load_ideas, validate_file_path, validate_project_id,
-    analyze_via_notebooklm, analyze_via_transcripts,
+    analyze_via_transcripts,
     sanitize_niche_name, validate_url, generate_mindmap_html,
 )
 
@@ -46,7 +46,7 @@ logger = logging.getLogger("ytcloner")
 app = FastAPI(title="YT Channel Cloner Dashboard", docs_url=None, redoc_url=None)
 
 # Rate limiting
-limiter = Limiter(key_func=get_remote_address)
+from rate_limit import limiter
 app.state.limiter = limiter
 
 
@@ -126,59 +126,30 @@ async def startup():
     except Exception as e:
         logger.debug(f"Seed: {e}")
 
-    # NotebookLM credentials: restore from env → DB → volume backup
-    try:
-        import base64
-        nlm_dir = Path.home() / ".notebooklm"
-        nlm_file = nlm_dir / "storage_state.json"
-        nlm_backup = OUTPUT_DIR / ".nlm_storage_state.json"
-
-        restored = False
-
-        # 1. From NOTEBOOKLM_CREDENTIALS env var
-        nlm_creds = os.environ.get("NOTEBOOKLM_CREDENTIALS", "")
-        if nlm_creds and not nlm_file.exists():
-            nlm_dir.mkdir(parents=True, exist_ok=True)
-            nlm_file.write_text(base64.b64decode(nlm_creds.encode()).decode(), encoding="utf-8")
-            restored = True
-
-        # 2. From DB setting (saved by bookmarklet)
-        if not nlm_file.exists():
-            try:
-                from database import get_setting
-                b64 = get_setting("notebooklm_storage_state")
-                if b64:
-                    nlm_dir.mkdir(parents=True, exist_ok=True)
-                    nlm_file.write_text(base64.b64decode(b64.encode()).decode(), encoding="utf-8")
-                    restored = True
-            except Exception:
-                pass
-
-        # 3. From volume backup
-        if not nlm_file.exists() and nlm_backup.exists():
-            nlm_dir.mkdir(parents=True, exist_ok=True)
-            nlm_file.write_text(nlm_backup.read_text(encoding="utf-8"), encoding="utf-8")
-            restored = True
-
-        # Save backup to volume (survives container restart)
-        if nlm_file.exists():
-            try:
-                nlm_backup.write_text(nlm_file.read_text(encoding="utf-8"), encoding="utf-8")
-            except Exception:
-                pass
-
-        # Restore context.json from env
-        ctx = os.environ.get("NOTEBOOKLM_CONTEXT", "")
-        if ctx:
-            nlm_dir.mkdir(parents=True, exist_ok=True)
-            (nlm_dir / "context.json").write_text(base64.b64decode(ctx.encode()).decode(), encoding="utf-8")
-
-        if nlm_file.exists():
-            logger.info(f"NotebookLM: credentials ready {'(restored)' if restored else '(existing)'}")
-        else:
-            logger.info("NotebookLM: no credentials (set NOTEBOOKLM_CREDENTIALS env var)")
-    except Exception as e:
-        logger.debug(f"NotebookLM setup: {e}")
+    # Log Google Drive config status
+    _gid = os.environ.get("GOOGLE_CLIENT_ID", "")
+    _gsec = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    _guri = os.environ.get("GOOGLE_REDIRECT_URI", "")
+    if _gid:
+        logger.info(f"Google Drive: client_id={_gid[:20]}... redirect={_guri}")
+    else:
+        logger.info("Google Drive: GOOGLE_CLIENT_ID not set — Drive integration disabled")
+        # Try to load from .env directly as last resort
+        try:
+            from pathlib import Path as _P
+            _env_file = _P(__file__).parent / ".env"
+            if _env_file.exists():
+                for line in _env_file.read_text().splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k, v = k.strip(), v.strip()
+                        if k in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI"):
+                            if k not in os.environ or not os.environ[k]:
+                                os.environ[k] = v
+                                logger.info(f"Google Drive: loaded {k} from .env file")
+        except Exception as e:
+            logger.debug(f"Failed to load Google vars from .env: {e}")
 
 
 # ── Exception Handlers ───────────────────────────────────
@@ -208,6 +179,59 @@ async def custom_http_exception(request: Request, exc):
 # ── Include Route Modules ────────────────────────────────
 from routes.auth_routes import router as auth_router
 app.include_router(auth_router)
+
+from routes.gdrive_routes import router as gdrive_router
+app.include_router(gdrive_router)
+
+from routes.api_routes import router as api_router
+app.include_router(api_router)
+
+from routes.student_routes import router as student_router
+app.include_router(student_router)
+
+
+# ── SSE Progress Endpoint ────────────────────────────────
+
+from fastapi.responses import StreamingResponse
+
+@app.get("/api/admin/pipeline-progress")
+async def api_pipeline_progress(request: Request, niche: str = "", user=Depends(require_admin)):
+    """SSE endpoint for real-time pipeline progress."""
+    import asyncio
+    from progress_store import get_progress
+
+    async def event_stream():
+        key = f"pipeline_{niche}"
+        last_step = -1
+        no_update_count = 0
+
+        while True:
+            if await request.is_disconnected():
+                break
+
+            progress = get_progress(key)
+            if progress and progress.get("step", 0) != last_step:
+                last_step = progress["step"]
+                no_update_count = 0
+                import json
+                yield f"data: {json.dumps(progress)}\n\n"
+
+                # Pipeline complete
+                if progress.get("step", 0) >= progress.get("total", 12):
+                    yield f"data: {json.dumps({'done': True})}\n\n"
+                    break
+            else:
+                no_update_count += 1
+
+            # Timeout after 10 minutes of no updates
+            if no_update_count > 600:
+                yield f"data: {json.dumps({'error': 'timeout'})}\n\n"
+                break
+
+            await asyncio.sleep(1)
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # ══════════════════════════════════════════════════════════
@@ -266,6 +290,7 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
                 "size": len(f.get("content", "") or ""),
                 "label": f.get("label", f.get("filename", "")),
                 "id": f.get("id", 0),
+                "visible": f.get("visible_to_students", 0),
             })
 
     # Mind map path
@@ -310,43 +335,6 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
                 pass
         sop_source = meta.get("sop_source", "") if isinstance(meta, dict) else ""
 
-    # NotebookLM status + last notebook ID
-    nlm_connected = False
-    nlm_notebook_id = ""
-    nlm_notebook_title = ""
-    try:
-        nlm_connected = (Path.home() / ".notebooklm" / "storage_state.json").exists()
-    except Exception:
-        pass
-
-    # Get notebook ID from: 1) DB setting, 2) NOTEBOOKLM_CONTEXT env var, 3) context.json file
-    try:
-        from database import get_setting
-        nlm_notebook_id = get_setting("notebooklm_notebook_id") or ""
-    except Exception:
-        pass
-
-    if not nlm_notebook_id:
-        try:
-            import base64
-            ctx_b64 = os.environ.get("NOTEBOOKLM_CONTEXT", "")
-            if ctx_b64:
-                ctx_data = json.loads(base64.b64decode(ctx_b64).decode())
-                nlm_notebook_id = ctx_data.get("notebook_id", "")
-                nlm_notebook_title = ctx_data.get("title", "")
-        except Exception:
-            pass
-
-    if not nlm_notebook_id:
-        try:
-            ctx_file = Path.home() / ".notebooklm" / "context.json"
-            if ctx_file.exists():
-                ctx_data = json.loads(ctx_file.read_text(encoding="utf-8"))
-                nlm_notebook_id = ctx_data.get("notebook_id", "")
-                nlm_notebook_title = ctx_data.get("title", "")
-        except Exception:
-            pass
-
     return render(request, "dashboard.html", {
         "user": user,
         "all_projects": projects,
@@ -363,21 +351,42 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
         "mindmap_path": mindmap_path,
         "drive_links": drive_links,
         "sop_source": sop_source,
-        "nlm_connected": nlm_connected,
-        "nlm_notebook_id": nlm_notebook_id,
-        "nlm_notebook_title": nlm_notebook_title,
     })
 
 
 @app.get("/output-file")
 async def serve_output_file(request: Request, name: str = "", user=Depends(require_auth)):
-    """Serve files from output directory — checks disk first, then DB."""
+    """Serve files from output directory — checks disk first, then DB.
+    Students can only access files from their assigned projects.
+    """
     if not name:
         return JSONResponse({"error": "nome obrigatorio"}, status_code=400)
 
     blocked = [".db", ".db-wal", ".db-shm", ".key", ".pem"]
     if any(name.lower().endswith(ext) for ext in blocked):
         return JSONResponse({"error": "Acesso negado"}, status_code=403)
+
+    # Student access control: verify file belongs to an assigned project
+    if user.get("role") != "admin":
+        try:
+            from database import get_db
+            filename = Path(name).name
+            with get_db() as conn:
+                # Check if file is in a project the student is assigned to AND visible
+                allowed = conn.execute("""
+                    SELECT f.id FROM files f
+                    JOIN assignments a ON a.project_id = f.project_id AND a.student_id = ?
+                    WHERE f.filename = ? AND f.visible_to_students = 1
+                    LIMIT 1
+                """, (user["id"], filename)).fetchone()
+
+                # Also allow student-specific filesystem files
+                is_student_file = filename.startswith(f"roteiro_student_{user['id']}_")
+
+                if not allowed and not is_student_file:
+                    return JSONResponse({"error": "Acesso negado"}, status_code=403)
+        except Exception:
+            pass  # Fail open for admin, fail closed handled above
 
     # Determine content type
     suffix = Path(name).suffix.lower()
@@ -469,248 +478,8 @@ async def read_project(request: Request, id: str = "", user=Depends(require_auth
 
 
 # ══════════════════════════════════════════════════════════
-# API ROUTES
+# API ROUTES — moved to routes/api_routes.py
 # ══════════════════════════════════════════════════════════
-
-@app.get("/api/ideas")
-async def api_ideas(request: Request, project: str = "", user=Depends(require_auth)):
-    from database import get_ideas, get_projects as db_projects
-    if project:
-        ideas = get_ideas(project)
-    else:
-        projs = db_projects()
-        ideas = get_ideas(projs[0]["id"]) if projs else []
-    return JSONResponse(ideas)
-
-
-@app.get("/api/idea-details")
-async def api_idea_details(request: Request, id: str = "", user=Depends(require_auth)):
-    if not id:
-        return JSONResponse({"error": "id obrigatorio"}, status_code=400)
-    from database import get_idea, get_seo
-    idea = get_idea(int(id))
-    if not idea:
-        return JSONResponse({"error": "Ideia nao encontrada"}, status_code=404)
-    seo = get_seo(int(id))
-    return JSONResponse({"idea": idea, "seo": seo})
-
-
-@app.post("/api/toggle-used")
-async def api_toggle_used(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    idea_id = body.get("id")
-    if not idea_id:
-        return JSONResponse({"error": "id obrigatorio"}, status_code=400)
-    from database import toggle_idea_used
-    new_val = toggle_idea_used(int(idea_id))
-    return JSONResponse({"ok": True, "used": new_val})
-
-
-@app.get("/api/score-all")
-@limiter.limit("3/minute")
-async def api_score_all(
-    request: Request,
-    countries: str = "global,BR,US",
-    force: str = "false",
-    project: str = "",
-    user=Depends(require_auth),
-):
-    import asyncio
-    country_list = countries.split(",")
-    force_rescore = force.lower() in ("true", "1", "yes")
-
-    from database import get_ideas, get_projects as db_projects, update_idea_score
-
-    if project:
-        pid = project
-    else:
-        projs = db_projects()
-        pid = projs[0]["id"] if projs else ""
-
-    if not pid:
-        return JSONResponse({"error": "Nenhum projeto"}, status_code=400)
-
-    ideas = get_ideas(pid)
-
-    def _score_all():
-        """Run scoring in thread so health checks keep responding."""
-        from protocols.title_scorer import score_title
-        results = []
-        for idea in ideas:
-            if idea.get("score", 0) > 0 and not force_rescore:
-                results.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea["rating"], "skipped": True})
-                continue
-            try:
-                score_result = score_title(idea["title"], country_list)
-                update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
-                results.append({
-                    "id": idea["id"],
-                    "title": idea["title"],
-                    "score": score_result["final_score"],
-                    "rating": score_result["rating"],
-                })
-            except Exception as e:
-                logger.warning(f"Score failed for '{idea['title'][:30]}': {e}")
-                results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": str(e)[:100]})
-        return results
-
-    try:
-        results = await asyncio.to_thread(_score_all)
-        return JSONResponse({"ok": True, "scored": len(results), "results": results})
-    except Exception as e:
-        logger.error(f"score-all error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
-
-
-@app.post("/api/score-title")
-@limiter.limit("10/minute")
-async def api_score_title(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    idea_id = body.get("id")
-    if not idea_id:
-        return JSONResponse({"error": "id obrigatorio"}, status_code=400)
-
-    from database import get_idea, update_idea_score
-    from protocols.title_scorer import score_title
-
-    idea = get_idea(int(idea_id))
-    if not idea:
-        return JSONResponse({"error": "Ideia nao encontrada"}, status_code=404)
-
-    result = score_title(idea["title"])
-    update_idea_score(int(idea_id), result["final_score"], result["rating"], result)
-    return JSONResponse({"ok": True, "score": result["final_score"], "rating": result["rating"], "details": result})
-
-
-@app.post("/api/generate-ideas")
-@limiter.limit("5/minute")
-async def api_generate_ideas(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    niche = sanitize_niche_name(body.get("niche", "System Breakers"))
-    count = body.get("count", 10)
-
-    if not isinstance(count, int) or count < 1 or count > MAX_IDEAS_PER_REQUEST:
-        return JSONResponse({"error": f"Quantidade deve ser entre 1 e {MAX_IDEAS_PER_REQUEST}"}, status_code=400)
-
-    project_id = body.get("project_id", "")
-
-    try:
-        from protocols.ai_client import chat
-        from database import get_ideas, get_projects as db_projects, save_idea, get_project, get_files as db_get_files
-
-        if project_id:
-            proj = get_project(project_id)
-            if not proj:
-                return JSONResponse({"error": "Projeto nao encontrado"}, status_code=400)
-            pid = project_id
-        else:
-            projs = db_projects()
-            if not projs:
-                return JSONResponse({"error": "Nenhum projeto"}, status_code=400)
-            pid = projs[0]["id"]
-
-        existing = get_ideas(pid)
-        existing_titles = [i["title"] for i in existing]
-        next_num = max([i.get("num", 0) for i in existing], default=0) + 1
-
-        # Load SOP
-        sop = ""
-        for f in db_get_files(pid, "analise"):
-            if "sop" in f.get("label", "").lower() and f.get("content"):
-                sop = f["content"]
-                break
-        if not sop:
-            sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
-            sop = sop_path.read_text(encoding="utf-8") if sop_path.exists() else ""
-
-        prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
-
-REGRAS:
-- Cada ideia deve ser UNICA e diferente das existentes
-- Siga a mesma estrutura do SOP (hook forte, numeros impactantes, historia real)
-- Inclua para cada ideia: titulo viral, hook dos primeiros 30s, resumo de 2 linhas, pilar de conteudo, prioridade (ALTA/MEDIA/BAIXA)
-
-TITULOS JA EXISTENTES (NAO REPETIR):
-{chr(10).join(f'- {t}' for t in existing_titles[:30])}
-
-SOP:
-{sop[:4000]}
-
-Retorne em formato JSON valido:
-[{{"title": "...", "hook": "...", "summary": "...", "pillar": "...", "priority": "ALTA"}}]
-
-Retorne APENAS o JSON."""
-
-        response = chat(prompt, max_tokens=MAX_TOKENS_MEDIUM, temperature=0.8)
-        json_match = re.search(r'\[.*\]', response, re.DOTALL)
-        if not json_match:
-            return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
-
-        new_ideas = json.loads(json_match.group())
-        saved = []
-        for idea in new_ideas:
-            iid = save_idea(
-                pid, next_num,
-                idea.get("title", ""),
-                idea.get("hook", ""),
-                idea.get("summary", ""),
-                idea.get("pillar", ""),
-                idea.get("priority", "MEDIA"),
-            )
-            saved.append({"id": iid, "num": next_num, "title": idea.get("title", "")})
-            next_num += 1
-
-        return JSONResponse({"ok": True, "generated": len(saved), "ideas": saved})
-    except Exception as e:
-        logger.error(f"generate-ideas error: {e}")
-        return JSONResponse({"error": "Falha ao gerar ideias"}, status_code=500)
-
-
-@app.post("/api/generate-script")
-@limiter.limit("5/minute")
-async def api_generate_script(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    idea_id = body.get("idea_id")
-    project_id = body.get("project_id", "")
-
-    if not idea_id:
-        return JSONResponse({"error": "idea_id obrigatorio"}, status_code=400)
-
-    try:
-        from database import get_idea, get_files as db_get_files, get_projects as db_projects, save_script
-        from protocols.ai_client import generate_script
-
-        idea = get_idea(int(idea_id))
-        if not idea:
-            return JSONResponse({"error": "Ideia nao encontrada"}, status_code=404)
-
-        pid = project_id or idea["project_id"]
-
-        # Load SOP
-        sop = ""
-        for f in db_get_files(pid, "analise"):
-            if "sop" in f.get("label", "").lower() and f.get("content"):
-                sop = f["content"]
-                break
-        if not sop:
-            sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
-            sop = sop_path.read_text(encoding="utf-8") if sop_path.exists() else ""
-
-        script = generate_script(idea["title"], idea.get("hook", ""), sop)
-
-        save_script(pid, idea["title"], script, int(idea_id), "10-12 min")
-
-        words = len(script.split())
-        return JSONResponse({
-            "ok": True,
-            "title": idea["title"],
-            "script": script[:500] + "...",
-            "words": words,
-            "duration_estimate": f"~{round(words / 140, 1)} min",
-        })
-    except Exception as e:
-        logger.error(f"generate-script error: {e}")
-        return JSONResponse({"error": "Falha ao gerar roteiro"}, status_code=500)
 
 
 # ══════════════════════════════════════════════════════════
@@ -763,6 +532,9 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
 
     has_api = bool(student.get("api_key_encrypted"))
 
+    from database import get_student_channels
+    channels = get_student_channels(student_id)
+
     return render(request, "admin_student_detail.html", {
         "user": user,
         "student": student,
@@ -770,6 +542,7 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
         "has_api": has_api,
         "status_labels": status_labels,
         "status_colors": status_colors,
+        "channels": channels,
     })
 
 
@@ -799,6 +572,15 @@ async def api_create_student(request: Request, user=Depends(require_admin)):
     if niche and project_id:
         assignment_id = create_assignment(uid, project_id, niche)
 
+    # Welcome notification
+    try:
+        from database import create_notification
+        create_notification(uid, "welcome", "Bem-vindo ao YT Channel Cloner!",
+            f"Seu acesso foi criado. Nicho: {niche or 'a definir'}. Configure sua API key para comecar a gerar roteiros.",
+            "/student")
+    except Exception:
+        pass
+
     return JSONResponse({"ok": True, "user_id": uid, "assignment_id": assignment_id})
 
 
@@ -810,13 +592,27 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
     url = validate_url(body.get("url", ""))
     niche_name = sanitize_niche_name(body.get("niche_name", ""))
     nlm_sop = (body.get("nlm_sop") or "").strip()
+    language = (body.get("language") or "pt-BR").strip()
+
+    # Validate language
+    VALID_LANGS = {"pt-BR", "en", "es", "fr", "de", "it", "ja", "ko"}
+    if language not in VALID_LANGS:
+        language = "pt-BR"
+
+    # Language labels for AI prompts
+    LANG_LABELS = {
+        "pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol",
+        "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano",
+    }
+    lang_label = LANG_LABELS.get(language, language)
+    lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {lang_label}."
 
     if not url:
         return JSONResponse({"error": "URL invalida"}, status_code=400)
     if not niche_name or len(niche_name) < 2:
         return JSONResponse({"error": "Nome do nicho invalido (min 2 caracteres)"}, status_code=400)
 
-    logger.info(f"[ANALYZE] {user.get('email')}: url={url[:80]}, niche={niche_name}, nlm_sop={len(nlm_sop)} chars")
+    logger.info(f"[ANALYZE] {user.get('email')}: url={url[:80]}, niche={niche_name}, lang={language}, nlm_sop={len(nlm_sop)} chars")
 
     import asyncio
 
@@ -824,10 +620,20 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
         """Run the entire pipeline in a thread so health checks keep responding."""
         from database import create_project, save_niche, save_idea, save_file, log_activity, update_project
         from protocols.ai_client import chat
+        from progress_store import update_progress, clear_progress
+
+        TOTAL_STEPS = 12
+
+        def _step(n, label, detail=""):
+            update_progress(f"pipeline_{niche_name}", n, TOTAL_STEPS, label, detail)
+            logger.info(f"[ANALYZE] Step {n}/{TOTAL_STEPS}: {label}")
+
+        _step(1, "Criando projeto", niche_name)
 
         # Step 1: Create project
         project_id = create_project(name=niche_name, channel_original=url, niche_chosen=niche_name,
-                                     meta={"channel_url": url, "niche": niche_name, "created_by": user["id"]})
+                                     meta={"channel_url": url, "niche": niche_name, "created_by": user["id"], "language": language},
+                                     language=language)
 
         # Step 1b: Google Drive folder
         drive_folder_id = ""
@@ -836,19 +642,21 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
             drive_folder_id = create_folder(f"YT Cloner - {niche_name}")
             update_project(project_id, drive_folder_id=drive_folder_id,
                           drive_folder_url=f"https://drive.google.com/drive/folders/{drive_folder_id}")
+            logger.info(f"[ANALYZE] Drive folder created: {drive_folder_id}")
         except Exception as e:
-            logger.debug(f"Drive folder: {e}")
+            logger.warning(f"[ANALYZE] Drive folder creation failed (projeto continua sem Drive): {e}")
 
-        # Step 2: Generate SOP (Pasted NLM → Transcripts → AI fallback)
+        _step(2, 'Gerando SOP', 'Analisando canal e transcricoes...')
+
+        # Step 2: Generate SOP (Manual paste → Transcripts → AI fallback)
         sop_content = ""
         sop_source = "AI"
-        nlm_error = ""
 
-        # Priority 1: User pasted NotebookLM SOP
+        # Priority 1: User pasted manual SOP
         if nlm_sop and len(nlm_sop) > 200:
             sop_content = nlm_sop
-            sop_source = "NotebookLM"
-            logger.info(f"[ANALYZE] Using pasted NotebookLM SOP: {len(sop_content)} chars")
+            sop_source = "Manual"
+            logger.info(f"[ANALYZE] Using pasted SOP: {len(sop_content)} chars")
 
         # Priority 2: Transcripts + AI
         if not sop_content:
@@ -876,17 +684,19 @@ Crie um SOP (Standard Operating Procedure) incluindo TODAS estas secoes:
 8. ESTILO DE THUMBNAIL: Padroes visuais (cores, tipografia, composicao) para thumbnails virais
 9. VERSAO IA: Instrucoes para uma IA replicar este estilo (tom, vocabulario, ritmo, formalidade)
 
-Seja EXTREMAMENTE detalhado e especifico para o nicho "{niche_name}"."""
+Seja EXTREMAMENTE detalhado e especifico para o nicho "{niche_name}".{lang_instruction}"""
             sop_content = chat(sop_prompt, system="Voce e um estrategista de canais faceless do YouTube com 10 anos de experiencia.", max_tokens=MAX_TOKENS_LARGE)
 
         save_file(project_id, "analise", f"SOP - {niche_name}", f"sop_{project_id}.md", sop_content)
         log_activity(project_id, "sop_generated", f"SOP via {sop_source}")
 
+        _step(3, 'Gerando 5 nichos derivados')
+
         # Step 3: Generate 5 niches
         niche_prompt = f"""Baseado neste canal "{niche_name}" ({url}), gere 5 sub-nichos derivados.
 SOP: {sop_content[:3000]}
 Retorne JSON: [{{"name":"...","description":"...","rpm_range":"$X-Y","competition":"Baixa/Media/Alta","color":"#hex","pillars":["..."]}}]
-Retorne APENAS o JSON."""
+Retorne APENAS o JSON.{lang_instruction}"""
 
         niche_response = chat(niche_prompt, max_tokens=2000, temperature=0.7)
         niche_json_match = re.search(r'\[.*\]', niche_response, re.DOTALL)
@@ -911,18 +721,25 @@ Retorne APENAS o JSON."""
 
         log_activity(project_id, "niches_generated", f"{niches_generated} nichos")
 
+        _step(4, 'Gerando 30 titulos virais')
+
         # Step 4: Generate 30 titles
         titles_prompt = f"""Gere 30 ideias de videos para o canal "{niche_name}".
 SOP: {sop_content[:3000]}
+
+REGRAS OBRIGATORIAS DO YOUTUBE:
+- CADA titulo DEVE ter no MAXIMO 100 caracteres (incluindo espacos). Titulos maiores serao cortados pelo YouTube.
+- Titulos devem ser impactantes mesmo sendo curtos.
+
 Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]
-Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON."""
+Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{lang_instruction}"""
 
         titles_response = chat(titles_prompt, max_tokens=6000, temperature=0.8)
         titles_json_match = re.search(r'\[.*\]', titles_response, re.DOTALL)
         titles_generated = 0
 
         if not titles_json_match:
-            retry_prompt = f'Gere 10 ideias de videos para "{niche_name}". Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]'
+            retry_prompt = f'Gere 10 ideias de videos para "{niche_name}". Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]{lang_instruction}'
             titles_response = chat(retry_prompt, max_tokens=MAX_TOKENS_MEDIUM, temperature=0.7)
             titles_json_match = re.search(r'\[.*\]', titles_response, re.DOTALL)
 
@@ -930,7 +747,11 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.""
             try:
                 ideas_list = json.loads(titles_json_match.group())
                 for i, idea in enumerate(ideas_list[:30]):
-                    save_idea(project_id, i + 1, idea.get("title", f"Titulo {i+1}"),
+                    title = idea.get("title", f"Titulo {i+1}")
+                    # YouTube limit: max 100 characters
+                    if len(title) > 100:
+                        title = title[:97] + "..."
+                    save_idea(project_id, i + 1, title,
                              idea.get("hook", ""), idea.get("summary", ""),
                              idea.get("pillar", ""), idea.get("priority", "MEDIA"))
                     titles_generated += 1
@@ -939,19 +760,7 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.""
 
         log_activity(project_id, "titles_generated", f"{titles_generated} titulos")
 
-        # Step 5: Export to Drive
-        if drive_folder_id:
-            try:
-                from protocols.google_export import create_doc, create_sheet
-                create_doc(f"SOP - {niche_name}", sop_content, drive_folder_id)
-                if titles_json_match:
-                    data = [["#", "Titulo", "Hook", "Pilar", "Prioridade"]]
-                    for i, idea in enumerate(json.loads(titles_json_match.group())[:30], 1):
-                        data.append([str(i), idea.get("title", ""), idea.get("hook", "")[:100],
-                                    idea.get("pillar", ""), idea.get("priority", "")])
-                    create_sheet(f"Titulos - {niche_name}", data, drive_folder_id)
-            except Exception as e:
-                logger.debug(f"Drive export: {e}")
+        _step(5, 'Gerando SEO Pack', '10 videos com tags e descricoes')
 
         # Step 6: SEO Pack
         seo_generated = 0
@@ -961,7 +770,13 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.""
                 titles_block = "\n".join([f'{i+1}. {t.get("title", "")}' for i, t in enumerate(top_titles)])
                 seo_prompt = f"""Gere SEO pack para estes 10 videos do canal "{niche_name}":
 {titles_block}
-Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15 tags, 5 hashtags."""
+
+REGRAS OBRIGATORIAS DO YOUTUBE:
+- Tags: o TOTAL de TODAS as tags de cada video NAO pode ultrapassar 500 caracteres. Use 10-12 tags relevantes e curtas.
+- Titulo: max 100 caracteres.
+- Descricao: 150-200 palavras. OBRIGATORIO incluir no FINAL da descricao: "⚠️ Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas apresentadas sao reconstituicoes ficcionais baseadas em fatos e pesquisas, com fins de entretenimento e educacao."
+
+Para CADA video: 3 variacoes de titulo (max 100 chars cada), descricao YouTube (com disclaimer no final), tags (max 500 chars total), 5 hashtags.{lang_instruction}"""
                 seo_content = chat(seo_prompt, system="Especialista em YouTube SEO.", max_tokens=MAX_TOKENS_LARGE, temperature=0.7)
                 if seo_content and len(seo_content) > 100:
                     save_file(project_id, "seo", "SEO Pack", f"seo_pack_{project_id}.md", seo_content)
@@ -969,6 +784,8 @@ Para CADA video: 3 variacoes de titulo, descricao YouTube (150-200 palavras), 15
                     log_activity(project_id, "seo_generated", f"SEO Pack para {seo_generated} videos")
             except Exception as e:
                 logger.error(f"SEO generation failed: {e}")
+
+        _step(6, 'Gerando Thumbnail Prompts', 'Midjourney + DALL-E')
 
         # ── Step 7: Thumbnail Prompts (Midjourney / DALL-E) ──
         try:
@@ -984,13 +801,15 @@ Para CADA video gere:
 - 1 prompt DALL-E (mesmo conceito, adaptado)
 - Paleta de cores sugerida (hex)
 - Texto overlay sugerido (1-2 palavras max)
-- Composicao (descricao do layout)"""
+- Composicao (descricao do layout){lang_instruction}"""
             thumb_content = chat(thumb_prompt, system="Especialista em thumbnails virais do YouTube.", max_tokens=4000, temperature=0.7)
             if thumb_content and len(thumb_content) > 100:
                 save_file(project_id, "outros", "Thumbnail Prompts - Midjourney DALL-E", f"thumbnail_prompts_{project_id}.md", thumb_content)
                 log_activity(project_id, "thumbnail_prompts", "Thumbnail Prompts gerados")
         except Exception as e:
             logger.error(f"Thumbnail prompts failed: {e}")
+
+        _step(7, 'Gerando Music Prompts', 'Suno + Udio + MusicGPT')
 
         # ── Step 8: Music Prompts (Suno / Udio / MusicGPT) ──
         try:
@@ -1003,13 +822,15 @@ Gere:
 - 3 prompts para Udio (atmospheric, moody, dramatic)
 - Tags de estilo: genero, mood, instrumentos, BPM
 - Quando usar cada tipo de musica no video (hook, tensao, climax, reflexao)
-- Efeitos sonoros sugeridos (SFX) para momentos-chave"""
+- Efeitos sonoros sugeridos (SFX) para momentos-chave{lang_instruction}"""
             music_content = chat(music_prompt, system="Compositor de trilha sonora para YouTube.", max_tokens=3000, temperature=0.7)
             if music_content and len(music_content) > 100:
                 save_file(project_id, "outros", "Music Prompts - Suno Udio MusicGPT", f"music_prompts_{project_id}.md", music_content)
                 log_activity(project_id, "music_prompts", "Music Prompts gerados")
         except Exception as e:
             logger.error(f"Music prompts failed: {e}")
+
+        _step(8, 'Gerando Teaser Prompts', 'Shorts + Reels + TikTok')
 
         # ── Step 9: Teaser Prompts (Shorts / Reels / TikTok) ──
         try:
@@ -1024,13 +845,24 @@ Para CADA um dos 5 videos:
 - CTA para o video completo ("Video completo no canal")
 - Hashtags sugeridas (10)
 - Melhor horario para postar
-- Formato: vertical 9:16"""
+- Formato: vertical 9:16{lang_instruction}"""
             teaser_content = chat(teaser_prompt, system="Especialista em conteudo short-form viral.", max_tokens=4000, temperature=0.7)
             if teaser_content and len(teaser_content) > 100:
                 save_file(project_id, "outros", "Teaser Prompts - Shorts Reels TikTok", f"teaser_prompts_{project_id}.md", teaser_content)
                 log_activity(project_id, "teaser_prompts", "Teaser Prompts gerados")
         except Exception as e:
             logger.error(f"Teaser prompts failed: {e}")
+
+        # ── Disclaimer / Aviso Legal ──
+        LANG_DISCLAIMERS = {
+            "pt-BR": "⚠️ AVISO LEGAL — DISCLAIMER\n\nEste conteudo foi produzido com auxilio de inteligencia artificial.\nAs narrativas apresentadas sao reconstituicoes ficcionais baseadas em fatos reais e pesquisas, com fins de entretenimento e educacao.\nNenhuma informacao deve ser interpretada como conselho profissional, legal, medico ou financeiro.\n\n📋 USAR NA DESCRICAO DE CADA VIDEO:\n\"⚠️ Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas apresentadas sao reconstituicoes ficcionais baseadas em fatos reais e pesquisas, com fins de entretenimento e educacao.\"\n\n🎙️ FALAR NO FINAL DE CADA VIDEO:\n\"Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas sao reconstituicoes ficcionais baseadas em fatos reais, com fins de entretenimento e educacao.\"",
+            "en": "⚠️ LEGAL DISCLAIMER\n\nThis content was produced with the assistance of artificial intelligence.\nThe narratives presented are fictional reconstructions based on real facts and research, for entertainment and educational purposes only.\nNo information should be interpreted as professional, legal, medical or financial advice.\n\n📋 USE IN EVERY VIDEO DESCRIPTION:\n\"⚠️ This content was produced with the assistance of artificial intelligence. The narratives presented are fictional reconstructions based on real facts and research, for entertainment and educational purposes.\"\n\n🎙️ SAY AT THE END OF EVERY VIDEO:\n\"This content was produced with the assistance of artificial intelligence. The narratives are fictional reconstructions based on real facts, for entertainment and educational purposes.\"",
+            "es": "⚠️ AVISO LEGAL — DISCLAIMER\n\nEste contenido fue producido con asistencia de inteligencia artificial.\nLas narrativas presentadas son reconstrucciones ficticias basadas en hechos reales e investigaciones, con fines de entretenimiento y educacion.\nNinguna informacion debe interpretarse como consejo profesional, legal, medico o financiero.\n\n📋 USAR EN LA DESCRIPCION DE CADA VIDEO:\n\"⚠️ Este contenido fue producido con asistencia de inteligencia artificial. Las narrativas presentadas son reconstrucciones ficticias basadas en hechos reales e investigaciones, con fines de entretenimiento y educacion.\"\n\n🎙️ DECIR AL FINAL DE CADA VIDEO:\n\"Este contenido fue producido con asistencia de inteligencia artificial. Las narrativas son reconstrucciones ficticias basadas en hechos reales, con fines de entretenimiento y educacion.\"",
+        }
+        disclaimer_text = LANG_DISCLAIMERS.get(language, LANG_DISCLAIMERS.get(language[:2], LANG_DISCLAIMERS["en"]))
+        save_file(project_id, "outros", "Disclaimer - Aviso Legal (IA)", f"disclaimer_{project_id}.md", disclaimer_text)
+
+        _step(9, 'Gerando 3 roteiros completos', 'Isso demora ~3-5 min...')
 
         # ── Step 10: Generate 3 Roteiros for top titles ──
         roteiros_count = 0
@@ -1053,7 +885,9 @@ INSTRUCOES:
 - Open loops, pattern interrupts, specific spikes
 - Sem CTA explicito (imersao total)
 - Inclua marcacoes: [MUSICA: tipo], [SFX: descricao], [B-ROLL: descricao]
-- Fechamento fatalista e ciclico"""
+- Fechamento fatalista e ciclico
+- OBRIGATORIO: Inclua no FINAL do roteiro (depois do fechamento) um disclaimer lido pelo narrador:
+  "Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas sao reconstituicoes ficcionais baseadas em fatos reais e pesquisas, com fins de entretenimento e educacao."{lang_instruction}"""
                 roteiro = chat(roteiro_prompt, system="Roteirista de elite para YouTube faceless.", max_tokens=MAX_TOKENS_LARGE, temperature=0.8)
                 if roteiro and len(roteiro) > 500:
                     save_file(project_id, "roteiro", f"Roteiro - {t[:50]}", f"roteiro_{project_id}_{i+1}.md", roteiro)
@@ -1068,6 +902,8 @@ INSTRUCOES:
                     log_activity(project_id, "roteiro_generated", f"Roteiro {i+1}: {t[:40]}")
         except Exception as e:
             logger.error(f"Roteiros generation failed: {e}")
+
+        _step(10, 'Gerando Mind Map interativo')
 
         # ── Step 11: Generate Mind Map HTML ──
         mindmap_generated = False
@@ -1095,7 +931,125 @@ INSTRUCOES:
         except Exception as e:
             logger.error(f"Mindmap generation failed: {type(e).__name__}: {e}")
 
-        return {
+        _step(11, 'Exportando 14 arquivos pro Drive')
+
+        # ── Step 12: Drive Export — 14 arquivos padrao ──
+        drive_exported = 0
+        if drive_folder_id:
+            try:
+                from protocols.google_export import create_doc, create_sheet
+                from database import get_niches as _gn, get_ideas as _gi
+
+                def _drive_doc(title, doc_content):
+                    nonlocal drive_exported
+                    if doc_content and len(doc_content) > 50:
+                        try:
+                            create_doc(title, doc_content, drive_folder_id)
+                            drive_exported += 1
+                        except Exception as e:
+                            logger.warning(f"Drive doc '{title}': {e}")
+
+                def _drive_sheet(title, data):
+                    nonlocal drive_exported
+                    if data and len(data) > 1:
+                        try:
+                            create_sheet(title, data, drive_folder_id)
+                            drive_exported += 1
+                        except Exception as e:
+                            logger.warning(f"Drive sheet '{title}': {e}")
+
+                # 1. SOP (Doc)
+                _drive_doc(f"SOP - {niche_name}", sop_content)
+
+                # 2. SEO Pack (Doc)
+                seo_file = next((f for f in get_files(project_id) if f.get("category") == "seo"), None)
+                if seo_file:
+                    _drive_doc(f"SEO Pack - {niche_name} ({seo_generated} videos)", seo_file.get("content", ""))
+
+                # 3-5. Roteiros 1-3 (Docs)
+                roteiro_files = [f for f in get_files(project_id) if f.get("category") == "roteiro"]
+                for i, rf in enumerate(roteiro_files[:3], 1):
+                    _drive_doc(f"Roteiro {i} - {rf.get('label', '').replace('Roteiro - ', '')}", rf.get("content", ""))
+
+                # 6. Thumbnail Prompts (Doc)
+                thumb_file = next((f for f in get_files(project_id) if "thumbnail" in f.get("filename", "").lower()), None)
+                if thumb_file:
+                    _drive_doc("Thumbnail Prompts - Midjourney DALL-E", thumb_file.get("content", ""))
+
+                # 7. Music Prompts (Doc)
+                music_file = next((f for f in get_files(project_id) if "music" in f.get("filename", "").lower()), None)
+                if music_file:
+                    _drive_doc("Music Prompts - Suno Udio MusicGPT", music_file.get("content", ""))
+
+                # 8. Teaser Prompts (Doc)
+                teaser_file = next((f for f in get_files(project_id) if "teaser" in f.get("filename", "").lower()), None)
+                if teaser_file:
+                    _drive_doc("Teaser Prompts - Shorts Reels TikTok", teaser_file.get("content", ""))
+
+                # 9. MIND MAP (Doc)
+                if mindmap_generated:
+                    _drive_doc(f"MIND MAP - Visao Geral do Projeto", mindmap_html)
+
+                # 10. 30 Ideias (Doc)
+                all_ideas = _gi(project_id)
+                if all_ideas:
+                    ideas_text = f"# 30 Ideias de Videos - {niche_name}\n\n"
+                    for idx, idea in enumerate(all_ideas, 1):
+                        ideas_text += f"## {idx}. {idea.get('title', '')}\n"
+                        ideas_text += f"**Hook:** {idea.get('hook', '')}\n"
+                        ideas_text += f"**Resumo:** {idea.get('summary', '')}\n"
+                        ideas_text += f"**Pilar:** {idea.get('pillar', '')} | **Prioridade:** {idea.get('priority', '')}\n\n"
+                    _drive_doc(f"30 Ideias de Videos - {niche_name}", ideas_text)
+
+                # 11. Titulos (Sheet)
+                if all_ideas:
+                    td = [["#", "Titulo", "Hook", "Pilar", "Prioridade", "Score"]]
+                    for idx, idea in enumerate(all_ideas, 1):
+                        td.append([str(idx), idea.get("title",""), idea.get("hook","")[:100],
+                                  idea.get("pillar",""), idea.get("priority",""), str(idea.get("score",0))])
+                    _drive_sheet(f"Titulos - {niche_name}", td)
+
+                # 12. 5 Nichos Derivados (Sheet)
+                _niches = _gn(project_id)
+                if _niches:
+                    nd = [["Nome", "Descricao", "RPM", "Competicao", "Pilares"]]
+                    for n in _niches:
+                        pillars_str = ""
+                        try:
+                            p = n.get("pillars", "")
+                            if isinstance(p, str): pillars_str = ", ".join(json.loads(p))
+                            elif isinstance(p, list): pillars_str = ", ".join(p)
+                        except Exception: pass
+                        nd.append([n.get("name",""), n.get("description","")[:100],
+                                  n.get("rpm_range",""), n.get("competition",""), pillars_str])
+                    _drive_sheet(f"5 Nichos Derivados - Niche Bending", nd)
+
+                # 13. SEO Sheet (Sheet)
+                if all_ideas:
+                    sd = [["#", "Titulo", "Score", "Rating", "Pilar", "Prioridade"]]
+                    for idx, idea in enumerate(all_ideas[:15], 1):
+                        sd.append([str(idx), idea.get("title",""), str(idea.get("score",0)),
+                                  idea.get("rating",""), idea.get("pillar",""), idea.get("priority","")])
+                    _drive_sheet(f"SEO Sheet - Titulos e Tags ({len(sd)-1} videos)", sd)
+
+                # 14. Narracoes Completas (Doc)
+                narracao_files = [f for f in get_files(project_id) if f.get("category") == "narracao"]
+                if narracao_files:
+                    narracao_combined = ""
+                    for idx, nf in enumerate(narracao_files[:3], 1):
+                        narracao_combined += f"\n{'='*60}\nNARRACAO {idx}: {nf.get('label', '')}\n{'='*60}\n\n"
+                        narracao_combined += (nf.get("content", "") or "") + "\n\n"
+                    _drive_doc(f"Narracoes Completas - {niche_name} ({len(narracao_files)} roteiros)", narracao_combined)
+
+                log_activity(project_id, "drive_exported", f"{drive_exported}/14 arquivos exportados para Google Drive")
+                logger.info(f"[ANALYZE] Drive export: {drive_exported}/14 arquivos")
+
+            except Exception as e:
+                logger.warning(f"[ANALYZE] Drive export failed: {e}")
+
+        _step(12, "Pipeline concluido!", f"{niche_name} - Todos os arquivos gerados")
+
+        result = {
             "ok": True,
             "project_id": project_id,
             "sop_source": sop_source,
@@ -1106,6 +1060,8 @@ INSTRUCOES:
             "mindmap_generated": mindmap_generated,
             "drive_folder_id": drive_folder_id,
         }
+        clear_progress(f"pipeline_{niche_name}")
+        return result
 
     # Run pipeline in thread so health checks keep responding
     try:
@@ -1113,6 +1069,8 @@ INSTRUCOES:
         return JSONResponse(result)
     except Exception as e:
         logger.error(f"analyze-channel error: {e}")
+        from progress_store import clear_progress as _cp
+        _cp(f"pipeline_{niche_name}")
         return JSONResponse({"error": f"Falha na analise: {str(e)[:200]}"}, status_code=500)
 
 
@@ -1163,16 +1121,32 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
         ).fetchall()]
 
     # API keys status
-    nlm_file = Path.home() / ".notebooklm" / "storage_state.json"
+    from config import GOOGLE_CLIENT_ID as _gci
+    gdrive_configured = bool(_gci or os.environ.get("GOOGLE_CLIENT_ID"))
+    gdrive_connected = False
+    gdrive_email = ""
+    try:
+        from database import get_setting
+        gdrive_token = get_setting("google_oauth_token")
+        if gdrive_token:
+            gdrive_connected = True
+            try:
+                import json as _json
+                token_data = _json.loads(gdrive_token)
+                gdrive_email = token_data.get("client_id", "")[:20] + "..."
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     api_keys = {
         "laozhang": bool(os.environ.get("LAOZHANG_API_KEY")),
         "laozhang_masked": (os.environ.get("LAOZHANG_API_KEY", "")[:8] + "...") if os.environ.get("LAOZHANG_API_KEY") else "",
         "youtube": False,
         "youtube_masked": "",
-        "nlm": nlm_file.exists(),
-        "nlm_status": f"{nlm_file.stat().st_size} bytes" if nlm_file.exists() else "Nao configurado",
-        "gdrive": bool(os.environ.get("GOOGLE_OAUTH_CLIENT_ID")),
-        "gdrive_status": "OAuth configurado" if os.environ.get("GOOGLE_OAUTH_CLIENT_ID") else "Nao configurado",
+        "gdrive": gdrive_connected,
+        "gdrive_configured": gdrive_configured,
+        "gdrive_status": "Conectado" if gdrive_connected else ("OAuth configurado" if gdrive_configured else "Nao configurado"),
     }
     # Check YouTube API key from DB
     try:
@@ -1183,6 +1157,14 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
     except Exception:
         pass
 
+    # AI Usage stats
+    ai_usage = {"total_tokens": 0, "total_cost": 0, "total_calls": 0, "by_project": [], "by_operation": []}
+    try:
+        from database import get_ai_usage_summary
+        ai_usage = get_ai_usage_summary()
+    except Exception:
+        pass
+
     return render(request, "admin_panel.html", {
         "user": user,
         "stats": stats,
@@ -1190,10 +1172,12 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
         "projects": projects[:10],
         "activity": activity,
         "api_keys": api_keys,
+        "ai_usage": ai_usage,
     })
 
 
 @app.post("/api/admin/delete-project")
+@limiter.limit("10/minute")
 async def api_delete_project(request: Request, user=Depends(require_admin)):
     body = await request.json()
     project_id = body.get("project_id", "")
@@ -1215,30 +1199,366 @@ async def api_delete_project(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": f"Erro ao excluir: {str(e)[:100]}"}, status_code=500)
 
 
+@app.post("/api/admin/delete-file")
+@limiter.limit("20/minute")
+async def api_admin_delete_file(request: Request, user=Depends(require_admin)):
+    """Delete a file from a project."""
+    body = await request.json()
+    file_id = body.get("file_id")
+    if not file_id:
+        return JSONResponse({"error": "file_id obrigatorio"}, status_code=400)
+    try:
+        from database import delete_file
+        deleted = delete_file(int(file_id))
+        if deleted and deleted.get("filename"):
+            fpath = OUTPUT_DIR / deleted["filename"]
+            if fpath.exists():
+                fpath.unlink()
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.error(f"delete-file error: {e}")
+        return JSONResponse({"error": f"Falha ao excluir: {str(e)[:200]}"}, status_code=500)
+
+
+@app.post("/api/admin/connect-drive")
+@limiter.limit("5/minute")
+async def api_connect_drive(request: Request, user=Depends(require_admin)):
+    """Create Google Drive folder for an existing project that doesn't have one."""
+    body = await request.json()
+    project_id = body.get("project_id", "")
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    from database import get_project, update_project, get_files, save_file, log_activity
+
+    proj = get_project(project_id)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    if proj.get("drive_folder_id"):
+        return JSONResponse({
+            "ok": True,
+            "already_connected": True,
+            "drive_folder_url": proj.get("drive_folder_url", ""),
+        })
+
+    try:
+        from protocols.google_export import create_folder, create_doc, create_sheet
+        import json as _json
+
+        niche_name = proj.get("niche_chosen") or proj.get("name", "Projeto")
+
+        # Create main folder
+        folder_id = create_folder(f"YT Cloner - {niche_name}")
+        drive_url = f"https://drive.google.com/drive/folders/{folder_id}"
+        update_project(project_id, drive_folder_id=folder_id, drive_folder_url=drive_url)
+
+        # Upload existing files to Drive
+        files = get_files(project_id)
+        uploaded = 0
+        for f in files:
+            content = f.get("content", "") or ""
+            if not content or len(content) < 50:
+                continue
+            cat = f.get("category", "")
+            label = f.get("label", f.get("filename", ""))
+            try:
+                if cat in ("analise", "seo", "roteiro", "narracao", "outros", "visual"):
+                    create_doc(label, content, folder_id)
+                    uploaded += 1
+            except Exception as e:
+                logger.warning(f"Drive upload failed for {label}: {e}")
+
+        # Upload ideas as Sheet
+        try:
+            from database import get_ideas
+            ideas = get_ideas(project_id)
+            if ideas:
+                data = [["#", "Titulo", "Hook", "Pilar", "Prioridade", "Score"]]
+                for i, idea in enumerate(ideas, 1):
+                    data.append([str(i), idea.get("title", ""), idea.get("hook", "")[:100],
+                                idea.get("pillar", ""), idea.get("priority", ""), str(idea.get("score", 0))])
+                create_sheet(f"Titulos - {niche_name}", data, folder_id)
+                uploaded += 1
+        except Exception:
+            pass
+
+        # Upload niches as Sheet
+        try:
+            from database import get_niches
+            niches = get_niches(project_id)
+            if niches:
+                data = [["Nome", "Descricao", "RPM", "Competicao", "Escolhido"]]
+                for n in niches:
+                    pillars = n.get("pillars", "")
+                    if isinstance(pillars, str):
+                        try:
+                            import json as _j2
+                            pillars = ", ".join(_j2.loads(pillars))
+                        except Exception:
+                            pass
+                    data.append([n.get("name", ""), n.get("description", "")[:100],
+                                n.get("rpm_range", ""), n.get("competition", ""),
+                                "Sim" if n.get("chosen") else ""])
+                create_sheet(f"5 Nichos Derivados - {niche_name}", data, folder_id)
+                uploaded += 1
+        except Exception:
+            pass
+
+        # Upload SEO details as Sheet
+        try:
+            from database import get_ideas as _gi2
+            ideas2 = _gi2(project_id)
+            seo_data = [["#", "Titulo", "Score", "Rating", "Pilar", "Prioridade"]]
+            for i, idea in enumerate(ideas2[:15], 1):
+                seo_data.append([str(i), idea.get("title", ""), str(idea.get("score", 0)),
+                                idea.get("rating", ""), idea.get("pillar", ""), idea.get("priority", "")])
+            if len(seo_data) > 1:
+                create_sheet(f"SEO Sheet - Titulos e Tags ({len(seo_data)-1} videos)", seo_data, folder_id)
+                uploaded += 1
+        except Exception:
+            pass
+
+        # Mind Map as standalone doc
+        try:
+            mindmap_file = OUTPUT_DIR / f"mindmap_{project_id}.html"
+            if mindmap_file.exists():
+                mm_content = mindmap_file.read_text(encoding="utf-8")
+                if len(mm_content) > 100:
+                    create_doc(f"MIND MAP - Visao Geral do Projeto", mm_content[:50000], folder_id)
+                    uploaded += 1
+        except Exception:
+            pass
+
+        log_activity(project_id, "drive_connected", f"Google Drive conectado: {uploaded} arquivos enviados")
+
+        return JSONResponse({
+            "ok": True,
+            "drive_folder_url": drive_url,
+            "uploaded": uploaded,
+        })
+    except Exception as e:
+        logger.error(f"connect-drive error: {e}")
+        return JSONResponse({"error": f"Falha ao conectar Drive: {str(e)[:200]}"}, status_code=500)
+
+
+@app.post("/api/admin/sync-drive")
+@limiter.limit("5/minute")
+async def api_sync_drive(request: Request, user=Depends(require_admin)):
+    """Re-sync all project files to Google Drive (14 standard files)."""
+    body = await request.json()
+    project_id = body.get("project_id", "")
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    import asyncio
+
+    def _sync():
+        from database import get_project, get_files, get_ideas, get_niches, log_activity
+        from protocols.google_export import create_doc, create_sheet, get_drive_service
+
+        proj = get_project(project_id)
+        if not proj:
+            return {"error": "Projeto nao encontrado"}
+
+        folder_id = proj.get("drive_folder_id", "")
+        if not folder_id:
+            return {"error": "Projeto sem pasta no Drive. Use 'Conectar' primeiro."}
+
+        niche_name = proj.get("niche_chosen") or proj.get("name", "Projeto")
+        uploaded = 0
+        skipped = 0
+
+        # List existing files in Drive folder to avoid duplicates
+        existing_names = set()
+        try:
+            drive = get_drive_service()
+            results = drive.files().list(
+                q=f"'{folder_id}' in parents and trashed=false",
+                fields="files(name)",
+                pageSize=100,
+            ).execute()
+            existing_names = {f["name"] for f in results.get("files", [])}
+            logger.info(f"Drive sync: {len(existing_names)} existing files in folder")
+        except Exception as e:
+            logger.warning(f"Drive sync: could not list existing files: {e}")
+
+        def _doc(title, content):
+            nonlocal uploaded, skipped
+            if content and len(content) > 50:
+                if title in existing_names:
+                    skipped += 1
+                    return
+                try:
+                    create_doc(title, content, folder_id)
+                    uploaded += 1
+                    existing_names.add(title)
+                except Exception as e:
+                    logger.warning(f"Sync doc '{title}': {e}")
+
+        def _sheet(title, data):
+            nonlocal uploaded, skipped
+            if data and len(data) > 1:
+                if title in existing_names:
+                    skipped += 1
+                    return
+                try:
+                    create_sheet(title, data, folder_id)
+                    uploaded += 1
+                    existing_names.add(title)
+                except Exception as e:
+                    logger.warning(f"Sync sheet '{title}': {e}")
+
+        files = get_files(project_id)
+        ideas = get_ideas(project_id)
+        niches = get_niches(project_id)
+
+        # 1. SOP
+        sop = next((f for f in files if f.get("category") == "analise"), None)
+        if sop:
+            _doc(f"SOP - {niche_name}", sop.get("content", ""))
+
+        # 2. SEO Pack
+        seo = next((f for f in files if f.get("category") == "seo"), None)
+        if seo:
+            _doc(f"SEO Pack - {niche_name}", seo.get("content", ""))
+
+        # 3-5. Roteiros
+        roteiros = [f for f in files if f.get("category") == "roteiro"]
+        for i, rf in enumerate(roteiros[:3], 1):
+            _doc(f"Roteiro {i} - {rf.get('label', '').replace('Roteiro - ', '')}", rf.get("content", ""))
+
+        # 6. Thumbnails
+        thumb = next((f for f in files if "thumbnail" in (f.get("filename", "") or "").lower()), None)
+        if thumb:
+            _doc("Thumbnail Prompts - Midjourney DALL-E", thumb.get("content", ""))
+
+        # 7. Music
+        music = next((f for f in files if "music" in (f.get("filename", "") or "").lower()), None)
+        if music:
+            _doc("Music Prompts - Suno Udio MusicGPT", music.get("content", ""))
+
+        # 8. Teaser
+        teaser = next((f for f in files if "teaser" in (f.get("filename", "") or "").lower()), None)
+        if teaser:
+            _doc("Teaser Prompts - Shorts Reels TikTok", teaser.get("content", ""))
+
+        # 9. Mind Map
+        mindmap = next((f for f in files if f.get("category") == "visual"), None)
+        if mindmap:
+            _doc("MIND MAP - Visao Geral do Projeto", mindmap.get("content", ""))
+        else:
+            mm_file = OUTPUT_DIR / f"mindmap_{project_id}.html"
+            if mm_file.exists():
+                _doc("MIND MAP - Visao Geral do Projeto", mm_file.read_text(encoding="utf-8")[:50000])
+
+        # 10. 30 Ideias (Doc)
+        if ideas:
+            ideas_text = f"# 30 Ideias de Videos - {niche_name}\n\n"
+            for idx, idea in enumerate(ideas, 1):
+                ideas_text += f"## {idx}. {idea.get('title', '')}\n"
+                ideas_text += f"**Hook:** {idea.get('hook', '')}\n"
+                ideas_text += f"**Pilar:** {idea.get('pillar', '')} | **Prioridade:** {idea.get('priority', '')}\n\n"
+            _doc(f"30 Ideias de Videos - {niche_name}", ideas_text)
+
+        # 11. Titulos (Sheet)
+        if ideas:
+            td = [["#", "Titulo", "Hook", "Pilar", "Prioridade", "Score"]]
+            for idx, idea in enumerate(ideas, 1):
+                td.append([str(idx), idea.get("title",""), idea.get("hook","")[:100],
+                          idea.get("pillar",""), idea.get("priority",""), str(idea.get("score",0))])
+            _sheet(f"Titulos - {niche_name}", td)
+
+        # 12. Nichos (Sheet)
+        if niches:
+            nd = [["Nome", "Descricao", "RPM", "Competicao"]]
+            for n in niches:
+                nd.append([n.get("name",""), n.get("description","")[:100],
+                          n.get("rpm_range",""), n.get("competition","")])
+            _sheet("5 Nichos Derivados - Niche Bending", nd)
+
+        # 13. SEO Sheet
+        if ideas:
+            sd = [["#", "Titulo", "Score", "Rating", "Pilar", "Prioridade"]]
+            for idx, idea in enumerate(ideas[:15], 1):
+                sd.append([str(idx), idea.get("title",""), str(idea.get("score",0)),
+                          idea.get("rating",""), idea.get("pillar",""), idea.get("priority","")])
+            _sheet(f"SEO Sheet - Titulos e Tags ({len(sd)-1} videos)", sd)
+
+        # 14. Narracoes
+        narracoes = [f for f in files if f.get("category") == "narracao"]
+        if narracoes:
+            combined = ""
+            for idx, nf in enumerate(narracoes[:3], 1):
+                combined += f"\n{'='*60}\nNARRACAO {idx}: {nf.get('label', '')}\n{'='*60}\n\n"
+                combined += (nf.get("content", "") or "") + "\n\n"
+            _doc(f"Narracoes Completas - {niche_name}", combined)
+
+        log_activity(project_id, "drive_synced", f"{uploaded} novos + {skipped} ja existentes no Drive")
+        return {"ok": True, "uploaded": uploaded, "skipped": skipped}
+
+    try:
+        result = await asyncio.to_thread(_sync)
+        if "error" in result:
+            return JSONResponse(result, status_code=400)
+        return JSONResponse(result)
+    except Exception as e:
+        logger.error(f"sync-drive error: {e}")
+        return JSONResponse({"error": f"Falha ao sincronizar: {str(e)[:200]}"}, status_code=500)
+
+
 @app.post("/api/admin/remove-title")
+@limiter.limit("20/minute")
 async def api_remove_title(request: Request, user=Depends(require_admin)):
     body = await request.json()
     idea_id = body.get("idea_id")
-    if not idea_id:
-        return JSONResponse({"error": "idea_id obrigatorio"}, status_code=400)
-    from database import delete_idea
-    delete_idea(int(idea_id))
-    return JSONResponse({"ok": True})
+    progress_id = body.get("progress_id")
+
+    if not idea_id and not progress_id:
+        return JSONResponse({"error": "idea_id ou progress_id obrigatorio"}, status_code=400)
+
+    from database import delete_idea, get_db
+
+    if progress_id:
+        # Remove assignment from student (delete progress entry), keep the idea
+        with get_db() as conn:
+            conn.execute("DELETE FROM progress WHERE id=?", (int(progress_id),))
+        return JSONResponse({"ok": True})
+
+    if idea_id:
+        # Delete the idea entirely
+        delete_idea(int(idea_id))
+        return JSONResponse({"ok": True})
 
 
 @app.post("/api/admin/release-titles")
+@limiter.limit("20/minute")
 async def api_release_titles(request: Request, user=Depends(require_admin)):
     body = await request.json()
     assignment_id = body.get("assignment_id")
     count = body.get("count", 5)
     if not assignment_id:
         return JSONResponse({"error": "assignment_id obrigatorio"}, status_code=400)
-    from database import release_more_titles
+    from database import release_more_titles, get_db, create_notification
     added = release_more_titles(int(assignment_id), int(count))
+
+    # Notify student
+    try:
+        with get_db() as conn:
+            row = conn.execute("SELECT student_id, niche FROM assignments WHERE id=?", (int(assignment_id),)).fetchone()
+            if row:
+                create_notification(row["student_id"], "titles_released",
+                    f"{added} novos titulos liberados!",
+                    f"Voce recebeu {added} novos titulos no nicho {row['niche']}. Acesse seu painel para comecar.",
+                    "/student")
+    except Exception:
+        pass
+
     return JSONResponse({"ok": True, "added": added})
 
 
 @app.post("/api/admin/assign-niche")
+@limiter.limit("20/minute")
 async def api_assign_niche(request: Request, user=Depends(require_admin)):
     body = await request.json()
     student_id = body.get("student_id")
@@ -1253,6 +1573,7 @@ async def api_assign_niche(request: Request, user=Depends(require_admin)):
 
 
 @app.post("/api/admin/toggle-student")
+@limiter.limit("20/minute")
 async def api_toggle_student(request: Request, user=Depends(require_admin)):
     body = await request.json()
     student_id = body.get("student_id")
@@ -1266,13 +1587,55 @@ async def api_toggle_student(request: Request, user=Depends(require_admin)):
 
 
 @app.post("/api/admin/delete-student")
+@limiter.limit("10/minute")
 async def api_delete_student(request: Request, user=Depends(require_admin)):
     body = await request.json()
     student_id = body.get("student_id")
     if not student_id:
         return JSONResponse({"error": "student_id obrigatorio"}, status_code=400)
-    from database import delete_user
-    delete_user(int(student_id))
+    try:
+        from database import delete_user
+        delete_user(int(student_id))
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.error(f"delete-student error: {e}")
+        return JSONResponse({"error": f"Falha ao excluir: {str(e)[:200]}"}, status_code=500)
+
+
+@app.post("/api/admin/add-student-channel")
+@limiter.limit("20/minute")
+async def api_admin_add_student_channel(request: Request, user=Depends(require_admin)):
+    """Admin adds a YouTube channel to a student."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    name = (body.get("name") or "").strip()
+    url = (body.get("url") or "").strip()
+    niche = (body.get("niche") or "").strip()
+    language = (body.get("language") or "pt-BR").strip()
+
+    if not student_id or not name:
+        return JSONResponse({"error": "student_id e nome do canal obrigatorios"}, status_code=400)
+
+    from database import create_student_channel
+    project_id = (body.get("project_id") or "").strip()
+    try:
+        cid = create_student_channel(int(student_id), name, url, niche, language, project_id=project_id)
+        return JSONResponse({"ok": True, "channel_id": cid})
+    except ValueError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/admin/remove-student-channel")
+@limiter.limit("20/minute")
+async def api_admin_remove_student_channel(request: Request, user=Depends(require_admin)):
+    """Admin removes a channel from a student."""
+    body = await request.json()
+    channel_id = body.get("channel_id")
+    student_id = body.get("student_id")
+    if not channel_id:
+        return JSONResponse({"error": "channel_id obrigatorio"}, status_code=400)
+    from database import delete_student_channel
+    delete_student_channel(int(channel_id), int(student_id) if student_id else 0)
     return JSONResponse({"ok": True})
 
 
@@ -1324,6 +1687,70 @@ async def api_regenerate_mindmap(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": "Falha ao gerar mind map"}, status_code=500)
 
 
+@app.post("/api/admin/toggle-file-visibility")
+@limiter.limit("20/minute")
+async def api_toggle_file_visibility(request: Request, user=Depends(require_admin)):
+    """Toggle whether a file is visible to students."""
+    body = await request.json()
+    file_id = body.get("file_id")
+    if not file_id:
+        return JSONResponse({"error": "file_id obrigatorio"}, status_code=400)
+
+    from database import get_db
+    with get_db() as conn:
+        row = conn.execute("SELECT id, visible_to_students FROM files WHERE id=?", (int(file_id),)).fetchone()
+        if not row:
+            return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
+        new_val = 0 if row["visible_to_students"] else 1
+        conn.execute("UPDATE files SET visible_to_students=? WHERE id=?", (new_val, int(file_id)))
+
+        # Notify students if file made visible
+        if new_val == 1:
+            try:
+                file_row = conn.execute("SELECT label, project_id FROM files WHERE id=?", (int(file_id),)).fetchone()
+                if file_row:
+                    students = conn.execute("SELECT DISTINCT student_id FROM assignments WHERE project_id=?",
+                                           (file_row["project_id"],)).fetchall()
+                    from database import create_notification
+                    for s in students:
+                        create_notification(s["student_id"], "file_available",
+                            "Novo arquivo disponivel!",
+                            f"O arquivo '{file_row['label']}' foi liberado para voce.",
+                            "/student")
+            except Exception:
+                pass
+
+    return JSONResponse({"ok": True, "visible": bool(new_val)})
+
+
+@app.post("/api/admin/bulk-file-visibility")
+@limiter.limit("20/minute")
+async def api_bulk_file_visibility(request: Request, user=Depends(require_admin)):
+    """Set visibility for all files in a project."""
+    body = await request.json()
+    project_id = body.get("project_id", "")
+    visible = body.get("visible", False)
+    category = body.get("category", "")
+
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    from database import get_db
+    with get_db() as conn:
+        if category:
+            conn.execute(
+                "UPDATE files SET visible_to_students=? WHERE project_id=? AND category=?",
+                (1 if visible else 0, project_id, category),
+            )
+        else:
+            conn.execute(
+                "UPDATE files SET visible_to_students=? WHERE project_id=?",
+                (1 if visible else 0, project_id),
+            )
+
+    return JSONResponse({"ok": True})
+
+
 @app.post("/api/admin/youtube-settings")
 @limiter.limit("5/minute")
 async def api_admin_youtube_settings(request: Request, user=Depends(require_admin)):
@@ -1336,15 +1763,39 @@ async def api_admin_youtube_settings(request: Request, user=Depends(require_admi
     if api_key:
         set_setting("youtube_api_key", _encrypt_api_key(api_key))
     if channel_id:
-        set_setting("youtube_channel_id", channel_id)
+        # Clean up: extract handle or ID from full URL
+        cleaned = _extract_channel_identifier(channel_id)
+        set_setting("youtube_channel_id", cleaned)
     return JSONResponse({"ok": True})
+
+
+def _extract_channel_identifier(raw: str) -> str:
+    """Extract @handle or UCxxx from various YouTube URL formats."""
+    import re as _re
+    raw = raw.strip().rstrip("/")
+    # https://youtube.com/@Handle or https://www.youtube.com/@Handle
+    m = _re.search(r'youtube\.com/(@[\w.-]+)', raw)
+    if m:
+        return m.group(1)
+    # https://youtube.com/channel/UCxxxxxx
+    m = _re.search(r'youtube\.com/channel/(UC[\w-]+)', raw)
+    if m:
+        return m.group(1)
+    # https://youtube.com/c/ChannelName
+    m = _re.search(r'youtube\.com/c/([\w.-]+)', raw)
+    if m:
+        return m.group(1)
+    # Already a bare @handle or UCxxx
+    return raw
 
 
 @app.get("/api/admin/youtube-stats")
 @limiter.limit("5/minute")
 async def api_admin_youtube_stats(request: Request, user=Depends(require_admin)):
-    """Fetch YouTube channel stats using YouTube Data API."""
-    from database import get_setting, _decrypt_api_key
+    """Fetch YouTube channel stats using YouTube Data API.
+    Resolves @handle to channel ID automatically.
+    """
+    from database import get_setting, _decrypt_api_key, set_setting
 
     yt_key = _decrypt_api_key(get_setting("youtube_api_key"))
     channel_id = get_setting("youtube_channel_id")
@@ -1355,6 +1806,33 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
     try:
         import httpx
         async with httpx.AsyncClient(timeout=15) as client:
+
+            # If it's a @handle, resolve to channel ID first
+            if channel_id.startswith("@"):
+                search_resp = await client.get(
+                    "https://www.googleapis.com/youtube/v3/search",
+                    params={"part": "snippet", "q": channel_id, "type": "channel", "maxResults": 1, "key": yt_key},
+                )
+                search_data = search_resp.json()
+                items = search_data.get("items", [])
+                if not items:
+                    # Try channels list with forHandle
+                    handle_resp = await client.get(
+                        "https://www.googleapis.com/youtube/v3/channels",
+                        params={"part": "id", "forHandle": channel_id.lstrip("@"), "key": yt_key},
+                    )
+                    handle_data = handle_resp.json()
+                    h_items = handle_data.get("items", [])
+                    if h_items:
+                        channel_id = h_items[0]["id"]
+                        set_setting("youtube_channel_id", channel_id)
+                    else:
+                        return JSONResponse({"error": f"Handle {channel_id} nao encontrado"}, status_code=404)
+                else:
+                    channel_id = items[0]["snippet"]["channelId"]
+                    set_setting("youtube_channel_id", channel_id)
+
+            # Fetch channel stats
             resp = await client.get(
                 "https://www.googleapis.com/youtube/v3/channels",
                 params={"part": "statistics,snippet", "id": channel_id, "key": yt_key},
@@ -1362,7 +1840,7 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
             data = resp.json()
 
         if "items" not in data or not data["items"]:
-            return JSONResponse({"error": "Canal nao encontrado"}, status_code=404)
+            return JSONResponse({"error": "Canal nao encontrado. Verifique o Channel ID."}, status_code=404)
 
         ch = data["items"][0]
         stats = ch.get("statistics", {})
@@ -1374,6 +1852,7 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
             "subscribers": int(stats.get("subscriberCount", 0)),
             "views": int(stats.get("viewCount", 0)),
             "videos": int(stats.get("videoCount", 0)),
+            "thumbnail": snippet.get("thumbnails", {}).get("default", {}).get("url", ""),
         })
     except Exception as e:
         logger.error(f"youtube-stats error: {e}")
@@ -1381,438 +1860,8 @@ async def api_admin_youtube_stats(request: Request, user=Depends(require_admin))
 
 
 # ══════════════════════════════════════════════════════════
-# NOTEBOOKLM AUTH ROUTES
+# STUDENT ROUTES — moved to routes/student_routes.py
 # ══════════════════════════════════════════════════════════
-
-@app.get("/admin/notebooklm", response_class=HTMLResponse)
-async def admin_nlm_auth_page(request: Request, user=Depends(require_admin)):
-    """NotebookLM credential management page."""
-    has_credentials = False
-    try:
-        has_credentials = (Path.home() / ".notebooklm" / "storage_state.json").exists()
-    except Exception:
-        pass
-    return render(request, "admin_nlm_auth.html", {"user": user, "has_credentials": has_credentials})
-
-
-@app.get("/admin/nlm-receive", response_class=HTMLResponse)
-async def admin_nlm_receive(request: Request, user=Depends(require_auth)):
-    """Callback page — receives cookies from bookmarklet via URL hash and auto-saves."""
-    return render(request, "admin_nlm_receive.html", {"user": user})
-
-
-@app.get("/api/admin/nlm-notebooks")
-async def api_nlm_notebooks(request: Request, user=Depends(require_admin)):
-    """List notebooks from NotebookLM account."""
-    import asyncio, threading
-
-    async def _fetch():
-        from notebooklm import NotebookLMClient
-        storage_path = Path.home() / ".notebooklm" / "storage_state.json"
-        path_arg = str(storage_path) if storage_path.exists() else None
-        async with await NotebookLMClient.from_storage(path=path_arg) as client:
-            notebooks = await client.notebooks.list()
-            return [{"id": nb.id, "title": getattr(nb, "title", getattr(nb, "name", str(nb)))} for nb in notebooks]
-
-    try:
-        container = [None, None]
-        def run():
-            try:
-                container[0] = asyncio.run(_fetch())
-            except Exception as e:
-                container[1] = e
-        t = threading.Thread(target=run)
-        t.start()
-        t.join(timeout=30)
-        if container[1]:
-            raise container[1]
-        notebooks = container[0] or []
-        return JSONResponse({"ok": True, "notebooks": notebooks})
-    except Exception as e:
-        logger.error(f"NLM list notebooks error: {e}")
-        return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
-
-
-@app.post("/api/admin/nlm-save-credentials")
-@limiter.limit("10/minute")
-async def api_nlm_save_credentials(request: Request, user=Depends(require_admin)):
-    """Save NotebookLM storage state (cookies + localStorage)."""
-    body = await request.json()
-    storage_state = body.get("storage_state", "")
-
-    if not storage_state:
-        return JSONResponse({"error": "storage_state obrigatorio"}, status_code=400)
-
-    # Validate JSON
-    try:
-        if isinstance(storage_state, str):
-            parsed = json.loads(storage_state)
-        else:
-            parsed = storage_state
-            storage_state = json.dumps(parsed)
-
-        if not isinstance(parsed, dict):
-            return JSONResponse({"error": "JSON deve ser um objeto"}, status_code=400)
-        if "cookies" not in parsed and "origins" not in parsed:
-            return JSONResponse({"error": "JSON deve conter 'cookies' ou 'origins'"}, status_code=400)
-    except (json.JSONDecodeError, TypeError) as e:
-        return JSONResponse({"error": f"JSON invalido: {str(e)[:100]}"}, status_code=400)
-
-    try:
-        import base64
-
-        # Save to file — but DON'T overwrite if existing one has more cookies (is more complete)
-        nlm_dir = Path.home() / ".notebooklm"
-        nlm_dir.mkdir(parents=True, exist_ok=True)
-        nlm_file = nlm_dir / "storage_state.json"
-
-        # Check if new state is better than existing
-        should_write = True
-        if nlm_file.exists():
-            try:
-                existing = json.loads(nlm_file.read_text(encoding="utf-8"))
-                new_parsed = json.loads(storage_state) if isinstance(storage_state, str) else storage_state
-                existing_cookies = len(existing.get("cookies", []))
-                new_cookies = len(new_parsed.get("cookies", []))
-                has_sid_new = any(c.get("name") == "SID" for c in new_parsed.get("cookies", []))
-                has_sid_existing = any(c.get("name") == "SID" for c in existing.get("cookies", []))
-
-                # Don't overwrite complete auth with incomplete bookmarklet cookies
-                if has_sid_existing and not has_sid_new:
-                    logger.warning(f"NLM save: keeping existing ({existing_cookies} cookies with SID) — new has {new_cookies} cookies WITHOUT SID (bookmarklet limitation)")
-                    should_write = False
-                elif existing_cookies > new_cookies * 2 and has_sid_existing:
-                    logger.warning(f"NLM save: keeping existing ({existing_cookies} cookies) — new only has {new_cookies}")
-                    should_write = False
-            except Exception:
-                pass
-
-        if should_write:
-            nlm_file.write_text(storage_state, encoding="utf-8")
-            logger.info(f"NotebookLM credentials saved to file: {len(storage_state)} chars")
-        else:
-            logger.info("NotebookLM: kept existing credentials (more complete)")
-
-        # Backup to volume
-        try:
-            backup_file = OUTPUT_DIR / ".nlm_storage_state.json"
-            best_content = nlm_file.read_text(encoding="utf-8") if nlm_file.exists() else storage_state
-            backup_file.write_text(best_content, encoding="utf-8")
-        except Exception:
-            pass
-
-        # Also try saving to DB (may fail if DB is readonly — that's OK)
-        try:
-            from database import set_setting
-            b64 = base64.b64encode(storage_state.encode()).decode()
-            set_setting("notebooklm_storage_state", b64)
-            logger.info("NotebookLM credentials also saved to DB")
-        except Exception as db_err:
-            logger.warning(f"Could not save NLM creds to DB (file save OK): {db_err}")
-
-        return JSONResponse({"ok": True, "cookies": len(parsed.get("cookies", [])), "origins": len(parsed.get("origins", []))})
-    except Exception as e:
-        logger.error(f"NLM save error: {e}")
-        return JSONResponse({"error": "Falha ao salvar credenciais"}, status_code=500)
-
-
-# ══════════════════════════════════════════════════════════
-# STUDENT ROUTES
-# ══════════════════════════════════════════════════════════
-
-@app.get("/student", response_class=HTMLResponse)
-async def student_dashboard(request: Request, view_as: int = 0, user=Depends(require_auth)):
-    """Student dashboard with kanban board.
-    Admin can view as any student via ?view_as=<student_id>
-    """
-    # ── Impersonation: admin viewing as student ──
-    impersonating = False
-    target_user = user
-
-    if view_as and user.get("role") == "admin":
-        from database import get_user
-        student = get_user(view_as)
-        if not student:
-            raise HTTPException(status_code=404, detail="Aluno nao encontrado")
-        target_user = student
-        impersonating = True
-    elif user.get("role") == "admin" and not view_as:
-        return RedirectResponse("/", status_code=302)
-
-    student_id = target_user["id"]
-
-    from database import get_assignments, get_student_ideas, get_project, get_db
-
-    # ── Build kanban data ──
-    assignments = get_assignments(student_id)
-    all_ideas = []
-    project_ids = set()
-
-    for a in assignments:
-        ideas = get_student_ideas(a["id"])
-        for idea in ideas:
-            idea["niche"] = a["niche"]
-            idea["assignment_id"] = a["id"]
-        all_ideas.extend(ideas)
-        if a.get("project_id"):
-            project_ids.add(a["project_id"])
-
-    kanban = {"pending": [], "writing": [], "recording": [], "editing": [], "published": []}
-    for idea in all_ideas:
-        status = idea.get("status", "pending")
-        if status in kanban:
-            kanban[status].append(idea)
-
-    # ── Stats ──
-    stats = {
-        "total": len(all_ideas),
-        "completed": len(kanban["published"]),
-        "in_progress": len(kanban["writing"]) + len(kanban["recording"]) + len(kanban["editing"]),
-        "pending": len(kanban["pending"]),
-    }
-
-    # ── API key info ──
-    api_provider = target_user.get("api_provider", "")
-    has_api_key = bool(target_user.get("api_key_encrypted"))
-
-    # ── Student's roteiro files ──
-    student_categories = {}
-    student_roteiros = []
-
-    for fpath in sorted(OUTPUT_DIR.glob(f"roteiro_student_{student_id}_*.md")):
-        student_roteiros.append({
-            "id": 0,
-            "name": fpath.name,
-            "path": fpath.name,
-            "size": fpath.stat().st_size,
-            "label": fpath.stem.replace(f"roteiro_student_{student_id}_", "Roteiro - ").replace("_", " ").title(),
-        })
-
-    # Also check DB for linked scripts
-    try:
-        with get_db() as conn:
-            rows = conn.execute("""
-                SELECT s.id, s.title, f.filename, f.id as file_id
-                FROM scripts s
-                LEFT JOIN files f ON f.project_id = s.project_id AND f.category = 'roteiros'
-                    AND LOWER(f.label) LIKE '%' || LOWER(SUBSTR(s.title, 1, 30)) || '%'
-                JOIN progress p ON p.idea_id = s.idea_id AND p.student_id = ?
-                WHERE s.idea_id IS NOT NULL
-            """, (student_id,)).fetchall()
-            seen_names = {r["name"] for r in student_roteiros}
-            for row in rows:
-                fname = row["filename"] or ""
-                if fname and fname not in seen_names:
-                    fpath = OUTPUT_DIR / fname
-                    student_roteiros.append({
-                        "id": row["file_id"] or 0,
-                        "name": fname,
-                        "path": fname,
-                        "size": fpath.stat().st_size if fpath.exists() else 0,
-                        "label": f"Roteiro - {row['title']}" if row["title"] else fname,
-                    })
-                    seen_names.add(fname)
-    except Exception:
-        pass
-
-    if student_roteiros:
-        student_categories["roteiros"] = {
-            "label": "Meus Roteiros", "icon": "&#128221;", "color": "#eab308",
-            "files": student_roteiros,
-        }
-
-    # ── Project info ──
-    current_project = None
-    if project_ids:
-        proj = get_project(list(project_ids)[0])
-        if proj:
-            current_project = {
-                "id": proj["id"],
-                "name": proj["name"],
-                "drive_folder_url": proj.get("drive_folder_url", ""),
-                "channel_original": proj.get("channel_original", ""),
-            }
-
-    return render(request, "student_dashboard.html", {
-        "user": target_user,
-        "real_user": user,
-        "assignments": assignments,
-        "kanban": kanban,
-        "stats": stats,
-        "api_provider": api_provider,
-        "has_api_key": has_api_key,
-        "categories": student_categories,
-        "current_project": current_project,
-        "impersonating": impersonating,
-        "readonly": impersonating,
-    })
-
-
-@app.post("/api/student/update-progress")
-@limiter.limit("30/minute")
-async def api_student_update_progress(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    progress_id = body.get("progress_id")
-    status = body.get("status", "")
-    video_url = body.get("video_url", "")
-    notes = body.get("notes", "")
-
-    if not progress_id or not status:
-        return JSONResponse({"error": "progress_id e status obrigatorios"}, status_code=400)
-
-    allowed_statuses = {"pending", "writing", "recording", "editing", "published"}
-    if status not in allowed_statuses:
-        return JSONResponse({"error": f"Status invalido. Use: {', '.join(allowed_statuses)}"}, status_code=400)
-
-    from database import update_progress
-    update_progress(int(progress_id), status, video_url, notes)
-    return JSONResponse({"ok": True})
-
-
-@app.post("/api/student/update-api-key")
-@limiter.limit("10/minute")
-async def api_student_update_api_key(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    provider = (body.get("provider") or "").strip()
-    api_key = (body.get("api_key") or "").strip()
-
-    allowed_providers = {"laozhang", "openai", "anthropic", "google"}
-    if provider and provider not in allowed_providers:
-        return JSONResponse({"error": f"Provider invalido"}, status_code=400)
-
-    from database import _encrypt_api_key, update_user
-    encrypted = _encrypt_api_key(api_key) if api_key else ""
-    update_user(user["id"], api_provider=provider, api_key_encrypted=encrypted)
-    return JSONResponse({"ok": True})
-
-
-@app.post("/api/student/generate-script")
-@limiter.limit("5/minute")
-async def api_student_generate_script(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    progress_id = body.get("progress_id")
-
-    if not progress_id:
-        return JSONResponse({"error": "progress_id obrigatorio"}, status_code=400)
-
-    from database import get_db, _decrypt_api_key, mark_progress_script_generated, save_script
-
-    with get_db() as conn:
-        progress = conn.execute(
-            """SELECT p.*, i.title, i.hook, i.project_id, i.id as idea_real_id
-               FROM progress p JOIN ideas i ON p.idea_id = i.id
-               WHERE p.id=? AND p.student_id=?""",
-            (progress_id, user["id"]),
-        ).fetchone()
-
-    if not progress:
-        return JSONResponse({"error": "Progresso nao encontrado"}, status_code=404)
-    progress = dict(progress)
-
-    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
-    provider = user.get("api_provider", "")
-    if not api_key or not provider:
-        return JSONResponse({"error": "Configure sua API key primeiro"}, status_code=400)
-
-    try:
-        title = progress["title"]
-        hook = progress.get("hook", "")
-        project_id = progress["project_id"]
-
-        sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
-        sop = sop_path.read_text(encoding="utf-8") if sop_path.exists() else ""
-
-        prompt = f"""Escreva um roteiro completo de video para YouTube:
-TITULO: {title}
-HOOK: {hook}
-SOP: {sop[:3000]}
-
-Inclua: Hook forte (30s), estrutura clara, CTA, duracao 10-12 min, linguagem envolvente. Em portugues."""
-
-        import httpx
-
-        if provider in ("laozhang", "openai"):
-            api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(api_url, json={
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 4000,
-                }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
-                data = resp.json()
-                script = data["choices"][0]["message"]["content"]
-
-        elif provider == "anthropic":
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post("https://api.anthropic.com/v1/messages", json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 4000,
-                    "messages": [{"role": "user", "content": prompt}],
-                }, headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"})
-                data = resp.json()
-                script = data["content"][0]["text"]
-
-        elif provider == "google":
-            api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(f"{api_url}?key={api_key}", json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                })
-                data = resp.json()
-                script = data["candidates"][0]["content"]["parts"][0]["text"]
-        else:
-            return JSONResponse({"error": f"Provider '{provider}' nao suportado"}, status_code=400)
-
-        # Save script
-        save_script(project_id, title, script, progress["idea_real_id"], "10-12 min")
-        mark_progress_script_generated(int(progress_id))
-
-        words = len(script.split())
-        return JSONResponse({
-            "ok": True,
-            "progress_id": progress_id,
-            "title": title,
-            "words": words,
-            "duration_estimate": f"~{round(words / 140, 1)} min",
-        })
-    except Exception as e:
-        logger.error(f"student generate-script error: {e}")
-        return JSONResponse({"error": "Falha ao gerar roteiro"}, status_code=500)
-
-
-@app.post("/api/student/delete-file")
-async def api_student_delete_file(request: Request, user=Depends(require_auth)):
-    body = await request.json()
-    file_id = body.get("file_id")
-    if not file_id:
-        return JSONResponse({"error": "file_id obrigatorio"}, status_code=400)
-
-    from database import get_db, delete_file as db_delete_file
-
-    # Verify access
-    with get_db() as conn:
-        f = conn.execute("SELECT * FROM files WHERE id=?", (file_id,)).fetchone()
-        if not f:
-            return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
-
-        if f["category"] == "analise":
-            return JSONResponse({"error": "Arquivos de analise nao podem ser excluidos"}, status_code=400)
-
-        if user.get("role") != "admin":
-            assignment = conn.execute(
-                "SELECT id FROM assignments WHERE student_id=? AND project_id=?",
-                (user["id"], f["project_id"]),
-            ).fetchone()
-            if not assignment:
-                return JSONResponse({"error": "Sem permissao"}, status_code=403)
-
-    deleted = db_delete_file(int(file_id))
-    if deleted and deleted.get("filename"):
-        fpath = OUTPUT_DIR / deleted["filename"]
-        if fpath.exists():
-            fpath.unlink()
-
-    return JSONResponse({"ok": True})
 
 
 # ── Entry point ──────────────────────────────────────────
