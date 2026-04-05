@@ -562,8 +562,19 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
 
     has_api = bool(student.get("api_key_encrypted"))
 
-    from database import get_student_channels
+    from database import get_student_channels, get_projects
     channels = get_student_channels(student_id)
+
+    # All projects for assignment dropdown
+    all_projects = get_projects()
+
+    # Enrich assignments with project info
+    projects_by_id = {p["id"]: p for p in all_projects}
+    for a in assignments:
+        proj = projects_by_id.get(a.get("project_id"))
+        a["project_name"] = proj["name"] if proj else "Sem projeto"
+        a["project_channel"] = proj.get("channel_original", "") if proj else ""
+        a["project_language"] = proj.get("language", "pt-BR") if proj else ""
 
     return render(request, "admin_student_detail.html", {
         "user": user,
@@ -573,7 +584,69 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
         "status_labels": status_labels,
         "status_colors": status_colors,
         "channels": channels,
+        "all_projects": all_projects,
     })
+
+
+@app.post("/api/admin/assign-project")
+@limiter.limit("20/minute")
+async def api_assign_project(request: Request, user=Depends(require_admin)):
+    """Assign or change the project linked to a student assignment."""
+    body = await request.json()
+    assignment_id = body.get("assignment_id")
+    project_id = body.get("project_id", "").strip()
+
+    if not assignment_id or not project_id:
+        return JSONResponse({"error": "assignment_id e project_id obrigatorios"}, status_code=400)
+
+    from database import get_db, get_project
+    proj = get_project(project_id)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE assignments SET project_id=?, niche=? WHERE id=?",
+                (project_id, proj.get("niche_chosen", proj["name"]), int(assignment_id)),
+            )
+        from database import log_activity
+        log_activity(project_id, "project_assigned", f"Projeto atribuido ao assignment {assignment_id}")
+        return JSONResponse({"ok": True, "project_name": proj["name"]})
+    except Exception as e:
+        logger.error(f"assign-project error: {e}")
+        return JSONResponse({"error": "Falha ao atribuir projeto."}, status_code=500)
+
+
+@app.post("/api/admin/create-assignment")
+@limiter.limit("10/minute")
+async def api_create_assignment(request: Request, user=Depends(require_admin)):
+    """Create a new assignment for a student with a specific project."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    project_id = body.get("project_id", "").strip()
+    niche = body.get("niche", "").strip()
+    titles_count = int(body.get("titles_count", 5))
+
+    if not student_id or not project_id:
+        return JSONResponse({"error": "student_id e project_id obrigatorios"}, status_code=400)
+
+    from database import get_project, create_assignment
+    proj = get_project(project_id)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    if not niche:
+        niche = proj.get("niche_chosen", proj["name"])
+
+    try:
+        aid = create_assignment(int(student_id), project_id, niche, titles_count)
+        from database import log_activity
+        log_activity(project_id, "assignment_created", f"Aluno {student_id} atribuido com {titles_count} titulos")
+        return JSONResponse({"ok": True, "assignment_id": aid})
+    except Exception as e:
+        logger.error(f"create-assignment error: {e}")
+        return JSONResponse({"error": "Falha ao criar atribuicao."}, status_code=500)
 
 
 @app.post("/api/admin/create-student")

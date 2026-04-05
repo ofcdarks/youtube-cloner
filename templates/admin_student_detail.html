@@ -44,16 +44,59 @@
         </div>
     </div>
 
+    <!-- ADD NEW ASSIGNMENT -->
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128204;</span> Atribuir Projeto ao Aluno</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Projeto</label>
+                <select id="new-assign-project" class="form-input" style="width:100%" title="Selecionar projeto">
+                    <option value="">Selecione um projeto...</option>
+                    {% for p in all_projects %}
+                    <option value="{{ p.id }}">{{ p.name }} {% if p.niche_chosen %}({{ p.niche_chosen }}){% endif %} — {{ p.language|default('pt-BR') }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="width:80px">
+                <label style="font-size:11px;color:#888;display:block;margin-bottom:4px">Titulos</label>
+                <input type="number" id="new-assign-titles" class="form-input" value="5" min="1" max="30" style="width:100%" title="Quantidade de titulos" placeholder="5">
+            </div>
+            <button class="btn-primary" style="padding:8px 16px;font-size:12px;white-space:nowrap" onclick="createAssignment()">+ Atribuir Projeto</button>
+        </div>
+    </div>
+
     <!-- ASSIGNMENTS -->
     {% for a in assignments %}
     <div class="section">
-        <div class="section-title" style="justify-content:space-between">
+        <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
             <span>
                 <span class="sec-icon">&#128218;</span>
                 Nicho: <span style="color:#00d4ff">{{ a.niche }}</span>
                 <span style="font-size:.75em;color:#666;margin-left:8px">({{ a.total_titles }} titulos atribuidos, {{ a.completed_titles }} publicados)</span>
             </span>
             <button class="btn-success" onclick="releaseMoreTitles({{ a.id }}, 5)">+ Liberar 5 Titulos</button>
+        </div>
+
+        <!-- Project info -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:#131a2e;border-radius:8px;border:1px solid #1e293b">
+            <span style="font-size:11px;color:#888">Projeto:</span>
+            <span style="font-weight:600;color:#a78bfa">{{ a.project_name }}</span>
+            {% if a.project_channel %}
+            <span style="font-size:11px;color:#666">|</span>
+            <span style="font-size:11px;color:#06b6d4">{{ a.project_channel[:50] }}</span>
+            {% endif %}
+            <span style="font-size:10px;color:#22c55e;background:#22c55e18;padding:2px 6px;border-radius:3px">{{ a.project_language }}</span>
+
+            <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+                <select id="proj-select-{{ a.id }}" class="form-input" style="font-size:11px;padding:4px 8px;width:200px" title="Trocar projeto">
+                    {% for p in all_projects %}
+                    <option value="{{ p.id }}" {% if p.id == a.project_id %}selected{% endif %}>{{ p.name[:30] }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" style="background:#7c3aed;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;white-space:nowrap" onclick="changeProject({{ a.id }})">Trocar</button>
+            </div>
         </div>
 
         {% set pct = ((a.completed_titles / a.total_titles * 100) if a.total_titles > 0 else 0)|int %}
@@ -266,6 +309,44 @@ function addStudentChannel() {
             showToast('Erro: ' + (data.error || ''), 'error');
         }
     });
+}
+
+function changeProject(assignmentId) {
+    var sel = document.getElementById('proj-select-' + assignmentId);
+    var projectId = sel.value;
+    showConfirm('Trocar Projeto', 'Trocar o projeto vinculado a este nicho?', function() {
+        apiPost('/api/admin/assign-project', {assignment_id: assignmentId, project_id: projectId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                showToast('Projeto atualizado: ' + data.project_name, 'success');
+                setTimeout(function() { location.reload(); }, 1000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        });
+    });
+}
+
+function createAssignment() {
+    var projectId = document.getElementById('new-assign-project').value;
+    var titlesCount = parseInt(document.getElementById('new-assign-titles').value) || 5;
+    if (!projectId) { showToast('Selecione um projeto', 'warning'); return; }
+    var loading = showToast('Criando atribuicao...', 'loading');
+    apiPost('/api/admin/create-assignment', {
+        student_id: {{ student.id }}, project_id: projectId, titles_count: titlesCount
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        if (data.ok) {
+            showToast('Projeto atribuido com ' + titlesCount + ' titulos!', 'success');
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    })
+    .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
 }
 
 function removeStudentChannel(channelId) {
