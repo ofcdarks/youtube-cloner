@@ -521,17 +521,25 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
             logger.error(f"AI returned empty/short script ({len(script) if script else 0} chars) for progress_id={progress_id}")
             return JSONResponse({"error": "IA retornou roteiro vazio ou muito curto. Tente novamente."}, status_code=500)
 
-        # Save script as file
+        # Delete previous script/narration if re-generating
         from database import save_file
         import re as _re
         safe_title = title.replace("/", "-").replace("\\", "-")[:80]
-        save_file(project_id, "roteiro", f"Roteiro - {safe_title}", f"roteiro_student_{progress_id}.md", script, visible_to_students=True)
+        roteiro_filename = f"roteiro_student_{progress_id}.md"
+        narracao_filename = f"narracao_student_{progress_id}.md"
+
+        with get_db() as conn:
+            conn.execute("DELETE FROM files WHERE filename=? AND project_id=?", (roteiro_filename, project_id))
+            conn.execute("DELETE FROM files WHERE filename=? AND project_id=?", (narracao_filename, project_id))
+
+        # Save new script as file
+        save_file(project_id, "roteiro", f"Roteiro - {safe_title}", roteiro_filename, script, visible_to_students=True)
 
         # Generate clean narration (strip markers like pipeline Step 10)
         narracao = _re.sub(r'\[.*?\]', '', script)  # Remove [MUSICA:], [SFX:], [B-ROLL:] markers
         narracao = _re.sub(r'\n{3,}', '\n\n', narracao).strip()
         if narracao and len(narracao) > 200:
-            save_file(project_id, "narracao", f"Narracao - {safe_title}", f"narracao_student_{progress_id}.md", narracao, visible_to_students=True)
+            save_file(project_id, "narracao", f"Narracao - {safe_title}", narracao_filename, narracao, visible_to_students=True)
 
         # Save to scripts table
         save_script(project_id, title, script, progress["idea_real_id"], "15-20 min")

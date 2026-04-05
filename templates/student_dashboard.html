@@ -329,11 +329,20 @@
                 {% for item in kanban.writing %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'writing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
-                    <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.script_generated %}<span style="color:#4caf50">Roteiro &#10003;</span>{% endif %}</div>
+                    <div class="kanban-card-meta">
+                        <span style="color:#b388ff">{{ item.pillar }}</span>
+                        {% if item.score %}<span style="color:{% if item.score >= 80 %}#4caf50{% elif item.score >= 60 %}#448aff{% else %}#ffd740{% endif %}">Score: {{ item.score }}</span>{% endif %}
+                    </div>
                     {% if not readonly %}<div class="kanban-card-actions">
                         <button onclick="moveCard({{ item.id }}, 'pending')">&#10094; Voltar</button>
+                        {% if has_api_key %}
+                            {% if item.script_generated %}
+                            <button class="btn-script" style="background:#22c55e20;color:#22c55e;border-color:#22c55e40" onclick="studentGenerateScript({{ item.id }})" title="Re-gerar roteiro (substitui o atual)">&#128260; Re-gerar</button>
+                            {% else %}
+                            <button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>
+                            {% endif %}
+                        {% endif %}
                         <button onclick="moveCard({{ item.id }}, 'recording')">Gravar &#10132;</button>
-                        {% if has_api_key and not item.script_generated %}<button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>{% endif %}
                     </div>{% endif %}
                 </div>
                 {% endfor %}
@@ -582,7 +591,13 @@ function deleteFile(fileId, label) {
 }
 
 function studentGenerateScript(progressId) {
-    showConfirm('Gerar Roteiro', 'Gerar roteiro usando sua API key?<br><br>Isso pode levar 1-2 minutos e consumir creditos da sua API.', function() {
+    var card = document.getElementById('card-' + progressId);
+    var hasScript = card && card.innerHTML.indexOf('Re-gerar') > -1;
+    var confirmTitle = hasScript ? 'Re-gerar Roteiro' : 'Gerar Roteiro';
+    var confirmMsg = hasScript
+        ? 'O roteiro atual sera <strong>substituido</strong> por um novo.<br><br>Isso consumira creditos da sua API. Continuar?'
+        : 'Gerar roteiro usando sua API key?<br><br>Isso pode levar 1-2 minutos e consumir creditos da sua API.';
+    showConfirm(confirmTitle, confirmMsg, function() {
         // Show centered modal with progress bar
         var modal = document.createElement('div');
         modal.id = 'script-gen-modal';
