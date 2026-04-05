@@ -570,8 +570,8 @@ async def api_create_student(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": "Nome deve ter pelo menos 2 caracteres"}, status_code=400)
     if not email or "@" not in email:
         return JSONResponse({"error": "Email invalido"}, status_code=400)
-    if not password or len(password) < 6:
-        return JSONResponse({"error": "Senha deve ter pelo menos 6 caracteres"}, status_code=400)
+    if not password or len(password) < 12:
+        return JSONResponse({"error": "Senha deve ter pelo menos 12 caracteres"}, status_code=400)
 
     from database import create_user, create_assignment
     uid = create_user(name, email, password, role="student", created_by=user.get("id"))

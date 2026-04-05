@@ -659,16 +659,17 @@ def log_activity(project_id: str | None, action: str, details: str = "", conn=No
             )
 
 
-def get_activity(project_id: str | None = None, limit: int = 50) -> list[dict]:
+def get_activity(project_id: str | None = None, limit: int = 50, offset: int = 0) -> list[dict]:
+    """Get activity log with pagination support."""
     with get_db() as conn:
         if project_id:
             rows = conn.execute(
-                "SELECT * FROM activity_log WHERE project_id=? ORDER BY created_at DESC LIMIT ?",
-                (project_id, limit),
+                "SELECT * FROM activity_log WHERE project_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (project_id, limit, offset),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM activity_log ORDER BY created_at DESC LIMIT ?", (limit,)
+                "SELECT * FROM activity_log ORDER BY created_at DESC LIMIT ? OFFSET ?", (limit, offset)
             ).fetchall()
     return [dict(r) for r in rows]
 
@@ -1124,17 +1125,18 @@ def create_notification(user_id: int, ntype: str, title: str, message: str = "",
         )
 
 
-def get_notifications(user_id: int, unread_only: bool = False, limit: int = 20) -> list[dict]:
+def get_notifications(user_id: int, unread_only: bool = False, limit: int = 20, offset: int = 0) -> list[dict]:
+    """Get notifications with pagination support."""
     with get_db() as conn:
         if unread_only:
             rows = conn.execute(
-                "SELECT * FROM notifications WHERE user_id=? AND read=0 ORDER BY created_at DESC LIMIT ?",
-                (user_id, limit),
+                "SELECT * FROM notifications WHERE user_id=? AND read=0 ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (user_id, limit, offset),
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
-                (user_id, limit),
+                "SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (user_id, limit, offset),
             ).fetchall()
     return [dict(r) for r in rows]
 

@@ -55,6 +55,7 @@ async def api_toggle_used(request: Request, user=Depends(require_auth)):
 
 
 @router.get("/api/score-all")
+@limiter.limit("2/minute")
 async def api_score_all(
     request: Request,
     countries: str = "global,BR,US",
