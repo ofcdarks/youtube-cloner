@@ -55,9 +55,10 @@ LOCATION_MAP = {
     "fr": 2250, "de": 2276, "it": 2380, "pt": 2620, "jp": 2392,
     "kr": 2410, "ar": 2032, "co": 2170, "cl": 2152,
 }
-LANG_MAP = {
-    "en": 1000, "es": 1003, "pt": 1014, "fr": 1002, "de": 1001,
-    "it": 1004, "ja": 1005, "ko": 1012,
+# DataForSEO uses language_name, NOT language_code
+LANG_NAME_MAP = {
+    "en": "English", "es": "Spanish", "pt": "Portuguese", "fr": "French",
+    "de": "German", "it": "Italian", "ja": "Japanese", "ko": "Korean",
 }
 
 
@@ -77,7 +78,7 @@ def get_keyword_data(keywords: list[str], country: str = "us", language: str = "
         return []
 
     location_code = LOCATION_MAP.get(country.lower(), 2840)
-    language_code = LANG_MAP.get(language.lower()[:2], 1000)
+    language_name = LANG_NAME_MAP.get(language.lower()[:2], "English")
 
     try:
         resp = requests.post(
@@ -85,7 +86,7 @@ def get_keyword_data(keywords: list[str], country: str = "us", language: str = "
             json=[{
                 "keywords": keywords[:700],
                 "location_code": location_code,
-                "language_code": language_code,
+                "language_name": language_name,
             }],
             auth=(login, password),
             timeout=30,
@@ -100,11 +101,15 @@ def get_keyword_data(keywords: list[str], country: str = "us", language: str = "
             if task.get("status_code") != 20000:
                 continue
             for item in task.get("result", []):
+                comp = item.get("competition", "")
+                comp_index = item.get("competition_index", 0) or 0
+                comp_val = comp_index / 100 if isinstance(comp_index, (int, float)) else 0
                 results.append({
                     "keyword": item.get("keyword", ""),
                     "vol": item.get("search_volume", 0) or 0,
                     "cpc": round(item.get("cpc", 0) or 0, 2),
-                    "competition": round(item.get("competition", 0) or 0, 2),
+                    "competition": round(comp_val, 2),
+                    "competition_level": comp if isinstance(comp, str) else "",
                 })
 
         logger.info(f"DataForSEO: {len(results)} results for {len(keywords)} keywords ({country})")
