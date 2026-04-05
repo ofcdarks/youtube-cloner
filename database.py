@@ -935,9 +935,18 @@ def mark_progress_script_generated(progress_id: int):
 def get_admin_overview() -> list[dict]:
     """Get student overview with assignment stats — single query, no N+1."""
     with get_db() as conn:
-        rows = conn.execute("""
+        # Check if use_admin_api column exists (migration may not have run yet)
+        has_admin_api_col = False
+        try:
+            conn.execute("SELECT use_admin_api FROM users LIMIT 0")
+            has_admin_api_col = True
+        except Exception:
+            pass
+
+        admin_api_select = ", u.use_admin_api" if has_admin_api_col else ", 0 as use_admin_api"
+        rows = conn.execute(f"""
             SELECT u.id, u.name, u.email, u.api_key_encrypted, u.last_login, u.created_at,
-                   u.drive_folder_id, u.active, u.use_admin_api,
+                   u.drive_folder_id, u.active{admin_api_select},
                    GROUP_CONCAT(DISTINCT a.niche) as niches,
                    COALESCE(SUM(p_counts.total), 0) as total_assigned,
                    COALESCE(SUM(p_counts.completed), 0) as total_completed,
