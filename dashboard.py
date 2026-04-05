@@ -1947,7 +1947,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
     if not project_id:
         return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
 
-    from database import get_db, get_niches, get_project, save_idea, log_activity
+    from database import get_db, get_niches, get_project, get_ideas, save_idea, log_activity
     from services import get_project_sop
     from protocols.ai_client import chat
     from config import MAX_TOKENS_LARGE, LANG_LABELS
