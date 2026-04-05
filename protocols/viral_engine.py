@@ -209,6 +209,169 @@ def get_viral_formulas(lang: str = "es") -> dict:
 
 
 # ═══════════════════════════════════════════════════════════
+# SOP ANALYSIS — Extract the channel's REAL DNA
+# ═══════════════════════════════════════════════════════════
+
+def analyze_sop(sop_text: str, existing_titles: list[str] | None = None) -> dict:
+    """
+    Deep-analyze the SOP to extract the channel's unique DNA:
+    - Title formulas (patterns used by THIS channel)
+    - Power words (CAPS words this channel favors)
+    - Hook patterns (how this channel opens titles)
+    - Recurring themes/entities
+    - Tone and style markers
+
+    This ensures generated titles feel like they come FROM this channel,
+    not from a generic template.
+    """
+    result = {
+        "title_formulas": [],
+        "power_words": [],
+        "hook_patterns": [],
+        "entities": [],       # Specific names, places, civilizations
+        "tone_markers": [],
+        "style_rules": [],
+    }
+
+    titles = existing_titles or []
+
+    # ── Extract title formulas from existing titles ──
+    if titles:
+        # Analyze structural patterns
+        patterns_found = {}
+        for title in titles:
+            pattern = _extract_title_structure(title)
+            if pattern:
+                patterns_found[pattern] = patterns_found.get(pattern, 0) + 1
+
+        # Top patterns (most frequent first, include all)
+        result["title_formulas"] = [
+            p for p, count in sorted(patterns_found.items(), key=lambda x: -x[1])
+        ][:10]
+
+        # Extract CAPS words from titles (the channel's own power words)
+        caps_freq = {}
+        noise_caps = {"LOS", "LAS", "DEL", "QUE", "POR", "THE", "AND", "FOR", "UNA", "UNO"}
+        for title in titles:
+            caps = re.findall(r'\b([A-ZÁÉÍÓÚÑÜ]{3,})\b', title)
+            for w in caps:
+                if len(w) >= 4 and w not in noise_caps:
+                    caps_freq[w] = caps_freq.get(w, 0) + 1
+        # Include ALL caps words that appear (even once) — they define the channel's style
+        result["power_words"] = [
+            w for w, c in sorted(caps_freq.items(), key=lambda x: -x[1])
+        ][:20]
+
+        # Extract hook patterns (first 3-5 words)
+        hooks = {}
+        for title in titles:
+            # Remove specific names, keep structure
+            first_words = title.split()[:4]
+            if len(first_words) >= 3:
+                hook = " ".join(first_words)
+                # Generalize: replace proper nouns with [KEYWORD]
+                generalized = re.sub(r'\b[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+\b', '[X]', hook)
+                hooks[generalized] = hooks.get(generalized, 0) + 1
+        result["hook_patterns"] = [
+            h for h, c in sorted(hooks.items(), key=lambda x: -x[1])
+        ][:5]
+
+    # ── Extract entities from SOP (names, places, topics) ──
+    if sop_text:
+        # Proper nouns (capitalized, 4+ chars)
+        proper_nouns = re.findall(r'\b([A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]{3,})\b', sop_text)
+        entity_freq = {}
+        noise = {
+            "Como", "Para", "Cada", "Esta", "Este", "Todo", "Tiene",
+            "Puede", "Solo", "Entre", "Sobre", "Desde", "Donde", "Canal",
+            "Video", "Titulo", "Content", "Formato", "Estilo", "Regla",
+            "Importante", "Seccion", "Pilar",
+        }
+        for e in proper_nouns:
+            if e not in noise:
+                entity_freq[e] = entity_freq.get(e, 0) + 1
+        result["entities"] = [
+            e for e, c in sorted(entity_freq.items(), key=lambda x: -x[1])
+        ][:25]
+
+        # Extract tone markers from SOP
+        tone_indicators = []
+        if re.search(r'CAPS|MAYUSCULAS|capslock', sop_text, re.IGNORECASE):
+            tone_indicators.append("Usa CAPS para enfasis emocional")
+        if re.search(r'pregunta|interroga|\?', sop_text, re.IGNORECASE):
+            tone_indicators.append("Usa preguntas retoricas")
+        if re.search(r'numero|cifra|\d+', sop_text, re.IGNORECASE):
+            tone_indicators.append("Usa numeros para especificidad")
+        if re.search(r'misterio|secreto|oculto|prohibido', sop_text, re.IGNORECASE):
+            tone_indicators.append("Tono de misterio y revelacion")
+        if re.search(r'historia|antiguo|civilizaci', sop_text, re.IGNORECASE):
+            tone_indicators.append("Enfoque historico-educativo")
+        if re.search(r'nadie|nunca|imposible|increible', sop_text, re.IGNORECASE):
+            tone_indicators.append("Usa superlativos y absolutos")
+        result["tone_markers"] = tone_indicators
+
+    return result
+
+
+def _extract_title_structure(title: str) -> str:
+    """
+    Extract the structural pattern from a title.
+    E.g.: "TEOTIHUACÁN: El MISTERIO que Nadie Puede Explicar"
+       → "[KEYWORD]: El [POWER] que [HOOK]"
+    """
+    # Replace ALL-CAPS words (4+ chars) with [POWER]
+    structure = re.sub(r'\b[A-ZÁÉÍÓÚÑÜ]{4,}\b', '[POWER]', title)
+    # Replace capitalized proper nouns with [KEYWORD]
+    structure = re.sub(r'\b[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]{3,}\b', '[Nombre]', structure)
+    # Replace numbers with [NUM]
+    structure = re.sub(r'\b\d+\b', '[NUM]', structure)
+    # Collapse multiple [POWER] or [Nombre]
+    structure = re.sub(r'(\[POWER\]\s*)+', '[POWER] ', structure)
+    structure = re.sub(r'(\[Nombre\]\s*)+', '[Nombre] ', structure)
+    return structure.strip()
+
+
+def format_sop_analysis(analysis: dict) -> str:
+    """Format SOP analysis into a prompt block."""
+    lines = []
+
+    lines.append("═══════════════════════════════════════════")
+    lines.append("DNA DO CANAL (extraido do SOP e titulos existentes):")
+    lines.append("═══════════════════════════════════════════")
+
+    if analysis["title_formulas"]:
+        lines.append("\nFORMULAS DE TITULO QUE ESTE CANAL USA (replique estas estruturas):")
+        for i, f in enumerate(analysis["title_formulas"], 1):
+            lines.append(f"  {i}. {f}")
+
+    if analysis["power_words"]:
+        lines.append(f"\nPALAVRAS DE IMPACTO DO CANAL (use estas em CAPS):")
+        lines.append(f"  {', '.join(analysis['power_words'])}")
+
+    if analysis["hook_patterns"]:
+        lines.append(f"\nPADROES DE ABERTURA DO CANAL:")
+        for h in analysis["hook_patterns"]:
+            lines.append(f"  - \"{h}...\"")
+
+    if analysis["entities"]:
+        lines.append(f"\nENTIDADES/TEMAS DO CANAL (nomes que o canal cobre):")
+        lines.append(f"  {', '.join(analysis['entities'])}")
+
+    if analysis["tone_markers"]:
+        lines.append(f"\nTOM E ESTILO:")
+        for t in analysis["tone_markers"]:
+            lines.append(f"  - {t}")
+
+    lines.append("")
+    lines.append("REGRA FUNDAMENTAL: Os titulos gerados DEVEM parecer que foram criados")
+    lines.append("pelo DONO deste canal. Use as MESMAS formulas, MESMAS power words,")
+    lines.append("MESMO tom. A unica diferenca: agora com keywords de ALTO VOLUME.")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# ═══════════════════════════════════════════════════════════
 # VIRAL PROMPT BUILDER — The comprehensive prompt
 # ═══════════════════════════════════════════════════════════
 
@@ -221,6 +384,7 @@ def build_viral_prompt(
     demand_summary: str,
     lang: str = "es",
     count: int = 30,
+    existing_titles: list[str] | None = None,
 ) -> tuple[str, str]:
     """
     Build the ultimate viral title generation prompt.
@@ -235,6 +399,18 @@ def build_viral_prompt(
         "fr": "Français", "de": "Deutsch",
     }
     lang_label = lang_labels.get(lang_code, lang)
+
+    # Analyze SOP — extract the channel's real DNA
+    sop_analysis = analyze_sop(sop_text, existing_titles)
+    sop_analysis_block = format_sop_analysis(sop_analysis)
+
+    # Merge channel's own power words with generic viral words
+    channel_power_words = sop_analysis.get("power_words", [])
+    if channel_power_words:
+        # Channel's own words take priority
+        formulas["power_words"] = channel_power_words + [
+            w for w in formulas["power_words"] if w not in channel_power_words
+        ]
 
     # Build niches text
     niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in niches])
@@ -327,34 +503,39 @@ O QUE AS PESSOAS REALMENTE BUSCAM NO YOUTUBE:
 
 {demand_summary}
 
+{sop_analysis_block}
+
 ═══════════════════════════════════════════
-SOP DO CANAL (tom e estilo — referência):
+SOP COMPLETO (referência de tom e voz):
 ═══════════════════════════════════════════
-{sop_text[:3000]}
+{sop_text[:2500]}
 
 ═══════════════════════════════════════════
 INSTRUÇÕES FINAIS:
 ═══════════════════════════════════════════
 
-1. CADA título DEVE:
-   - Conter pelo menos 1 keyword da lista de volume
-   - Ter 1+ POWER WORD em CAPS
-   - Criar um CURIOSITY GAP irresistível
-   - A keyword principal nos primeiros 40 caracteres
-   - Máximo 80 caracteres
+PRIORIDADE 1 — IDENTIDADE DO CANAL:
+- Os títulos DEVEM parecer que o DONO do canal escreveu
+- Use as MESMAS fórmulas e power words que o canal já usa
+- Mantenha o TOM e ESTILO do SOP (não invente um estilo novo)
 
-2. PRIORIZE:
-   - Keywords de "OPORTUNIDADES DE OURO" (alto volume + baixa competição)
-   - Buscas reais do YouTube Autocomplete (as pessoas JÁ buscam isso)
-   - Fórmulas que combinam KEYWORD + EMOÇÃO + ESPECIFICIDADE
+PRIORIDADE 2 — DEMANDA DE BUSCA:
+- CADA título DEVE conter pelo menos 1 keyword com volume real
+- Keyword principal nos PRIMEIROS 40 caracteres (SEO)
+- Priorize OPORTUNIDADES DE OURO (alto volume + baixa competição)
 
-3. DISTRIBUA igualmente entre os sub-nichos
+PRIORIDADE 3 — VIRALIDADE:
+- 1+ POWER WORD em CAPS por título (use as do canal)
+- CURIOSITY GAP irresistível — prometa sem revelar
+- Máximo 80 caracteres (ideal: 50-70)
 
-4. Para as 10 ideias ALTA, gere uma VARIANTE B (title_b) com ângulo diferente
+4. DISTRIBUA igualmente entre os sub-nichos
 
-5. O campo "pillar" DEVE ser o nome do sub-nicho
+5. Para as 10 ideias ALTA, gere VARIANTE B (title_b) com ângulo diferente
 
-6. MISTURE: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
+6. O campo "pillar" DEVE ser o nome do sub-nicho
+
+7. MISTURE: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
 
 Retorne APENAS JSON válido:
 [{{"title":"...","title_b":"...(opcional para ALTA)","hook":"primeiros 30s do video","summary":"2 linhas","pillar":"nome do sub-nicho","priority":"ALTA"}}]"""

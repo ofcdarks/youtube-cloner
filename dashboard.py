@@ -2071,6 +2071,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             demand_summary=demand_summary,
             lang=lang,
             count=30,
+            existing_titles=existing_titles,
         )
 
         response = await asyncio.to_thread(
