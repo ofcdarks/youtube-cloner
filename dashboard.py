@@ -932,6 +932,9 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{l
             seo_prompt = f"""Gere SEO pack para estes 10 videos do canal "{niche_name}":
 {titles_block}
 
+SOP DO CANAL (referencia de tom, vocabulario e estilo):
+{sop_content[:2000]}
+
 REGRAS OBRIGATORIAS DO YOUTUBE:
 - Tags: o TOTAL de TODAS as tags de cada video NAO pode ultrapassar 500 caracteres. Use 10-12 tags relevantes e curtas.
 - Titulo: max 100 caracteres.
