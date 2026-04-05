@@ -2348,15 +2348,26 @@ async def api_sync_student_drive(request: Request, user=Depends(require_admin)):
                 return JSONResponse({"ok": True, "synced": 0, "message": "Nenhum projeto atribuido"})
 
             placeholders = ",".join("?" * len(project_ids))
-            # Sync ALL project files — no visibility filter (admin Drive has everything)
+            sid = int(student_id)
+            # Sync ONLY what student should see:
+            # 1. Files admin explicitly marked visible (visible_to_students=1)
+            # 2. Files student generated (student_ in filename OR companion files seo_/thumbnail_/music_/teaser_)
+            # Student NEVER gets: SOP, nichos, mind map, plano de lancamento, etc
+            student_patterns = [
+                f"roteiro_student_{sid}_%",
+                f"narracao_student_{sid}_%",
+                "seo_%", "thumbnail_%", "music_%", "teaser_%",
+            ]
+            pattern_clauses = " OR ".join(["f.filename LIKE ?"] * len(student_patterns))
             files = conn.execute(f"""
                 SELECT f.id, f.category, f.label, f.filename, f.content, f.project_id
                 FROM files f
                 WHERE f.project_id IN ({placeholders})
+                AND (f.visible_to_students = 1 OR {pattern_clauses})
                 AND f.content IS NOT NULL AND f.content != ''
                 AND LENGTH(f.content) > 50
                 ORDER BY f.created_at
-            """, project_ids).fetchall()
+            """, project_ids + student_patterns).fetchall()
 
         # Get channels for subfolder naming
         channels = get_student_channels(int(student_id))
