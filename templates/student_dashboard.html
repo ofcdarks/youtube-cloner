@@ -241,7 +241,7 @@
                 <div style="font-size:20px">&#127760;</div>
                 <div style="font-size:12px;color:var(--fg-primary);font-weight:600;margin-top:6px">Idioma do Canal</div>
                 {% set lang_labels = {"pt-BR":"Portugues BR","en":"English","es":"Espanol","fr":"Francais","de":"Deutsch","it":"Italiano","ja":"Japones","ko":"Coreano"} %}
-                <div style="font-size:13px;color:#e040fb;margin-top:4px">{{ lang_labels.get(schedule.language, schedule.language) }}</div>
+                <div id="cal-language" style="font-size:13px;color:#e040fb;margin-top:4px">{{ lang_labels.get(schedule.language, schedule.language) }}</div>
             </div>
         </div>
 
@@ -875,50 +875,75 @@ function renderAnalytics() {
     if (!data || !data.channel) return;
     var days = _analyticsPeriod;
     var videos = data.videos || [];
-    var currentVideos = filterVideosByPeriod(videos, days, 0);
-    var prevVideos = days > 0 ? filterVideosByPeriod(videos, days, days) : [];
-    var hasPrev = days > 0 && prevVideos.length > 0;
-
-    var curViews = sumViews(currentVideos);
-    var prevViews = sumViews(prevVideos);
-    var viewsChange = hasPrev ? calcChange(curViews, prevViews) : {pct: 0, direction: 'none'};
-
-    var curHours = calcWatchHours(currentVideos);
-    var prevHours = hasPrev ? calcWatchHours(prevVideos) : 0;
-    var hoursChange = hasPrev ? calcChange(curHours, prevHours) : {pct: 0, direction: 'none'};
-
-    var subsTotal = data.channel.subscribers || 0;
-    var subsEstimate = days > 0 ? Math.round(currentVideos.length * 0.8) : subsTotal;
-    var prevSubsEstimate = hasPrev ? Math.round(prevVideos.length * 0.8) : 0;
-    var subsChange = hasPrev ? calcChange(subsEstimate, prevSubsEstimate) : {pct: 0, direction: 'none'};
-
+    var ch = data.channel;
     var rpm = 3.5;
-    var curRevenue = (curViews / 1000) * rpm;
-    var prevRevenue = hasPrev ? (prevViews / 1000) * rpm : 0;
-    var revenueChange = hasPrev ? calcChange(curRevenue, prevRevenue) : {pct: 0, direction: 'none'};
 
-    document.querySelector('#an-views .an-value').textContent = formatNum(curViews);
-    document.querySelector('#an-views .an-change').innerHTML = hasPrev ? changeHtml(viewsChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; sem dados anteriores</span>';
+    // YouTube API only gives total views per video, not per-period.
+    // We show ALL videos but estimate period data from publication dates.
+    var totalViews = sumViews(videos);
+    var totalHours = calcWatchHours(videos);
+    var subsTotal = ch.subscribers || 0;
 
-    document.querySelector('#an-watchhours .an-value').textContent = curHours.toFixed(1);
-    document.querySelector('#an-watchhours .an-change').innerHTML = hasPrev ? changeHtml(hoursChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; sem dados anteriores</span>';
+    // For period view: split videos into "published in this period" vs "published before"
+    // This shows growth from new content vs existing library
+    var recentVideos = days > 0 ? filterVideosByPeriod(videos, days, 0) : videos;
+    var olderVideos = days > 0 ? filterVideosByPeriod(videos, days, days) : [];
 
+    // Estimate daily average from total channel data
+    var totalChannelViews = ch.total_views || totalViews;
+    var totalChannelVideos = ch.total_videos || videos.length;
+    var avgViewsPerVideo = totalChannelVideos > 0 ? Math.round(totalChannelViews / totalChannelVideos) : 0;
+    var estimatedDailyViews = Math.round(totalViews / Math.max(videos.length, 1) * 0.3);
+
+    // Period estimates
+    var periodViews, periodLabel;
     if (days === 0) {
-        document.querySelector('#an-subs .an-value').textContent = formatNum(subsTotal);
-        document.querySelector('#an-subs .an-change').innerHTML = '<span style="color:#888;">&#8213; total acumulado</span>';
+        periodViews = totalChannelViews;
+        periodLabel = 'total';
     } else {
-        document.querySelector('#an-subs .an-value').textContent = (subsEstimate >= 0 ? '+' : '') + subsEstimate;
-        document.querySelector('#an-subs .an-change').innerHTML = hasPrev ? changeHtml(subsChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; sem dados anteriores</span>';
+        // Estimate period views: recent videos get more views proportionally
+        periodViews = recentVideos.length > 0 ? sumViews(recentVideos) : Math.round(estimatedDailyViews * days);
+        periodLabel = days + ' dias';
     }
+    var periodHours = days === 0 ? totalHours : calcWatchHours(recentVideos.length > 0 ? recentVideos : videos) * (days / 90);
+    var periodRevenue = (periodViews / 1000) * rpm;
 
-    document.querySelector('#an-revenue .an-value').textContent = 'R$ ' + curRevenue.toFixed(2);
-    document.querySelector('#an-revenue .an-change').innerHTML = hasPrev ? changeHtml(revenueChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; estimado (RPM ' + rpm + ')</span>';
+    // Comparison with previous period
+    var prevPeriodViews = olderVideos.length > 0 ? sumViews(olderVideos) : 0;
+    var prevPeriodHours = olderVideos.length > 0 ? calcWatchHours(olderVideos) : 0;
+    var hasPrev = prevPeriodViews > 0 && days > 0;
+    var viewsChange = hasPrev ? calcChange(periodViews, prevPeriodViews) : {pct: 0, direction: 'none'};
+    var hoursChange = hasPrev ? calcChange(periodHours, prevPeriodHours) : {pct: 0, direction: 'none'};
+    var revenueChange = hasPrev ? calcChange(periodRevenue, (prevPeriodViews / 1000) * rpm) : {pct: 0, direction: 'none'};
 
-    if (currentVideos.length > 0) {
+    // Update cards
+    document.querySelector('#an-views .an-value').textContent = formatNum(periodViews);
+    document.querySelector('#an-views .an-change').innerHTML = hasPrev
+        ? changeHtml(viewsChange, 'que ha ' + periodLabel, 'que ha ' + periodLabel)
+        : days === 0 ? '<span style="color:#888;">total do canal</span>' : '<span style="color:#888;">&#8213; sem dados do periodo anterior</span>';
+
+    document.querySelector('#an-watchhours .an-value').textContent = periodHours.toFixed(1);
+    document.querySelector('#an-watchhours .an-change').innerHTML = hasPrev
+        ? changeHtml(hoursChange, 'que ha ' + periodLabel, 'que ha ' + periodLabel)
+        : '<span style="color:#888;">estimado</span>';
+
+    document.querySelector('#an-subs .an-value').textContent = days === 0 ? formatNum(subsTotal) : '+' + Math.max(recentVideos.length, 0);
+    document.querySelector('#an-subs .an-change').innerHTML = days === 0
+        ? '<span style="color:#888;">total acumulado</span>'
+        : '<span style="color:#888;">estimado pelo periodo</span>';
+
+    document.querySelector('#an-revenue .an-value').textContent = 'R$ ' + periodRevenue.toFixed(2);
+    document.querySelector('#an-revenue .an-change').innerHTML = hasPrev
+        ? changeHtml(revenueChange, 'que ha ' + periodLabel, 'que ha ' + periodLabel)
+        : '<span style="color:#888;">estimado (RPM ' + rpm + ')</span>';
+
+    // Video list — always show all available videos sorted by views
+    var displayVideos = videos.slice().sort(function(a, b) { return (b.views || 0) - (a.views || 0); });
+    if (displayVideos.length > 0) {
         document.getElementById('analytics-videos').style.display = 'block';
         var colors = ['#7c3aed','#22c55e','#3b82f6','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16'];
         var rows = '';
-        currentVideos.forEach(function(v, i) {
+        displayVideos.forEach(function(v, i) {
             var engRate = v.views > 0 ? ((v.likes + v.comments) / v.views * 100).toFixed(1) : '0.0';
             var engColor = parseFloat(engRate) > 5 ? '#22c55e' : parseFloat(engRate) > 2 ? '#f59e0b' : '#ef4444';
             var dotColor = colors[i % colors.length];
@@ -942,6 +967,15 @@ function displayAnalytics(data) {
     if (!data.channel) return;
     document.getElementById('analytics-empty').style.display = 'none';
     _analyticsData = data;
+
+    // Auto-update language display if detected from YouTube
+    if (data.channel.language) {
+        var langLabels = {'pt-BR':'Portugues BR','en':'English','es':'Espanol','fr':'Francais','de':'Deutsch','it':'Italiano','ja':'Japones','ko':'Coreano'};
+        var langDisplay = langLabels[data.channel.language] || data.channel.language;
+        var calLang = document.getElementById('cal-language');
+        if (calLang) calLang.textContent = langDisplay;
+    }
+
     renderAnalytics();
 }
 
