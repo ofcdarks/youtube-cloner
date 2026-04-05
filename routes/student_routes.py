@@ -14,24 +14,32 @@ from rate_limit import limiter
 logger = logging.getLogger("ytcloner.routes.student")
 
 
-def _get_student_ai_config(user: dict) -> tuple[str, str]:
-    """Get API key and provider for a student.
+def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
+    """Get API key, provider, and model for a student.
 
-    If use_admin_api is enabled, returns admin's LaoZhang API key.
-    Otherwise returns the student's own configured key.
+    Returns: (api_key, provider, model)
+    If use_admin_api is enabled, returns admin's LaoZhang key with claude-3-7-sonnet-latest.
+    Otherwise returns the student's own configured key with provider-default model.
     """
-    from database import _decrypt_api_key, get_db
+    from database import _decrypt_api_key
 
     # Check if student is allowed to use admin API
     if user.get("use_admin_api"):
         from config import LAOZHANG_API_KEY
         if LAOZHANG_API_KEY:
-            return LAOZHANG_API_KEY, "laozhang"
+            return LAOZHANG_API_KEY, "laozhang", "claude-3-7-sonnet-latest"
 
-    # Fall back to student's own key
+    # Fall back to student's own key with default models per provider
     api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
     provider = user.get("api_provider", "")
-    return api_key, provider
+    default_models = {
+        "laozhang": "gpt-4o-mini",
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-sonnet-4-20250514",
+        "google": "gemini-pro",
+    }
+    model = default_models.get(provider, "gpt-4o-mini")
+    return api_key, provider, model
 
 router = APIRouter(tags=["student"])
 
@@ -422,7 +430,7 @@ async def api_student_generate_script(request: Request, user=Depends(require_aut
     progress = dict(progress)
 
     try:
-        api_key, provider = _get_student_ai_config(user)
+        api_key, provider, ai_model = _get_student_ai_config(user)
         if not api_key or not provider:
             return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
@@ -510,7 +518,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
             async with httpx.AsyncClient(timeout=240) as client:
                 resp = await client.post(api_url, json={
-                    "model": "gpt-4o-mini",
+                    "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
                     "max_tokens": 8000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
@@ -524,7 +532,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
         elif provider == "anthropic":
             async with httpx.AsyncClient(timeout=240) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": ai_model,
                     "max_tokens": 8000,
                     "system": system_msg,
                     "messages": [{"role": "user", "content": prompt}],
@@ -870,7 +878,7 @@ async def api_score_script(request: Request, user=Depends(require_auth)):
         return JSONResponse({"error": "SOP do projeto nao encontrado"}, status_code=400)
 
     # Get API key (student's own or admin's if authorized)
-    api_key, provider = _get_student_ai_config(user)
+    api_key, provider, ai_model = _get_student_ai_config(user)
     if not api_key or not provider:
         return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
@@ -939,7 +947,7 @@ REGRAS:
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(api_url, json={
-                    "model": "gpt-4o-mini",
+                    "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": judge_prompt}],
                     "max_tokens": 3000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
@@ -949,7 +957,7 @@ REGRAS:
         elif provider == "anthropic":
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": ai_model,
                     "max_tokens": 3000,
                     "system": system_msg,
                     "messages": [{"role": "user", "content": judge_prompt}],
@@ -1051,7 +1059,7 @@ async def api_improve_script(request: Request, user=Depends(require_auth)):
     from services import get_project_sop
     sop = get_project_sop(f["project_id"])
 
-    api_key, provider = _get_student_ai_config(user)
+    api_key, provider, ai_model = _get_student_ai_config(user)
     if not api_key:
         return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
@@ -1130,7 +1138,7 @@ Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
             async with httpx.AsyncClient(timeout=240) as client:
                 resp = await client.post(api_url, json={
-                    "model": "gpt-4o-mini",
+                    "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
                     "max_tokens": 8000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
@@ -1142,7 +1150,7 @@ Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
         elif provider == "anthropic":
             async with httpx.AsyncClient(timeout=240) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": ai_model,
                     "max_tokens": 8000,
                     "system": system_msg,
                     "messages": [{"role": "user", "content": prompt}],
@@ -1661,7 +1669,7 @@ async def api_generate_companion(request: Request, user=Depends(require_auth)):
     if not roteiro or len(roteiro) < 200:
         return JSONResponse({"error": "Roteiro muito curto"}, status_code=400)
 
-    api_key, provider = _get_student_ai_config(user)
+    api_key, provider, ai_model = _get_student_ai_config(user)
     if not api_key:
         return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
@@ -1730,7 +1738,7 @@ Idioma: {lang}""",
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(api_url, json={
-                    "model": "gpt-4o-mini",
+                    "model": ai_model,
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
                     "max_tokens": 3000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
@@ -1742,7 +1750,7 @@ Idioma: {lang}""",
         elif provider == "anthropic":
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
-                    "model": "claude-sonnet-4-20250514",
+                    "model": ai_model,
                     "max_tokens": 3000,
                     "system": system,
                     "messages": [{"role": "user", "content": prompt}],
