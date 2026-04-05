@@ -259,11 +259,31 @@ def score_title(title: str, target_countries: list[str] = None) -> dict:
     except Exception:
         top_countries = {}
 
+    # Keywords Everywhere volume data — non-blocking
+    volume_score = 0
+    volume_data = {}
+    try:
+        from protocols.keywords_everywhere import get_youtube_keyword_data, _volume_to_score
+        kw_to_check = keywords_en if keywords_en else keywords_pt
+        if kw_to_check:
+            kw_results = get_youtube_keyword_data(kw_to_check[:5])
+            if kw_results:
+                best_vol = max((r.get("vol", 0) for r in kw_results), default=0)
+                volume_score = _volume_to_score(best_vol)
+                volume_data = {
+                    "best_volume": best_vol,
+                    "volume_score": volume_score,
+                    "results": kw_results,
+                }
+    except Exception as e:
+        volume_data = {"error": str(e), "volume_score": 0}
+
     # Score global
     all_trend_scores = [r["trends_score"] for r in regional_scores.values()]
     avg_trends = sum(all_trend_scores) / len(all_trend_scores) if all_trend_scores else 50
 
-    final_score = int((yt["score"] * 0.6) + (avg_trends * 0.4))
+    # Formula: YouTube 40% + Trends 30% + Volume 30%
+    final_score = int((yt["score"] * 0.4) + (avg_trends * 0.3) + (volume_score * 0.3))
     final_score = max(0, min(100, final_score))
 
     if final_score >= 80:
@@ -289,6 +309,7 @@ def score_title(title: str, target_countries: list[str] = None) -> dict:
         "final_score": final_score,
         "rating": rating,
         "youtube": yt,
+        "volume": volume_data,
         "regional_scores": regional_scores,
         "top_countries": top_countries,
         "best_opportunity": best_country,
@@ -300,6 +321,12 @@ def format_score_summary(result: dict) -> str:
     """Formata resultado do score para exibicao."""
     out = f"Score: {result['final_score']}/100 ({result['rating']})\n"
     out += f"YouTube: {result['youtube'].get('score','?')}/100 (avg {result['youtube'].get('avg_views','?')} views)\n"
+
+    vol = result.get("volume", {})
+    if vol and not vol.get("error"):
+        out += f"Volume: {vol.get('volume_score', 0)}/100 (best {vol.get('best_volume', 0):,} monthly searches)\n"
+    elif vol.get("error"):
+        out += f"Volume: unavailable ({vol['error']})\n"
 
     out += "\nPor regiao:\n"
     for code, data in result.get("regional_scores", {}).items():

@@ -98,7 +98,36 @@ def research_niche_demand(niche: str, language: str = "pt-BR", youtube_api_key: 
     if result["trending_titles"]:
         result.update(_extract_patterns(result["trending_titles"]))
 
-    # 4. Build summary for AI prompt
+    # 4. Keywords Everywhere — search volume for top keywords (non-blocking)
+    result["keyword_volumes"] = []
+    try:
+        from protocols.keywords_everywhere import get_youtube_keyword_data
+
+        volume_keywords = result["trending_keywords"][:15]
+        if not volume_keywords and result["trending_titles"]:
+            # Fallback: extract keywords from titles
+            from protocols.title_scorer import extract_keywords
+            for t in result["trending_titles"][:5]:
+                volume_keywords.extend(extract_keywords(t, language[:2]))
+            volume_keywords = list(dict.fromkeys(volume_keywords))[:15]
+
+        if volume_keywords:
+            lang_to_country = {
+                "pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de",
+                "it": "it", "ja": "jp", "ko": "kr",
+            }
+            country = lang_to_country.get(language[:2], "us")
+            kw_data = get_youtube_keyword_data(volume_keywords, country=country)
+            result["keyword_volumes"] = sorted(
+                kw_data, key=lambda x: x.get("vol", 0), reverse=True
+            )
+            logger.info(
+                f"Keywords Everywhere: {len(kw_data)} volume results for {len(volume_keywords)} keywords"
+            )
+    except Exception as e:
+        logger.warning(f"Keywords Everywhere integration failed: {e}")
+
+    # 5. Build summary for AI prompt
     result["summary"] = _build_summary(result, niche, language)
 
     logger.info(f"Research complete: {len(result['trending_titles'])} titles, "
@@ -293,8 +322,21 @@ def _build_summary(data: dict, niche: str, language: str) -> str:
             lines.append(f'  - "{h}..."')
         lines.append("")
 
+    if data.get("keyword_volumes"):
+        high_vol = [kv for kv in data["keyword_volumes"] if kv.get("vol", 0) > 0]
+        if high_vol:
+            lines.append("VOLUME DE BUSCA NO YOUTUBE (Keywords Everywhere):")
+            for kv in high_vol[:10]:
+                vol = kv.get("vol", 0)
+                cpc = kv.get("cpc", 0)
+                comp = kv.get("competition", 0)
+                lines.append(f"  - \"{kv['keyword']}\": {vol:,} buscas/mes (CPC ${cpc:.2f}, competicao {comp:.2f})")
+            lines.append("")
+
     lines.append("INSTRUCAO: Use estes dados REAIS para criar titulos que combinam DEMANDA COMPROVADA + estilo do SOP.")
     lines.append("Cada titulo deve conter pelo menos 1 keyword de alta frequencia ou seguir 1 padrao identificado.")
+    if data.get("keyword_volumes"):
+        lines.append("PRIORIZE keywords com alto volume de busca no YouTube para maximizar alcance organico.")
     lines.append(f"=== FIM DA PRE-PESQUISA ===")
 
     return "\n".join(lines)
