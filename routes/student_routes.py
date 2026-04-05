@@ -947,17 +947,22 @@ async def api_improve_script(request: Request, user=Depends(require_auth)):
     # Build improvement prompt from score feedback
     sugestoes = score_data.get("sugestoes", [])
     criterios = score_data.get("criterios", [])
-    weak_points = [c for c in criterios if c.get("nota", 10) < 7]
+    all_criteria = sorted(criterios, key=lambda c: c.get("nota", 10))
+    weak_points = [c for c in criterios if c.get("nota", 10) < 8]
+    strong_points = [c for c in criterios if c.get("nota", 10) >= 8]
 
-    feedback_text = ""
-    if weak_points:
-        feedback_text += "PONTOS FRACOS (nota < 7):\n"
-        for c in weak_points:
-            feedback_text += f"- {c['nome']}: {c.get('nota', '?')}/10 — {c.get('feedback', '')}\n"
+    # Build detailed diagnosis
+    diagnosis = f"SCORE ATUAL: {score_data.get('score', '?')}/100 — META: 85+\n\n"
+    diagnosis += "CRITERIOS QUE PRECISAM MELHORAR (FOCO PRINCIPAL):\n"
+    for c in weak_points:
+        diagnosis += f"  [{c.get('nota', '?')}/10] {c['nome']}: {c.get('feedback', '')}\n"
+    diagnosis += "\nCRITERIOS QUE ESTAO BONS (NAO PIORAR):\n"
+    for c in strong_points:
+        diagnosis += f"  [{c.get('nota', '?')}/10] {c['nome']}\n"
     if sugestoes:
-        feedback_text += "\nSUGESTOES DE MELHORIA:\n"
-        for s in sugestoes:
-            feedback_text += f"- {s}\n"
+        diagnosis += "\nACOES ESPECIFICAS DO JUDGE:\n"
+        for i, s in enumerate(sugestoes, 1):
+            diagnosis += f"  {i}. {s}\n"
 
     # Load SOP
     from services import get_project_sop
@@ -968,27 +973,45 @@ async def api_improve_script(request: Request, user=Depends(require_auth)):
     if not api_key:
         return JSONResponse({"error": "Configure sua API key"}, status_code=400)
 
-    prompt = f"""ROTEIRO ORIGINAL:
+    prompt = f"""VOCE E UM EDITOR PROFISSIONAL DE ROTEIROS. Recebeu um roteiro com avaliacao detalhada de um Judge AI.
+Sua UNICA missao: reescrever o roteiro para que o Score suba de {score_data.get('score', '?')} para 85+.
+
+===== DIAGNOSTICO DO JUDGE =====
+{diagnosis}
+===== FIM DO DIAGNOSTICO =====
+
+===== ROTEIRO PARA REESCREVER =====
 {roteiro}
+===== FIM DO ROTEIRO =====
 
-===== AVALIACAO DO JUDGE (Score: {score_data.get('score', '?')}/100) =====
-{feedback_text}
-===== FIM DA AVALIACAO =====
-
-SOP DO CANAL (referencia):
+SOP DO CANAL (referencia de estilo):
 {sop[:4000]}
 
-INSTRUCAO: Reescreva o roteiro COMPLETO corrigindo TODOS os pontos fracos listados acima.
-- Mantenha o que ja funciona bem (pontos com nota >= 8)
-- MELHORE drasticamente os pontos com nota < 7
-- Aplique TODAS as sugestoes de melhoria do Judge
-- O resultado deve ter Score 85+ se avaliado novamente
-- Mantenha a mesma estrutura (hook, atos, climax, fechamento)
-- Inclua marcacoes [MUSICA:], [SFX:], [B-ROLL:] nos momentos certos
-- A narracao (voice-over) deve ter entre 1500-2000 palavras (10-14 minutos)
-- Inclua disclaimer de IA no final"""
+INSTRUCOES CIRURGICAS:
 
-    system_msg = "Voce e um roteirista de elite. Recebeu um roteiro com avaliacao detalhada. Sua missao: reescrever MELHORANDO os pontos fracos sem perder os pontos fortes."
+1. PARA CADA CRITERIO COM NOTA < 8, voce DEVE fazer mudancas CONCRETAS:
+   - Se Open Loops esta baixo: adicione 3+ open loops claros, cada um com setup explicito e resolucao tardia
+   - Se Hook esta baixo: reescreva os primeiros 30 segundos com uma pergunta impossivel de ignorar
+   - Se Tom de Voz esta baixo: ajuste vocabulario para ser mais coloquial e urgente, menos formal
+   - Se Regras de Ouro esta baixo: revise cada regra do SOP secao 6 e aplique explicitamente
+   - Se Engagement esta baixo: adicione spikes a cada 2 minutos (dados chocantes, revelacoes, plot twists)
+   - Se Fechamento esta baixo: reescreva com moral clara + CTA natural + gancho para proximo video
+   - Se Duracao esta baixo: ajuste para 10-14 minutos de narracao (1500-2100 palavras voice-over)
+   - Se Estrutura esta baixo: siga rigorosamente HOOK > CONTEXTO > ATO1 > ATO2 > ATO3 > CLIMAX > RESOLUCAO > CTA
+   - Se Originalidade esta baixo: adicione dados, perspectivas ou angulos que ninguem explorou
+   - Se Storytelling esta baixo: use pattern interrupts, cliffhangers, analogias viscerais
+
+2. APLIQUE CADA ACAO ESPECIFICA do Judge (listadas acima) — sem excecao.
+
+3. NAO PIORAR os criterios com nota >= 8.
+
+4. O roteiro deve ter marcacoes [MUSICA:], [SFX:], [B-ROLL:] nos momentos certos.
+
+5. Inclua disclaimer de IA no final.
+
+6. ESCREVA O ROTEIRO COMPLETO — nao resuma, nao pule secoes."""
+
+    system_msg = "Voce e um EDITOR SENIOR de roteiros YouTube. Sua especialidade: pegar roteiros com Score 70-80 e transformar em 85+. Voce NAO reescreve do zero — voce faz cirurgia precisa nos pontos fracos mantendo os pontos fortes intactos. Cada mudanca deve ser justificavel pelo feedback do Judge. Voce escreve roteiros COMPLETOS, nunca resumos."
 
     try:
         import httpx
