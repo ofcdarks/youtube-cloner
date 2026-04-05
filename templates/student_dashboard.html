@@ -388,7 +388,7 @@
                 <div class="file-item" id="file-{{ f.id or f.name }}">
                     <span class="file-dot" style="background:{{ cat.color }}"></span>
                     <span class="file-label" onclick="loadFile('{{ f.path }}')" role="button" tabindex="0" style="cursor:pointer">{{ f.label }}</span>
-                    <span class="file-size">{{ (f.size // 1024) }}KB</span>
+                    <span class="file-size">{% if f.size >= 1048576 %}{{ "%.1f"|format(f.size / 1048576) }}MB{% elif f.size >= 1024 %}{{ "%.1f"|format(f.size / 1024) }}KB{% elif f.size > 0 %}{{ f.size }}B{% else %}vazio{% endif %}</span>
                     {% if f.words and f.words > 0 and cat_key in ('roteiro', 'narracao') %}
                     <span style="font-size:10px;color:#22c55e;background:#22c55e18;padding:2px 6px;border-radius:3px;">{{ f.words }} palavras</span>
                     <span style="font-size:10px;color:#a78bfa;background:#a78bfa18;padding:2px 6px;border-radius:3px;">{{ f.duration }}</span>

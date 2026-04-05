@@ -434,8 +434,28 @@ async def serve_output_legacy(request: Request, filename: str, user=Depends(requ
 
 
 @app.get("/file")
-async def read_file(request: Request, path: str = "", user=Depends(require_auth)):
-    """Read a file content — with path validation and role-based access."""
+async def read_file(request: Request, path: str = "", id: int = 0, user=Depends(require_auth)):
+    """Read a file content — by path or by DB id. Supports role-based access."""
+    # ID-based lookup (used by copyNarration, scoreScript, etc.)
+    if id:
+        try:
+            from database import get_db
+            with get_db() as conn:
+                row = conn.execute("SELECT * FROM files WHERE id=?", (id,)).fetchone()
+            if row and row["content"]:
+                # Students can only access visible files from their assigned projects
+                if user.get("role") != "admin":
+                    assigned = conn.execute(
+                        "SELECT 1 FROM assignments WHERE student_id=? AND project_id=?",
+                        (user["id"], row["project_id"]),
+                    ).fetchone()
+                    if not assigned or not row["visible_to_students"]:
+                        return JSONResponse({"error": "Acesso negado"}, status_code=403)
+                return PlainTextResponse(row["content"])
+        except Exception:
+            pass
+        return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
+
     if not path:
         return JSONResponse({"error": "path obrigatorio"}, status_code=400)
 

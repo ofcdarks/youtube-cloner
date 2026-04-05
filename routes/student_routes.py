@@ -469,6 +469,8 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
         import httpx
 
+        script = ""
+
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
             async with httpx.AsyncClient(timeout=240) as client:
@@ -478,7 +480,11 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
                     "max_tokens": 8000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
                 data = resp.json()
-                script = data["choices"][0]["message"]["content"]
+                if "error" in data:
+                    error_msg = data["error"].get("message", "") if isinstance(data["error"], dict) else str(data["error"])
+                    logger.error(f"AI API error ({provider}): {error_msg[:200]}")
+                    return JSONResponse({"error": f"Erro na API ({provider}): verifique sua chave API."}, status_code=400)
+                script = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
             async with httpx.AsyncClient(timeout=240) as client:
@@ -489,7 +495,11 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
                     "messages": [{"role": "user", "content": prompt}],
                 }, headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"})
                 data = resp.json()
-                script = data["content"][0]["text"]
+                if "error" in data:
+                    logger.error(f"Anthropic API error: {data['error']}")
+                    return JSONResponse({"error": "Erro na API Anthropic: verifique sua chave API."}, status_code=400)
+                content_blocks = data.get("content", [])
+                script = content_blocks[0].get("text", "") if content_blocks else ""
 
         elif provider == "google":
             api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
@@ -498,9 +508,18 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
                     "contents": [{"parts": [{"text": prompt}]}],
                 })
                 data = resp.json()
-                script = data["candidates"][0]["content"]["parts"][0]["text"]
+                if "error" in data:
+                    logger.error(f"Google API error: {data['error']}")
+                    return JSONResponse({"error": "Erro na API Google: verifique sua chave API."}, status_code=400)
+                candidates = data.get("candidates", [])
+                script = candidates[0]["content"]["parts"][0]["text"] if candidates else ""
         else:
             return JSONResponse({"error": f"Provider '{provider}' nao suportado"}, status_code=400)
+
+        # Validate AI response is not empty
+        if not script or len(script.strip()) < 200:
+            logger.error(f"AI returned empty/short script ({len(script) if script else 0} chars) for progress_id={progress_id}")
+            return JSONResponse({"error": "IA retornou roteiro vazio ou muito curto. Tente novamente."}, status_code=500)
 
         # Save script as file
         from database import save_file
@@ -1358,6 +1377,8 @@ Idioma: {lang}""",
 
     try:
         import httpx
+        result = ""
+
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
             async with httpx.AsyncClient(timeout=120) as client:
@@ -1366,7 +1387,10 @@ Idioma: {lang}""",
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
                     "max_tokens": 3000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
-                result = resp.json()["choices"][0]["message"]["content"]
+                data = resp.json()
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API: verifique sua chave."}, status_code=400)
+                result = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
             async with httpx.AsyncClient(timeout=120) as client:
@@ -1376,16 +1400,27 @@ Idioma: {lang}""",
                     "system": system,
                     "messages": [{"role": "user", "content": prompt}],
                 }, headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"})
-                result = resp.json()["content"][0]["text"]
+                data = resp.json()
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API Anthropic: verifique sua chave."}, status_code=400)
+                content_blocks = data.get("content", [])
+                result = content_blocks[0].get("text", "") if content_blocks else ""
 
         elif provider == "google":
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}", json={
                     "contents": [{"parts": [{"text": system + "\n\n" + prompt}]}],
                 })
-                result = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                data = resp.json()
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API Google: verifique sua chave."}, status_code=400)
+                candidates = data.get("candidates", [])
+                result = candidates[0]["content"]["parts"][0]["text"] if candidates else ""
         else:
             return JSONResponse({"error": f"Provider '{provider}' nao suportado"}, status_code=400)
+
+        if not result or len(result.strip()) < 50:
+            return JSONResponse({"error": "IA retornou conteudo vazio. Tente novamente."}, status_code=500)
 
         # Save as file
         TYPE_LABELS = {"seo": "SEO Pack", "thumbnail": "Thumbnail Prompts", "music": "Music Prompts", "teaser": "Teaser Prompts"}
