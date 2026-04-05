@@ -173,17 +173,27 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         from services import get_project_sop
         sop = get_project_sop(pid)
 
-        prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
+        # Get chosen niches for focused title generation
+        from database import get_niches
+        chosen_niches = [n for n in get_niches(pid) if n.get("chosen")]
+        if chosen_niches:
+            niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in chosen_niches])
+            niches_instruction = f"\n\nSUB-NICHOS ESCOLHIDOS (gere titulos APENAS sobre estes):\n{niches_text}\nO campo 'pillar' DEVE ser o nome do sub-nicho.\n"
+        else:
+            niches_instruction = ""
 
+        prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
+{niches_instruction}
 REGRAS:
 - Cada ideia deve ser UNICA e diferente das existentes
 - Siga a mesma estrutura do SOP (hook forte, numeros impactantes, historia real)
 - Inclua para cada ideia: titulo viral, hook dos primeiros 30s, resumo de 2 linhas, pilar de conteudo, prioridade (ALTA/MEDIA/BAIXA)
+{f'- Distribua igualmente entre os sub-nichos escolhidos' if chosen_niches else ''}
 
 TITULOS JA EXISTENTES (NAO REPETIR):
 {chr(10).join(f'- {t}' for t in existing_titles[:30])}
 
-SOP:
+SOP (referencia de tom e estilo):
 {sop[:4000]}
 
 Retorne em formato JSON valido:

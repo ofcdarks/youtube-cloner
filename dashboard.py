@@ -892,15 +892,39 @@ Retorne APENAS o JSON.{lang_instruction}"""
 
         _step(4, 'Gerando 30 titulos virais')
 
-        # Step 4: Generate 30 titles
+        # Step 4: Generate 30 titles — based on CHOSEN niches
+        # First check DB for admin-chosen niches, then fallback to generated list
+        chosen_niches = []
+        try:
+            db_niches = get_niches(project_id)
+            chosen_niches = [{"name": n["name"], "description": n.get("description", "")} for n in db_niches if n.get("chosen")]
+        except Exception:
+            pass
+        if not chosen_niches:
+            chosen_niches = niche_list[:2] if niche_list else [{"name": niche_name, "description": ""}]
+
+        chosen_niches_text = "\n".join([
+            f"- {n.get('name', '')}: {n.get('description', '')}" for n in chosen_niches
+        ])
+
         titles_prompt = f"""Gere 30 ideias de videos para o canal "{niche_name}".
-SOP: {sop_content[:3000]}
+
+SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser sobre estes sub-nichos APENAS):
+{chosen_niches_text}
+
+IMPORTANTE: Todos os 30 titulos devem ser EXCLUSIVAMENTE sobre os sub-nichos listados acima.
+Distribua igualmente entre os sub-nichos escolhidos.
+NAO gere titulos sobre outros temas fora dos sub-nichos escolhidos.
+
+SOP do canal (referencia de tom e estilo):
+{sop_content[:3000]}
 
 REGRAS OBRIGATORIAS DO YOUTUBE:
 - CADA titulo DEVE ter no MAXIMO 100 caracteres (incluindo espacos). Titulos maiores serao cortados pelo YouTube.
 - Titulos devem ser impactantes mesmo sendo curtos.
 
-Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]
+Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
+O campo "pillar" DEVE ser o nome do sub-nicho correspondente.
 Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{lang_instruction}"""
 
         titles_response = chat(titles_prompt, max_tokens=6000, temperature=0.8)
