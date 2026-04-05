@@ -16,6 +16,7 @@ so no other code changes needed.
 import logging
 import math
 import re
+import unicodedata
 import requests
 
 logger = logging.getLogger("ytcloner.keyword_volume")
@@ -129,30 +130,48 @@ def get_youtube_keyword_data(keywords: list[str], country: str = "us") -> list[d
     return get_keyword_data(keywords, country=country, language=country_lang.get(country.lower(), "en"))
 
 
+def _strip_accents(text: str) -> str:
+    """Remove accents/diacritics for keyword matching (e.g. tecnología → tecnologia)."""
+    nfkd = unicodedata.normalize("NFKD", text)
+    return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
 def enrich_titles_with_volume(titles: list[dict], country: str = "us") -> list[dict]:
-    """Add vol, cpc, competition, volume_score to each title."""
+    """Add vol, cpc, competition, volume_score to each title.
+
+    Uses -1 as marker for 'checked but no volume data' so the UI can
+    distinguish from 'never checked' (default 0).
+    """
     if not titles:
         return titles
 
     phrases = []
     for t in titles:
         clean = re.sub(r'[^\w\s]', ' ', t.get("title", "").lower()).strip()
+        clean = _strip_accents(clean)
         words = [w for w in clean.split() if len(w) > 3]
         phrases.append(" ".join(words[:5]) if len(words) >= 2 else (words[0] if words else ""))
 
     if not any(phrases):
+        # Mark all as checked even if no phrases could be extracted
+        for t in titles:
+            t["vol"] = -1
         return titles
 
     vol_data = get_keyword_data([p for p in phrases if p], country=country)
-    vol_map = {v["keyword"]: v for v in vol_data}
+    # Normalize returned keywords for accent-insensitive matching
+    vol_map = {_strip_accents(v["keyword"].lower()): v for v in vol_data}
 
     for i, t in enumerate(titles):
-        if i < len(phrases) and phrases[i] in vol_map:
+        if i < len(phrases) and phrases[i] and phrases[i] in vol_map:
             info = vol_map[phrases[i]]
-            t["vol"] = info.get("vol", 0)
+            t["vol"] = info.get("vol", 0) or 0
             t["cpc"] = info.get("cpc", 0)
             t["competition"] = info.get("competition", 0)
             t["volume_score"] = _volume_to_score(t["vol"])
+        else:
+            # Checked but no match / no volume → mark as -1
+            t.setdefault("vol", -1)
 
     return titles
 

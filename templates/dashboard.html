@@ -301,8 +301,12 @@
                         <div class="idea-title" onclick="showIdeaDetails({{ idea_id }})" style="cursor:pointer" title="Ver detalhes regionais">{{ title }}</div>
                         <div class="idea-pillar">{{ pillar }}</div>
                         <div class="idea-score" style="color:{{ sc }}" title="{{ rating }}">{{ score if score > 0 else '-' }}</div>
-                        {% if idea.search_volume and idea.search_volume > 0 %}
+                        {% if idea.search_volume and idea.search_volume != 0 %}
+                        {% if idea.search_volume > 0 %}
                         <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#06b6d418;color:#06b6d4;white-space:nowrap" title="Volume de busca mensal (DataForSEO)">&#128270; {{ "{:,}".format(idea.search_volume) }}/mes</div>
+                        {% else %}
+                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#71717a18;color:#a1a1aa;white-space:nowrap" title="Volume verificado via DataForSEO — nicho muito especifico">&#128270; &lt;10/mes</div>
+                        {% endif %}
                         {% endif %}
                         <div class="idea-priority" style="color:{{ pri_color }}">{{ pri }}</div>
                         <button type="button" class="gen-btn" onclick="generateScript({{ idea_id }}, '{{ title|replace("'", "") }}')" title="Gerar roteiro" aria-label="Gerar roteiro">&#9998;</button>
