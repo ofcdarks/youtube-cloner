@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from auth import optional_auth, create_session, destroy_session, set_session_cookie, clear_session_cookie, get_session_token
 from middleware import generate_csrf_token
 from database import authenticate_user
+from rate_limit import limiter
 
 logger = logging.getLogger("ytcloner.routes.auth")
 
@@ -28,6 +29,7 @@ async def login_page(request: Request, user=Depends(optional_auth)):
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 async def login_submit(request: Request):
     form = await request.form()
     email = form.get("email", "").strip()

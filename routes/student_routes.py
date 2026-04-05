@@ -227,7 +227,7 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
                         student_categories[cat] = {**cfg, "files": []}
 
                     fpath = OUTPUT_DIR / fname
-                    content_len = row.get("content_len", 0) or 0
+                    content_len = dict(row).get("content_len", 0) or 0
                     # For roteiros: estimate voice-over words (content has markers ~15% overhead)
                     if cat == "roteiro":
                         word_count = round(content_len / 7) if content_len > 0 else 0  # roteiro has markers

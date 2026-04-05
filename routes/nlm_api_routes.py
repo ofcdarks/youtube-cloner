@@ -14,6 +14,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 
 from auth import require_admin
+from rate_limit import limiter
 
 logger = logging.getLogger("ytcloner.routes.nlm_api")
 
@@ -40,6 +41,7 @@ async def nlm_list_notebooks(request: Request, user=Depends(require_admin)):
 
 
 @router.post("/ask")
+@limiter.limit("5/minute")
 async def nlm_ask(request: Request, user=Depends(require_admin)):
     body = await request.json()
     notebook_id = body.get("notebook_id", "")
@@ -56,6 +58,7 @@ async def nlm_ask(request: Request, user=Depends(require_admin)):
 
 
 @router.post("/extract-dna")
+@limiter.limit("3/minute")
 async def nlm_extract_dna(request: Request, user=Depends(require_admin)):
     """Send all 5 prompts to the notebook, one by one, wait for each response.
 
@@ -134,6 +137,7 @@ async def nlm_extract_dna(request: Request, user=Depends(require_admin)):
 
 
 @router.post("/build-channel")
+@limiter.limit("3/minute")
 async def nlm_build_channel(request: Request, user=Depends(require_admin)):
     """FULL ORCHESTRATION: NLM DNA → Claude analysis → complete channel strategy.
 

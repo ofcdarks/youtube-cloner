@@ -364,51 +364,78 @@ async def api_trend_radar(request: Request, user=Depends(require_auth)):
             for i, v in enumerate(trending_videos, 1):
                 trending_report += f'{i}. "{v["title"]}" — {v["channel"]} ({v["published"]})\n'
 
-        # AI generates trend-aware title suggestions
+        # AI generates trend-aware title suggestions in JSON
+        from config import LANG_LABELS
+        lang_label = LANG_LABELS.get(lang, lang)
+
         trend_prompt = f"""Voce e um analista de tendencias do YouTube para o nicho "{niche}".
 
-SOP DO CANAL (referencia de estilo):
+SOP DO CANAL (referencia de tom e estilo — NAO modificar):
 {sop_excerpt}
 
 {trending_report}
 
 {trends_data}
 
-TAREFA: Baseado nas tendencias REAIS acima, gere:
+TAREFA: Retorne APENAS um JSON valido com esta estrutura:
+{{
+  "analise": "3-5 paragrafos analisando o que esta em alta agora no nicho",
+  "titulos": [
+    {{
+      "titulo": "titulo viral max 100 chars",
+      "hook": "frase de hook dos primeiros 5 segundos",
+      "motivo": "por que este assunto esta quente AGORA",
+      "urgencia": "ALTA/MEDIA/BAIXA",
+      "janela_dias": 7,
+      "duracao_ideal": "12-15 min",
+      "pilar": "nome do sub-nicho/categoria"
+    }}
+  ],
+  "alertas": [
+    {{
+      "tipo": "GAP/COMPETIDOR/EXPLOSAO",
+      "descricao": "descricao do alerta"
+    }}
+  ],
+  "fontes": "{len(trending_videos)} videos + Google Trends"
+}}
 
-1. ANALISE DE TENDENCIAS (3-5 paragrafos):
-   - O que esta em alta no nicho agora?
-   - Quais padroes de titulo estao funcionando?
-   - Que assuntos estao ganhando tracao?
+REGRAS:
+- Gere EXATAMENTE 10 titulos urgentes
+- Cada titulo max 100 caracteres (regra YouTube)
+- urgencia: ALTA = postar em 3-5 dias, MEDIA = 7-10 dias, BAIXA = 2-3 semanas
+- duracao_ideal baseada no SOP
+- Gere 3-5 alertas
+- Idioma: {lang_label}
+- Retorne APENAS o JSON, sem texto antes ou depois"""
 
-2. 10 TITULOS URGENTES (para postar AGORA):
-   Para cada titulo:
-   - Titulo viral seguindo o SOP
-   - Hook de 5 segundos
-   - Por que este assunto esta quente AGORA
-   - Janela de oportunidade (dias restantes)
+        result_text = chat(trend_prompt,
+                          "Analista de tendencias YouTube. Retorne APENAS JSON valido.",
+                          None, 4000, 0.8)
 
-3. ALERTAS:
-   - Assuntos que concorrentes estao cobrindo e voce NAO
-   - Gaps de conteudo (o que o publico busca mas ninguem fez)
-   - Tendencia que vai explodir nas proximas semanas
+        # Parse JSON from response
+        import re as _re
+        json_match = _re.search(r'\{.*\}', result_text, _re.DOTALL)
+        result_data = None
+        if json_match:
+            try:
+                result_data = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                pass
 
-Idioma: {"Portugues BR" if lang == "pt-BR" else lang}
-Seja especifico e acionavel. Cada titulo deve ser algo que pode ser produzido HOJE."""
-
-        result = chat(trend_prompt,
-                     system="Analista de tendencias do YouTube. Usa dados reais, nao achismos. Cada recomendacao e acionavel e urgente.",
-                     max_tokens=4000, temperature=0.8)
-
-        # Save as file
+        # Save raw + structured as file
         from database import save_file
+        save_content = result_text
+        if result_data:
+            save_content = json.dumps(result_data, ensure_ascii=False, indent=2)
         save_file(project_id, "outros", f"Radar de Tendencias - {niche}",
-                 f"trends_{project_id}.md", result)
+                 f"trends_{project_id}.md", save_content)
         log_activity(project_id, "trend_radar", f"Radar: {len(trending_videos)} videos + trends analisados")
 
         return {
             "ok": True,
-            "report": result,
+            "report": result_data if result_data else result_text,
+            "structured": bool(result_data),
             "trending_count": len(trending_videos),
             "has_google_trends": bool(trends_data and "indisponivel" not in trends_data),
         }

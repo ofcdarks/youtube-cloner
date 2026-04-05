@@ -15,9 +15,9 @@
     <div class="section">
         <div class="section-title" style="justify-content:space-between">
             <span><span class="sec-icon">&#128225;</span> Radar de Tendencias — {{ project.name }}</span>
-            <button class="btn-primary" id="run-radar-btn" onclick="runRadar()" style="background:#f59e0b;border-color:#f59e0b">&#128225; Executar Radar</button>
+            <button class="btn-primary" id="run-radar-btn" onclick="runRadar()" style="background:#f59e0b;border-color:#f59e0b;padding:8px 20px;font-size:13px">&#128225; Executar Radar</button>
         </div>
-        <p style="color:#888;font-size:12px;margin-bottom:16px">Escaneia YouTube + Google Trends para encontrar oportunidades quentes no nicho. Gera 10 titulos urgentes. Os resultados ficam aqui — nao misturam com os titulos do projeto.</p>
+        <p style="color:#888;font-size:12px;margin-bottom:16px">Escaneia YouTube + Google Trends. Gera 10 titulos urgentes com janela de oportunidade. Resultados separados do projeto — nao misturam com titulos originais.</p>
 
         <div style="display:flex;gap:12px;margin-bottom:16px;padding:12px;background:#131a2e;border-radius:8px;border:1px solid #1e293b">
             <div><span style="color:#888;font-size:11px">Projeto:</span> <strong style="color:#a78bfa">{{ project.name }}</strong></div>
@@ -26,20 +26,23 @@
         </div>
 
         <div id="radar-loading" style="display:none;text-align:center;padding:40px">
-            <div style="font-size:24px;margin-bottom:8px">&#128225;</div>
-            <div style="color:#f59e0b;font-size:14px;font-weight:600">Escaneando tendencias...</div>
-            <div style="color:#888;font-size:12px;margin-top:4px">YouTube Search + Google Trends (~30s)</div>
+            <div style="font-size:36px;margin-bottom:8px">&#128225;</div>
+            <div style="color:#f59e0b;font-size:16px;font-weight:600">Escaneando tendencias...</div>
+            <div style="color:#888;font-size:12px;margin-top:4px">YouTube Search + Google Trends (~30-60s)</div>
+            <div style="margin-top:16px;background:#0a0a1a;border-radius:10px;height:10px;overflow:hidden;width:300px;margin:16px auto">
+                <div id="radar-bar" style="width:10%;height:100%;background:linear-gradient(90deg,#f59e0b,#ef4444);border-radius:10px;transition:width 1s ease"></div>
+            </div>
         </div>
 
         <div id="radar-result" style="display:none"></div>
 
         {% if existing_reports %}
         <div style="margin-top:24px">
-            <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">Relatorios anteriores:</div>
+            <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:12px">Relatorios anteriores:</div>
             {% for r in existing_reports %}
             <div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px;margin-bottom:8px;cursor:pointer" onclick="this.querySelector('.report-content').style.display=this.querySelector('.report-content').style.display==='none'?'block':'none'">
                 <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="color:#f59e0b;font-size:12px;font-weight:600">{{ r.label }}</span>
+                    <span style="color:#f59e0b;font-size:13px;font-weight:600">{{ r.label }}</span>
                     <span style="color:#666;font-size:11px">{{ r.created_at[:16] }}</span>
                 </div>
                 <div class="report-content" style="display:none;margin-top:10px;font-size:12px;color:#ccc;white-space:pre-wrap;max-height:400px;overflow-y:auto">{{ r.content }}</div>
@@ -62,19 +65,32 @@ function runRadar() {
     btn.disabled = true;
     btn.textContent = 'Escaneando...';
     document.getElementById('radar-loading').style.display = 'block';
+    document.getElementById('radar-result').style.display = 'none';
+
+    // Simulate progress
+    var bar = document.getElementById('radar-bar');
+    var steps = [{w:20,t:3000},{w:40,t:8000},{w:60,t:15000},{w:80,t:25000},{w:90,t:35000}];
+    var timers = [];
+    steps.forEach(function(s) {
+        timers.push(setTimeout(function() { if(bar) bar.style.width = s.w + '%'; }, s.t));
+    });
 
     apiPost('/api/admin/trend-radar', {project_id: '{{ project.id }}'})
     .then(function(r) { return r.json(); })
     .then(function(data) {
+        timers.forEach(clearTimeout);
         btn.disabled = false;
         btn.innerHTML = '&#128225; Executar Radar';
         document.getElementById('radar-loading').style.display = 'none';
 
-        if (data.ok || data.report) {
-            var html = '<div style="background:#131a2e;border:1px solid #f59e0b40;border-radius:8px;padding:16px;">';
-            html += '<div style="font-size:14px;font-weight:600;color:#f59e0b;margin-bottom:10px">Resultado do Radar</div>';
-            html += '<div style="font-size:12px;color:#ccc;white-space:pre-wrap;line-height:1.6">' + (data.report || JSON.stringify(data, null, 2)) + '</div>';
-            html += '</div>';
+        if (data.ok) {
+            var html = '';
+            if (data.structured && data.report && typeof data.report === 'object') {
+                html = renderStructuredRadar(data.report, data.trending_count);
+            } else {
+                html = '<div style="background:#131a2e;border:1px solid #f59e0b40;border-radius:8px;padding:16px;">';
+                html += '<div style="font-size:12px;color:#ccc;white-space:pre-wrap;line-height:1.6">' + (typeof data.report === 'string' ? data.report : JSON.stringify(data.report, null, 2)) + '</div></div>';
+            }
             document.getElementById('radar-result').innerHTML = html;
             document.getElementById('radar-result').style.display = 'block';
             showToast('Radar concluido!', 'success', 3000);
@@ -83,11 +99,73 @@ function runRadar() {
         }
     })
     .catch(function(e) {
+        timers.forEach(clearTimeout);
         btn.disabled = false;
         btn.innerHTML = '&#128225; Executar Radar';
         document.getElementById('radar-loading').style.display = 'none';
         showToast('Erro: ' + e.message, 'error');
     });
+}
+
+function renderStructuredRadar(report, trendingCount) {
+    var html = '';
+
+    // Header stats
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">';
+    html += '<div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px;text-align:center">';
+    html += '<div style="font-size:24px;font-weight:700;color:#f59e0b">' + (report.titulos ? report.titulos.length : 0) + '</div>';
+    html += '<div style="font-size:11px;color:#888">Titulos Urgentes</div></div>';
+    html += '<div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px;text-align:center">';
+    html += '<div style="font-size:24px;font-weight:700;color:#06b6d4">' + trendingCount + '</div>';
+    html += '<div style="font-size:11px;color:#888">Videos Analisados</div></div>';
+    html += '<div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px;text-align:center">';
+    html += '<div style="font-size:24px;font-weight:700;color:#ef4444">' + (report.alertas ? report.alertas.length : 0) + '</div>';
+    html += '<div style="font-size:11px;color:#888">Alertas</div></div></div>';
+
+    // Analysis
+    if (report.analise) {
+        html += '<div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:16px;margin-bottom:16px">';
+        html += '<div style="font-size:14px;font-weight:600;color:#f59e0b;margin-bottom:8px">Analise de Tendencias</div>';
+        html += '<div style="font-size:13px;color:#ccc;line-height:1.7">' + report.analise.replace(/\n/g, '<br>') + '</div></div>';
+    }
+
+    // Titles
+    if (report.titulos && report.titulos.length > 0) {
+        html += '<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:10px">10 Titulos Urgentes</div>';
+        html += '<div style="display:grid;gap:8px;margin-bottom:16px">';
+        report.titulos.forEach(function(t, i) {
+            var urgColor = t.urgencia === 'ALTA' ? '#ef4444' : t.urgencia === 'MEDIA' ? '#f59e0b' : '#22c55e';
+            html += '<div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px;border-left:3px solid ' + urgColor + '">';
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">';
+            html += '<span style="font-size:11px;font-weight:700;color:#fff;background:#334155;padding:2px 8px;border-radius:10px">#' + (i + 1) + '</span>';
+            html += '<span style="font-size:14px;font-weight:600;color:#fff;flex:1">' + t.titulo + '</span>';
+            html += '<span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;background:' + urgColor + '20;color:' + urgColor + '">' + t.urgencia + '</span>';
+            if (t.duracao_ideal) html += '<span style="font-size:10px;color:#a78bfa;background:#a78bfa18;padding:3px 8px;border-radius:4px">' + t.duracao_ideal + '</span>';
+            if (t.janela_dias) html += '<span style="font-size:10px;color:#06b6d4;background:#06b6d418;padding:3px 8px;border-radius:4px">' + t.janela_dias + ' dias</span>';
+            html += '</div>';
+            html += '<div style="font-size:12px;color:#22c55e;margin-bottom:4px">Hook: "' + (t.hook || '') + '"</div>';
+            html += '<div style="font-size:11px;color:#888">' + (t.motivo || '') + '</div>';
+            if (t.pilar) html += '<div style="margin-top:4px"><span style="font-size:10px;color:#b388ff;background:#b388ff18;padding:2px 6px;border-radius:3px">' + t.pilar + '</span></div>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    // Alerts
+    if (report.alertas && report.alertas.length > 0) {
+        html += '<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:10px">Alertas</div>';
+        html += '<div style="display:grid;gap:8px;margin-bottom:16px">';
+        report.alertas.forEach(function(a) {
+            var aColors = {GAP:'#f59e0b',COMPETIDOR:'#ef4444',EXPLOSAO:'#22c55e'};
+            var ac = aColors[a.tipo] || '#888';
+            html += '<div style="background:#131a2e;border:1px solid ' + ac + '40;border-radius:8px;padding:12px;display:flex;align-items:start;gap:10px">';
+            html += '<span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:' + ac + ';color:#000;white-space:nowrap">' + (a.tipo || 'ALERTA') + '</span>';
+            html += '<span style="font-size:12px;color:#ccc">' + (a.descricao || '') + '</span></div>';
+        });
+        html += '</div>';
+    }
+
+    return html;
 }
 </script>
 {% endblock %}
