@@ -54,6 +54,34 @@ async def api_toggle_used(request: Request, user=Depends(require_auth)):
     return JSONResponse({"ok": True, "used": new_val})
 
 
+@router.post("/api/admin/toggle-niche-chosen")
+@limiter.limit("30/minute")
+async def api_toggle_niche_chosen(request: Request, user=Depends(require_auth)):
+    """Toggle chosen status of a niche and persist to DB."""
+    body = await request.json()
+    niche_name = body.get("name", "")
+    project_id = body.get("project_id", "")
+    chosen = body.get("chosen", False)
+
+    if not niche_name or not project_id:
+        return JSONResponse({"error": "name e project_id obrigatorios"}, status_code=400)
+
+    from database import get_niches, update_niche_chosen
+    niches = get_niches(project_id)
+    target = next((n for n in niches if n["name"] == niche_name), None)
+    if not target:
+        return JSONResponse({"error": "Nicho nao encontrado"}, status_code=404)
+
+    # Check max 2 chosen
+    if chosen:
+        chosen_count = sum(1 for n in niches if n.get("chosen") and n["name"] != niche_name)
+        if chosen_count >= 2:
+            return JSONResponse({"error": "Maximo 2 nichos escolhidos"}, status_code=400)
+
+    update_niche_chosen(target["id"], chosen)
+    return JSONResponse({"ok": True, "name": niche_name, "chosen": chosen})
+
+
 @router.get("/api/score-all")
 @limiter.limit("2/minute")
 async def api_score_all(
@@ -250,8 +278,21 @@ Retorne APENAS o JSON.{lang_instruction}"""
             return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
 
         new_ideas = json.loads(json_match.group())
+
+        # Enrich titles with search volume (1 batch DataForSEO call)
+        try:
+            from protocols.keywords_everywhere import enrich_titles_with_volume
+            lang = proj.get("language", "pt-BR") if proj else "pt-BR"
+            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+            country = lang_to_country.get(lang[:2], "us")
+            new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
+            logger.info(f"Enriched {len(new_ideas)} titles with volume data")
+        except Exception as e:
+            logger.warning(f"Volume enrichment failed (non-blocking): {e}")
+
         saved = []
         for idea in new_ideas:
+            vol = idea.get("vol", 0) or 0
             iid = save_idea(
                 pid, next_num,
                 idea.get("title", ""),
@@ -259,8 +300,9 @@ Retorne APENAS o JSON.{lang_instruction}"""
                 idea.get("summary", ""),
                 idea.get("pillar", ""),
                 idea.get("priority", "MEDIA"),
+                search_volume=vol,
             )
-            saved.append({"id": iid, "num": next_num, "title": idea.get("title", "")})
+            saved.append({"id": iid, "num": next_num, "title": idea.get("title", ""), "search_volume": vol})
             next_num += 1
 
         return JSONResponse({"ok": True, "generated": len(saved), "ideas": saved})

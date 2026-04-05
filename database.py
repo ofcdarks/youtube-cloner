@@ -604,6 +604,18 @@ def save_niche(
         )
 
 
+def update_niche_chosen(niche_id: int, chosen: bool):
+    """Toggle the chosen flag on a niche."""
+    with get_db() as conn:
+        conn.execute("UPDATE niches SET chosen=? WHERE id=?", (int(chosen), niche_id))
+
+
+def clear_niches_chosen(project_id: str):
+    """Reset all niches chosen flag for a project."""
+    with get_db() as conn:
+        conn.execute("UPDATE niches SET chosen=0 WHERE project_id=?", (project_id,))
+
+
 def get_niches(project_id: str) -> list[dict]:
     with get_db() as conn:
         rows = conn.execute(

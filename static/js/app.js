@@ -166,25 +166,45 @@ function showInput(title, fields, onSubmit) {
 /* ── Niche Selection ──────────────────────────────────── */
 
 function selectNiche(el, name) {
-    // Toggle selection (max 2)
+    // Toggle selection (max 2) — persists to DB
     const selected = document.querySelectorAll('.niche-selected');
-    if (el.classList.contains('niche-selected')) {
-        el.classList.remove('niche-selected');
-        const badge = el.querySelector('.chosen-badge');
-        if (badge) badge.remove();
-        showToast('"' + name + '" desmarcado', 'info', 2000);
-    } else {
-        if (selected.length >= 2) {
-            showToast('Maximo 2 nichos! Desmarque um primeiro.', 'warning', 3000);
+    const isSelected = el.classList.contains('niche-selected');
+    const newChosen = !isSelected;
+
+    if (!isSelected && selected.length >= 2) {
+        showToast('Maximo 2 nichos! Desmarque um primeiro.', 'warning', 3000);
+        return;
+    }
+
+    const projectId = window.__CURRENT_PROJECT_ID || '';
+    if (!projectId) {
+        showToast('Projeto nao identificado', 'error');
+        return;
+    }
+
+    apiPost('/api/admin/toggle-niche-chosen', {
+        name: name,
+        project_id: projectId,
+        chosen: newChosen,
+    }).then(r => r.json()).then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
             return;
         }
-        el.classList.add('niche-selected');
-        const nameDiv = el.querySelector('.niche-name');
-        if (nameDiv && !nameDiv.querySelector('.chosen-badge')) {
-            nameDiv.insertAdjacentHTML('beforeend', ' <span class="chosen-badge">ESCOLHIDO</span>');
+        if (newChosen) {
+            el.classList.add('niche-selected');
+            const nameDiv = el.querySelector('.niche-name');
+            if (nameDiv && !nameDiv.querySelector('.chosen-badge')) {
+                nameDiv.insertAdjacentHTML('beforeend', ' <span class="chosen-badge">ESCOLHIDO</span>');
+            }
+            showToast('"' + name + '" selecionado!', 'success', 2000);
+        } else {
+            el.classList.remove('niche-selected');
+            const badge = el.querySelector('.chosen-badge');
+            if (badge) badge.remove();
+            showToast('"' + name + '" desmarcado', 'info', 2000);
         }
-        showToast('"' + name + '" selecionado!', 'success', 2000);
-    }
+    }).catch(() => showToast('Erro ao salvar nicho', 'error'));
 }
 
 /* ── File/Project Viewer Modal ───────────────────────── */
