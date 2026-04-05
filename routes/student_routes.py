@@ -197,8 +197,14 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
 
                     fpath = OUTPUT_DIR / fname
                     content_len = row.get("content_len", 0) or 0
-                    word_count = round(content_len / 6) if content_len > 0 else 0  # ~6 chars per word avg
-                    duration_min = round(word_count / 150) if word_count > 0 else 0  # ~150 words per minute narration
+                    # For roteiros: estimate voice-over words (content has markers ~15% overhead)
+                    if cat == "roteiro":
+                        word_count = round(content_len / 7) if content_len > 0 else 0  # roteiro has markers
+                    elif cat == "narracao":
+                        word_count = round(content_len / 5.5) if content_len > 0 else 0  # clean text
+                    else:
+                        word_count = round(content_len / 6) if content_len > 0 else 0
+                    duration_min = round(word_count / 150) if word_count > 0 else 0  # 150 wpm natural narration
 
                     student_categories[cat]["files"].append({
                         "id": row["id"],
@@ -545,13 +551,15 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
         save_script(project_id, title, script, progress["idea_real_id"], "15-20 min")
         mark_progress_script_generated(int(progress_id))
 
-        words = len(script.split())
+        # Count voice-over words only (narration without markers/instructions)
+        vo_words = len(narracao.split()) if narracao else len(script.split())
+        vo_minutes = round(vo_words / 150, 1)  # 150 wpm for natural narration pace
         return JSONResponse({
             "ok": True,
             "progress_id": progress_id,
             "title": title,
-            "words": words,
-            "duration_estimate": f"~{round(words / 140, 1)} min",
+            "words": vo_words,
+            "duration_estimate": f"~{vo_minutes} min",
         })
     except Exception as e:
         logger.error(f"student generate-script error: {e}")
@@ -884,6 +892,174 @@ REGRAS:
         import logging
         logging.getLogger("ytcloner").error(f"score-script error: {e}")
         return JSONResponse({"error": "Falha ao avaliar roteiro."}, status_code=500)
+
+
+# ── Improve Script based on Score ──────────────────────
+
+@router.post("/api/student/improve-script")
+@limiter.limit("5/minute")
+async def api_improve_script(request: Request, user=Depends(require_auth)):
+    """Rewrite script based on Score feedback — fixes weak points identified by AI Judge."""
+    body = await request.json()
+    file_id = body.get("file_id")
+    if not file_id:
+        return JSONResponse({"error": "file_id obrigatorio"}, status_code=400)
+
+    from database import get_db, _decrypt_api_key, save_file
+
+    with get_db() as conn:
+        f = conn.execute("SELECT * FROM files WHERE id=?", (int(file_id),)).fetchone()
+        if not f:
+            return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
+        f = dict(f)
+
+    roteiro = f.get("content", "")
+    score_json = f.get("score_json", "")
+    if not roteiro or len(roteiro) < 200:
+        return JSONResponse({"error": "Roteiro muito curto"}, status_code=400)
+
+    # Parse score feedback
+    import json as _json
+    score_data = {}
+    if score_json:
+        try:
+            score_data = _json.loads(score_json)
+        except Exception:
+            pass
+
+    if not score_data:
+        return JSONResponse({"error": "Faca o Score primeiro antes de melhorar"}, status_code=400)
+
+    # Build improvement prompt from score feedback
+    sugestoes = score_data.get("sugestoes", [])
+    criterios = score_data.get("criterios", [])
+    weak_points = [c for c in criterios if c.get("nota", 10) < 7]
+
+    feedback_text = ""
+    if weak_points:
+        feedback_text += "PONTOS FRACOS (nota < 7):\n"
+        for c in weak_points:
+            feedback_text += f"- {c['nome']}: {c.get('nota', '?')}/10 — {c.get('feedback', '')}\n"
+    if sugestoes:
+        feedback_text += "\nSUGESTOES DE MELHORIA:\n"
+        for s in sugestoes:
+            feedback_text += f"- {s}\n"
+
+    # Load SOP
+    from services import get_project_sop
+    sop = get_project_sop(f["project_id"])
+
+    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
+    provider = user.get("api_provider", "")
+    if not api_key:
+        return JSONResponse({"error": "Configure sua API key"}, status_code=400)
+
+    prompt = f"""ROTEIRO ORIGINAL:
+{roteiro}
+
+===== AVALIACAO DO JUDGE (Score: {score_data.get('score', '?')}/100) =====
+{feedback_text}
+===== FIM DA AVALIACAO =====
+
+SOP DO CANAL (referencia):
+{sop[:4000]}
+
+INSTRUCAO: Reescreva o roteiro COMPLETO corrigindo TODOS os pontos fracos listados acima.
+- Mantenha o que ja funciona bem (pontos com nota >= 8)
+- MELHORE drasticamente os pontos com nota < 7
+- Aplique TODAS as sugestoes de melhoria do Judge
+- O resultado deve ter Score 85+ se avaliado novamente
+- Mantenha a mesma estrutura (hook, atos, climax, fechamento)
+- Inclua marcacoes [MUSICA:], [SFX:], [B-ROLL:] nos momentos certos
+- A narracao (voice-over) deve ter entre 1500-2000 palavras (10-14 minutos)
+- Inclua disclaimer de IA no final"""
+
+    system_msg = "Voce e um roteirista de elite. Recebeu um roteiro com avaliacao detalhada. Sua missao: reescrever MELHORANDO os pontos fracos sem perder os pontos fortes."
+
+    try:
+        import httpx
+        script = ""
+
+        if provider in ("laozhang", "openai"):
+            api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
+            async with httpx.AsyncClient(timeout=240) as client:
+                resp = await client.post(api_url, json={
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
+                    "max_tokens": 8000,
+                }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+                data = resp.json()
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API: verifique sua chave."}, status_code=400)
+                script = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+        elif provider == "anthropic":
+            async with httpx.AsyncClient(timeout=240) as client:
+                resp = await client.post("https://api.anthropic.com/v1/messages", json={
+                    "model": "claude-sonnet-4-20250514",
+                    "max_tokens": 8000,
+                    "system": system_msg,
+                    "messages": [{"role": "user", "content": prompt}],
+                }, headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"})
+                data = resp.json()
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API Anthropic: verifique sua chave."}, status_code=400)
+                content_blocks = data.get("content", [])
+                script = content_blocks[0].get("text", "") if content_blocks else ""
+
+        elif provider == "google":
+            async with httpx.AsyncClient(timeout=240) as client:
+                resp = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}",
+                    json={"contents": [{"parts": [{"text": system_msg + "\n\n" + prompt}]}]},
+                )
+                data = resp.json()
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API Google: verifique sua chave."}, status_code=400)
+                candidates = data.get("candidates", [])
+                script = candidates[0]["content"]["parts"][0]["text"] if candidates else ""
+
+        if not script or len(script.strip()) < 200:
+            return JSONResponse({"error": "IA retornou roteiro vazio. Tente novamente."}, status_code=500)
+
+        # Delete old file and save improved version
+        import re as _re
+        with get_db() as conn:
+            conn.execute("UPDATE files SET content=?, score_json=NULL WHERE id=?", (script, int(file_id)))
+
+        # Also update narration
+        narracao = _re.sub(r'\[.*?\]', '', script)
+        narracao = _re.sub(r'\n{3,}', '\n\n', narracao).strip()
+
+        # Find and update narration file
+        narracao_filename = f.get("filename", "").replace("roteiro_", "narracao_")
+        if narracao and len(narracao) > 200:
+            with get_db() as conn:
+                existing_narr = conn.execute(
+                    "SELECT id FROM files WHERE filename=? AND project_id=?",
+                    (narracao_filename, f["project_id"]),
+                ).fetchone()
+                if existing_narr:
+                    conn.execute("UPDATE files SET content=? WHERE id=?", (narracao, existing_narr["id"]))
+                else:
+                    safe_title = f.get("label", "").replace("Roteiro - ", "")
+                    save_file(f["project_id"], "narracao", f"Narracao - {safe_title}",
+                             narracao_filename, narracao, visible_to_students=True)
+
+        # Calculate voice-over word count (narration only, no markers)
+        vo_words = len(narracao.split()) if narracao else len(script.split())
+        vo_minutes = round(vo_words / 150, 1)  # 150 wpm for natural narration
+
+        return JSONResponse({
+            "ok": True,
+            "words": vo_words,
+            "duration_estimate": f"~{vo_minutes} min",
+        })
+
+    except Exception as e:
+        import logging
+        logging.getLogger("ytcloner").error(f"improve-script error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao melhorar roteiro."}, status_code=500)
 
 
 # ── YouTube Analytics Feedback Loop ──────────────────────

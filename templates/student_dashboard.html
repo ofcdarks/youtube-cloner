@@ -396,30 +396,35 @@
                 {% for f in cat.files %}
                 <div class="file-item" id="file-{{ f.id or f.name }}">
                     <span class="file-dot" style="background:{{ cat.color }}"></span>
-                    <span class="file-label" onclick="loadFile('{{ f.path }}')" role="button" tabindex="0" style="cursor:pointer">{{ f.label }}</span>
-                    <span class="file-size">{% if f.size >= 1048576 %}{{ "%.1f"|format(f.size / 1048576) }}MB{% elif f.size >= 1024 %}{{ "%.1f"|format(f.size / 1024) }}KB{% elif f.size > 0 %}{{ f.size }}B{% else %}vazio{% endif %}</span>
+                    <span class="file-label" onclick="loadFile('{{ f.path }}')" role="button" tabindex="0" style="cursor:pointer;font-size:13px">{{ f.label }}</span>
+                    <span class="file-size" style="font-size:12px">{% if f.size >= 1048576 %}{{ "%.1f"|format(f.size / 1048576) }}MB{% elif f.size >= 1024 %}{{ "%.1f"|format(f.size / 1024) }}KB{% elif f.size > 0 %}{{ f.size }}B{% else %}vazio{% endif %}</span>
                     {% if f.words and f.words > 0 and cat_key in ('roteiro', 'narracao') %}
-                    <span style="font-size:10px;color:#22c55e;background:#22c55e18;padding:2px 6px;border-radius:3px;">{{ f.words }} palavras</span>
-                    <span style="font-size:10px;color:#a78bfa;background:#a78bfa18;padding:2px 6px;border-radius:3px;">{{ f.duration }}</span>
+                    <span style="font-size:12px;color:#22c55e;background:#22c55e18;padding:2px 6px;border-radius:3px;">{{ f.words }} palavras</span>
+                    <span style="font-size:12px;color:#a78bfa;background:#a78bfa18;padding:2px 6px;border-radius:3px;">{{ f.duration }}</span>
                     {% endif %}
                     <button type="button" class="copy-file-btn" onclick="copyFile('{{ f.path }}')" title="Copiar conteudo" aria-label="Copiar conteudo">&#128203;</button>
                     {% if cat_key == 'roteiro' and f.id %}
-                    <button type="button" style="background:#7c3aed;color:#fff;border:none;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer" onclick="scoreScript({{ f.id }}, this)" title="Avaliar qualidade do roteiro" id="score-btn-{{ f.id }}">&#9733; Score</button>
+                    <button type="button" style="background:#7c3aed;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="scoreScript({{ f.id }}, this)" title="Avaliar qualidade do roteiro" id="score-btn-{{ f.id }}">&#9733; Score</button>
                     {% endif %}
-                    {% if cat_key in ('roteiro', 'narracao') and f.id %}
+                    {% if f.id %}
                     <button type="button" class="delete-file-btn" onclick="deleteFile({{ f.id }}, '{{ f.label|replace("'", "") }}')" title="Excluir" aria-label="Excluir">&#128465;</button>
                     {% endif %}
                 </div>
                 {% if cat_key == 'roteiro' and f.id %}
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px 20px;">
-                    <button type="button" style="background:#22c55e;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="copyNarration({{ f.id }})" title="Copiar narracao limpa (sem marcacoes) para ElevenLabs">&#127908; Copiar Narracao</button>
-                    <button type="button" style="background:#3b82f6;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'seo', this)">&#128200; Gerar SEO</button>
-                    <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)">&#127912; Thumbnail</button>
-                    <button type="button" style="background:#e040fb;color:#fff;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'music', this)">&#127925; Music</button>
-                    <button type="button" style="background:#00d4ff;color:#000;border:none;padding:4px 10px;border-radius:5px;font-size:10px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'teaser', this)">&#127916; Teaser</button>
+                    <button type="button" style="background:#22c55e;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="copyNarration({{ f.id }})" title="Copiar narracao limpa (sem marcacoes) para ElevenLabs">&#127908; Copiar Narracao</button>
+                    <button type="button" style="background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'seo', this)">&#128200; Gerar SEO</button>
+                    <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)">&#127912; Thumbnail</button>
+                    <button type="button" style="background:#e040fb;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'music', this)">&#127925; Music</button>
+                    <button type="button" style="background:#00d4ff;color:#000;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'teaser', this)">&#127916; Teaser</button>
                 </div>
                 {% endif %}
                 <div id="score-result-{{ f.id }}" style="display:none;margin:6px 0 10px 20px;padding:12px;background:var(--bg-surface,#12122a);border:1px solid var(--border,#2a2a4a);border-radius:8px;"></div>
+                {% if cat_key == 'roteiro' and f.id %}
+                <div id="improve-btn-wrap-{{ f.id }}" style="display:none;margin:0 0 8px 20px;">
+                    <button type="button" style="background:#f59e0b;color:#000;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="improveScript({{ f.id }})">&#128295; Melhorar com base no Score</button>
+                </div>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
@@ -979,11 +984,77 @@ function scoreScript(fileId, btn) {
         }
 
         resultDiv.innerHTML = html;
+
+        // Show "Melhorar" button if score < 80
+        var improveWrap = document.getElementById('improve-btn-wrap-' + fileId);
+        if (improveWrap && !s.aprovado) {
+            improveWrap.style.display = 'block';
+        }
     })
     .catch(function(e) {
         btn.disabled = false;
         btn.textContent = '★ Score';
         resultDiv.innerHTML = '<div style="color:#ef4444;font-size:12px;">Erro: ' + e.message + '</div>';
+    });
+}
+
+/* ── Improve Script based on Score ────────── */
+function improveScript(fileId) {
+    showConfirm('Melhorar Roteiro', 'A IA vai reescrever o roteiro corrigindo os pontos fracos identificados no Score.<br><br>O roteiro atual sera substituido. Continuar?', function() {
+        var modal = document.createElement('div');
+        modal.id = 'improve-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:999;';
+        modal.innerHTML = '<div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:16px;padding:32px;max-width:440px;width:90%;text-align:center;">' +
+            '<div style="font-size:36px;margin-bottom:12px;">&#128295;</div>' +
+            '<div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:6px;">Melhorando Roteiro</div>' +
+            '<div id="improve-status" style="font-size:13px;color:#888;margin-bottom:16px;">Analisando feedback do Score e reescrevendo...</div>' +
+            '<div style="background:#0a0a1a;border-radius:10px;height:14px;overflow:hidden;margin-bottom:8px;">' +
+            '<div id="improve-bar" style="width:10%;height:100%;background:linear-gradient(90deg,#f59e0b,#22c55e);border-radius:10px;transition:width 0.5s ease;"></div>' +
+            '</div>' +
+            '<div id="improve-pct" style="font-size:12px;color:#f59e0b;font-weight:600;">10%</div>' +
+            '</div>';
+        document.body.appendChild(modal);
+
+        var steps = [
+            {pct:25, msg:'Lendo feedback do Score...', t:3000},
+            {pct:50, msg:'Reescrevendo pontos fracos...', t:15000},
+            {pct:75, msg:'Aplicando regras de ouro do SOP...', t:35000},
+            {pct:90, msg:'Finalizando versao melhorada...', t:55000},
+        ];
+        var timers = [];
+        steps.forEach(function(s) {
+            timers.push(setTimeout(function() {
+                var bar = document.getElementById('improve-bar');
+                var pct = document.getElementById('improve-pct');
+                var st = document.getElementById('improve-status');
+                if (bar) bar.style.width = s.pct + '%';
+                if (pct) pct.textContent = s.pct + '%';
+                if (st) st.textContent = s.msg;
+            }, s.t));
+        });
+
+        apiPost('/api/student/improve-script', {file_id: fileId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            timers.forEach(clearTimeout);
+            var m = document.getElementById('improve-modal');
+            if (data.ok) {
+                if (m) m.innerHTML = '<div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:16px;padding:32px;max-width:440px;width:90%;text-align:center;">' +
+                    '<div style="font-size:36px;">&#10004;</div>' +
+                    '<div style="font-size:18px;font-weight:600;color:#22c55e;margin-top:8px;">Roteiro Melhorado!</div>' +
+                    '<div style="font-size:13px;color:#888;margin-top:6px;">' + data.words + ' palavras (' + data.duration_estimate + ')</div></div>';
+                setTimeout(function() { if (m) m.remove(); location.reload(); }, 2500);
+            } else {
+                if (m) m.remove();
+                showToast('Erro: ' + (data.error || 'Falha ao melhorar'), 'error');
+            }
+        })
+        .catch(function(e) {
+            timers.forEach(clearTimeout);
+            var m = document.getElementById('improve-modal');
+            if (m) m.remove();
+            showToast('Erro: ' + e.message, 'error');
+        });
     });
 }
 
