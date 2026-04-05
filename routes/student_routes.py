@@ -27,7 +27,7 @@ def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
     if user.get("use_admin_api"):
         from config import LAOZHANG_API_KEY
         if LAOZHANG_API_KEY:
-            return LAOZHANG_API_KEY, "laozhang", "claude-3-7-sonnet-latest"
+            return LAOZHANG_API_KEY, "laozhang", "claude-sonnet-4-6"
 
     # Fall back to student's own key with default models per provider
     api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
