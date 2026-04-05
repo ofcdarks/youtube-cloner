@@ -314,6 +314,7 @@ def _run_migrations():
         ("idx_video_perf_student", "CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id)"),
         # Allow admin to share their API key with students
         ("users_use_admin_api", "ALTER TABLE users ADD COLUMN use_admin_api INTEGER DEFAULT 0"),
+        ("ideas_search_volume", "ALTER TABLE ideas ADD COLUMN search_volume INTEGER DEFAULT 0"),
         # Admin resources — files shared with students for download
         ("create_admin_resources", """CREATE TABLE IF NOT EXISTS admin_resources (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -522,12 +523,13 @@ def save_idea(
     summary: str = "",
     pillar: str = "",
     priority: str = "MEDIA",
+    search_volume: int = 0,
 ) -> int:
     now = datetime.now().isoformat()
     with get_db() as conn:
         cur = conn.execute(
-            "INSERT INTO ideas (project_id, num, title, hook, summary, pillar, priority, created_at) VALUES (?,?,?,?,?,?,?,?)",
-            (project_id, num, title, hook, summary, pillar, priority, now),
+            "INSERT INTO ideas (project_id, num, title, hook, summary, pillar, priority, search_volume, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            (project_id, num, title, hook, summary, pillar, priority, search_volume, now),
         )
         return cur.lastrowid
 

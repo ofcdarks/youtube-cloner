@@ -2025,14 +2025,27 @@ Retorne APENAS o JSON.{lang_instruction}"""
             return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
 
         new_ideas = json.loads(json_match.group())
+
+        # Enrich titles with search volume (1 batch DataForSEO call)
+        try:
+            from protocols.keywords_everywhere import enrich_titles_with_volume
+            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+            country = lang_to_country.get(lang[:2], "us")
+            new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
+            logger.info(f"Enriched {len(new_ideas)} titles with volume data")
+        except Exception as e:
+            logger.warning(f"Volume enrichment failed (non-blocking): {e}")
+
         generated = 0
         for i, idea in enumerate(new_ideas[:30]):
             title = idea.get("title", f"Titulo {i+1}")
             if len(title) > 100:
                 title = title[:97] + "..."
+            vol = idea.get("vol", 0) or 0
             save_idea(project_id, i + 1, title,
                      idea.get("hook", ""), idea.get("summary", ""),
-                     idea.get("pillar", ""), idea.get("priority", "MEDIA"))
+                     idea.get("pillar", ""), idea.get("priority", "MEDIA"),
+                     search_volume=vol)
             generated += 1
 
         log_activity(project_id, "titles_regenerated",
