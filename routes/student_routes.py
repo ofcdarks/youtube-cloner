@@ -450,6 +450,7 @@ async def api_student_generate_script(request: Request, user=Depends(require_aut
 
     try:
         api_key, provider, ai_model = _get_student_ai_config(user)
+        logger.info(f"[SCRIPT-GEN] progress_id={progress_id}, provider={provider}, model={ai_model}, key_len={len(api_key) if api_key else 0}")
         if not api_key or not provider:
             return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
@@ -531,6 +532,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
         import httpx
 
+        logger.info(f"[SCRIPT-GEN] Calling AI: provider={provider}, model={ai_model}, sop_len={len(sop)}, prompt_len={len(prompt)}")
         script = ""
 
         if provider in ("laozhang", "openai"):
