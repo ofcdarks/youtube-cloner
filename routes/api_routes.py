@@ -80,18 +80,23 @@ async def api_score_all(
 
     ideas = get_ideas(pid)
 
-    # Limit to max 15 titles per batch to avoid timeout
-    to_score = []
-    skipped = []
-    for idea in ideas:
-        if idea.get("score", 0) > 0 and not force_rescore:
-            skipped.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea.get("rating", "N/A"), "skipped": True})
-        else:
-            to_score.append(idea)
+    # Split: unscored first, then scored (for force rescore)
+    unscored = [i for i in ideas if not i.get("score") or i.get("score", 0) == 0]
+    scored = [i for i in ideas if i.get("score", 0) > 0]
+
+    if force_rescore:
+        # Force: score ALL but in batches — prioritize unscored first
+        to_score = unscored + scored
+    else:
+        # Normal: only score unscored ones
+        to_score = unscored
+
+    skipped = [{"id": i["id"], "title": i["title"], "score": i["score"], "rating": i.get("rating", "N/A"), "skipped": True}
+               for i in ideas if i not in to_score]
 
     # Cap at 15 to stay under timeout
     if len(to_score) > 15:
-        logger.info(f"Score-all: limiting batch from {len(to_score)} to 15 titles")
+        logger.info(f"Score-all: batch {len(to_score)} → 15 (unscored={len(unscored)}, scored={len(scored)})")
         to_score = to_score[:15]
 
     def _score_batch():
