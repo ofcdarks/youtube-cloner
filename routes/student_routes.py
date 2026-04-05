@@ -593,6 +593,12 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
         narracao_filename = f"narracao_student_{progress_id}.md"
 
         with get_db() as conn:
+            # Delete Drive references FIRST (foreign key constraint)
+            for fn in (roteiro_filename, narracao_filename):
+                old_file = conn.execute("SELECT id FROM files WHERE filename=? AND project_id=?", (fn, project_id)).fetchone()
+                if old_file:
+                    conn.execute("DELETE FROM student_drive_files WHERE file_id=?", (old_file["id"],))
+            # Now safe to delete the files
             conn.execute("DELETE FROM files WHERE filename=? AND project_id=?", (roteiro_filename, project_id))
             conn.execute("DELETE FROM files WHERE filename=? AND project_id=?", (narracao_filename, project_id))
 
