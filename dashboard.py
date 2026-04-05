@@ -1917,7 +1917,11 @@ Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do su
 Retorne APENAS o JSON.{lang_instruction}"""
 
         response = await asyncio.to_thread(
-            chat, prompt, "Especialista em titulos virais YouTube.", MAX_TOKENS_LARGE, 0.8
+            chat, prompt,
+            "Especialista em titulos virais YouTube.",
+            None,  # model (use default)
+            MAX_TOKENS_LARGE,  # max_tokens
+            0.8,  # temperature
         )
 
         json_match = re.search(r'\[.*\]', response, re.DOTALL)
