@@ -335,33 +335,62 @@ def generate_mindmap_html(
 
     # Extract SOP data
     sop_text = sop or ""
-    sop_lines = [l.strip() for l in sop_text.split('\n') if l.strip() and len(l.strip()) > 10]
+    sop_lines = [l.strip() for l in sop_text.split('\n') if l.strip() and len(l.strip()) > 5]
 
-    # Channel info
-    canal_info = []
-    for line in sop_lines[:60]:
-        lo = line.lower()
-        clean = line.lstrip('-*#0123456789. ').strip()
-        if any(k in lo for k in ['nicho:', 'estilo:', 'formato:', 'hook', 'storytelling', 'duracao', 'frequen', 'views', 'videos']):
-            if clean and len(clean) < 100:
-                canal_info.append(clean)
-    canal_info = canal_info[:6] or [f"Nicho: {niche_name}", f"Canal: {channel_url[:40]}"]
+    # Channel info — extract REAL data from SOP (structured extraction)
+    import re as _re
 
-    # Production info
-    prod_info = []
-    for line in sop_lines[:80]:
-        lo = line.lower()
-        clean = line.lstrip('-*#0123456789. ').strip()
-        if any(k in lo for k in ['roteirista', 'animac', 'freelanc', 'custo', 'frequen', 'pipeline', 'receita', 'ferramenta', 'ia ', 'claude', 'automatiz']):
-            if clean and len(clean) < 100:
-                prod_info.append(clean)
-    prod_info = prod_info[:5] or [
-        "Roteirista: IA (Claude) + SOP automatizado",
-        "Animacao: Freelancers Upwork ($80-300/video)",
-        "Frequencia: 2-3 videos/semana",
-        "Receita estimada: $5K-15K/mes (apos 10 videos)",
-        "Pipeline: 100% automatizado com Claude Code",
+    def _extract_sop_field(lines, keywords, max_len=80):
+        """Extract first line matching any keyword, clean it up."""
+        for line in lines:
+            lo = line.lower()
+            if any(k in lo for k in keywords):
+                clean = _re.sub(r'^[-*#0-9.\s]+', '', line).strip()
+                clean = _re.sub(r'\*{1,3}', '', clean).strip()
+                if clean and len(clean) < max_len:
+                    return clean
+        return ""
+
+    # Extract key channel data from SOP sections
+    canal_nicho = _extract_sop_field(sop_lines, ['nicho:', 'nicho principal', 'identidade', 'tema principal', 'tema:']) or niche_name
+    canal_estilo = _extract_sop_field(sop_lines, ['estilo:', 'estilo visual', 'animacao:', 'formato visual']) or "Documentario"
+    canal_videos = _extract_sop_field(sop_lines, ['videos', 'total de video', 'catalogo']) or ""
+    canal_formato = _extract_sop_field(sop_lines, ['formato:', 'formato do video', 'duracao media', 'duracao:']) or ""
+    canal_hook = _extract_sop_field(sop_lines, ['hook', 'playbook', 'framework']) or ""
+    canal_storytelling = _extract_sop_field(sop_lines, ['storytelling', 'open loop', 'pattern interrupt']) or ""
+
+    canal_info = [
+        f"Nicho: {canal_nicho}",
     ]
+    if canal_estilo:
+        canal_info.append(f"Estilo: {canal_estilo}")
+    if canal_videos:
+        canal_info.append(canal_videos)
+    if canal_formato:
+        canal_info.append(f"Formato: {canal_formato}")
+    if canal_hook:
+        canal_info.append(f"Hook Playbook: {canal_hook[:60]}")
+    if canal_storytelling:
+        canal_info.append(f"Storytelling: {canal_storytelling[:60]}")
+    canal_info = canal_info[:6]
+
+    # Production info — extract from SOP or use defaults
+    prod_nicho = _extract_sop_field(sop_lines, ['nicho principal', 'genero:', 'categoria:']) or f"Nicho Principal: {niche_name}"
+    prod_estilo = _extract_sop_field(sop_lines, ['reconstru', 'recreac', 'producao:', 'metodo:']) or ""
+    prod_duracao = _extract_sop_field(sop_lines, ['duracao media', 'duracao ideal', 'tempo medio']) or ""
+    prod_visual = _extract_sop_field(sop_lines, ['estilo visual', 'b-roll', 'tipo de video']) or ""
+    prod_anatomia = _extract_sop_field(sop_lines, ['anatomia', 'estrutura do roteiro', 'secao 3']) or ""
+
+    prod_info = [prod_nicho]
+    if prod_estilo:
+        prod_info.append(prod_estilo)
+    if prod_duracao:
+        prod_info.append(f"Duracao MEDIA real dos videos analisados: {prod_duracao}")
+    if prod_visual:
+        prod_info.append(f"Estilo visual dominante e tipo de B-roll: {prod_visual}")
+    if prod_anatomia:
+        prod_info.append(f"ANATOMIA DO ROTEIRO (Analise de 5+ videos)")
+    prod_info = prod_info[:5]
 
     # Roteiros info
     roteiros_html = ""
@@ -392,8 +421,10 @@ def generate_mindmap_html(
         cc = comp_colors.get(comp, "#eab308")
         alt_html += f'<div class="alt-niche"><b>{nm}</b> - {desc} <span class="rpm-badge" style="background:{cc}">{rpm} {comp}</span></div>'
 
-    # Canal info HTML
-    canal_html = "".join(f'<div class="info-item">{esc(c)}</div>' for c in canal_info)
+    # Canal info HTML — with clickable link like Loaded Dice format
+    channel_name = channel_url.split("/@")[-1].split("/")[0] if "/@" in channel_url else channel_url.split("/channel/")[-1].split("/")[0] if "/channel/" in channel_url else niche_name
+    canal_html = f'<div class="info-item" style="border-left:2px solid #22c55e;padding-left:8px"><a href="{esc(channel_url)}" target="_blank" rel="noopener" style="color:#22c55e;text-decoration:none;font-size:11px">{esc(channel_url[:50])}</a></div>'
+    canal_html += "".join(f'<div class="info-item">{esc(c)}</div>' for c in canal_info)
     prod_html = "".join(f'<div class="info-item">{esc(p)}</div>' for p in prod_info)
 
     # Top ideas (up to 15)
@@ -491,7 +522,7 @@ h1{{font-size:28px;text-align:center;text-transform:uppercase;letter-spacing:3px
   </div>
 
   <div class="grid4">
-    <div class="card c-canal"><div class="card-title">&#128308; Canal Original</div>{canal_html}</div>
+    <div class="card c-canal"><div class="card-title">&#128308; Canal Original: {esc(channel_name).upper()}</div>{canal_html}</div>
     <div class="card c-nicho"><div class="card-title">&#128994; Nicho Escolhido</div>
       <div class="info-item"><b>Nome:</b> {chosen_name}</div>
       <div class="info-item"><b>Desc:</b> {chosen_desc[:80]}</div>
