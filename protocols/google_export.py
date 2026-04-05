@@ -239,6 +239,64 @@ def export_project(project_name: str, files: dict) -> dict:
     return results
 
 
+# ── Drive Helpers (Student Auto-Sync) ────────────────────
+
+
+def share_folder(folder_id: str, email: str, role: str = "writer"):
+    """Share a Drive folder with an email address."""
+    drive = get_drive_service()
+    try:
+        drive.permissions().create(
+            fileId=folder_id,
+            body={"type": "user", "role": role, "emailAddress": email},
+            sendNotificationEmail=True,
+        ).execute()
+        logger.info(f"Shared folder {folder_id} with {email} ({role})")
+    except Exception as e:
+        logger.warning(f"Failed to share folder with {email}: {e}")
+
+
+def delete_drive_file(file_id: str):
+    """Delete a file from Google Drive."""
+    try:
+        drive = get_drive_service()
+        drive.files().delete(fileId=file_id).execute()
+        logger.info(f"Deleted Drive file: {file_id}")
+    except Exception as e:
+        logger.warning(f"Failed to delete Drive file {file_id}: {e}")
+
+
+def find_or_create_subfolder(name: str, parent_id: str) -> str:
+    """Find existing subfolder by name or create it. Returns folder ID."""
+    drive = get_drive_service()
+    # Search for existing folder
+    query = f"name='{name}' and '{parent_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+    results = drive.files().list(q=query, fields="files(id)").execute()
+    files = results.get("files", [])
+    if files:
+        return files[0]["id"]
+    # Create new
+    return create_folder(name, parent_id)
+
+
+def get_daily_folder(parent_id: str) -> str:
+    """Get or create today's daily folder inside a parent folder."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    return find_or_create_subfolder(today, parent_id)
+
+
+def sync_file_to_drive(content: str, filename: str, label: str, folder_id: str) -> str:
+    """Create/update a Google Doc in a Drive folder. Returns the doc ID."""
+    if not content or not folder_id:
+        return ""
+    try:
+        doc_id = create_doc(label, content, folder_id)
+        return doc_id
+    except Exception as e:
+        logger.error(f"Failed to sync {filename} to Drive: {e}")
+        return ""
+
+
 # ── Teste rápido ──────────────────────────────────────────
 
 if __name__ == "__main__":

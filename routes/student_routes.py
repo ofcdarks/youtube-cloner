@@ -551,6 +551,42 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
         save_script(project_id, title, script, progress["idea_real_id"], "15-20 min")
         mark_progress_script_generated(int(progress_id))
 
+        # Auto-sync to Google Drive
+        try:
+            from database import get_student_drive_folder, save_student_drive_file
+            drive_folder_id = get_student_drive_folder(user["id"])
+            if drive_folder_id:
+                from protocols.google_export import find_or_create_subfolder, get_daily_folder, sync_file_to_drive
+                # Find/create channel subfolder
+                channel_name = niche if (niche := progress.get("niche")) else "General"
+                try:
+                    with get_db() as conn:
+                        ch_row = conn.execute(
+                            "SELECT channel_name FROM student_channels WHERE student_id=? AND active=1 LIMIT 1",
+                            (user["id"],)
+                        ).fetchone()
+                        if ch_row:
+                            channel_name = ch_row["channel_name"]
+                except Exception:
+                    pass
+                channel_folder_id = find_or_create_subfolder(channel_name, drive_folder_id)
+                daily_folder_id = get_daily_folder(channel_folder_id)
+
+                # Sync script
+                script_drive_id = sync_file_to_drive(script, roteiro_filename, f"Roteiro - {safe_title}", daily_folder_id)
+                if script_drive_id:
+                    save_student_drive_file(user["id"], None, script_drive_id, daily_folder_id, roteiro_filename, f"Roteiro - {safe_title}", "roteiro")
+
+                # Sync narration
+                if narracao and len(narracao) > 200:
+                    narr_drive_id = sync_file_to_drive(narracao, narracao_filename, f"Narracao - {safe_title}", daily_folder_id)
+                    if narr_drive_id:
+                        save_student_drive_file(user["id"], None, narr_drive_id, daily_folder_id, narracao_filename, f"Narracao - {safe_title}", "narracao")
+
+                logger.info(f"[DRIVE-SYNC] Script+narration synced for student {user['id']}, progress {progress_id}")
+        except Exception as e:
+            logger.warning(f"[DRIVE-SYNC] Failed to sync script to Drive (non-blocking): {e}")
+
         # Count voice-over words only (narration without markers/instructions)
         vo_words = len(narracao.split()) if narracao else len(script.split())
         vo_minutes = round(vo_words / 150, 1)  # 150 wpm for natural narration pace
@@ -610,6 +646,24 @@ async def api_student_delete_file(request: Request, user=Depends(require_auth)):
                 ).fetchone()
                 if not assignment:
                     return JSONResponse({"error": "Sem permissao"}, status_code=403)
+
+        # Delete from Google Drive if synced
+        try:
+            from database import get_db as _get_db
+            with _get_db() as dconn:
+                drive_rows = dconn.execute(
+                    "SELECT drive_file_id FROM student_drive_files WHERE file_id=? AND student_id=?",
+                    (int(file_id), user["id"])
+                ).fetchall()
+            if drive_rows:
+                from protocols.google_export import delete_drive_file
+                from database import delete_student_drive_file
+                for dr in drive_rows:
+                    delete_drive_file(dr["drive_file_id"])
+                    delete_student_drive_file(dr["drive_file_id"], user["id"])
+                logger.info(f"[DRIVE-SYNC] Deleted {len(drive_rows)} Drive file(s) for file_id={file_id}")
+        except Exception as e:
+            logger.warning(f"[DRIVE-SYNC] Failed to delete from Drive (non-blocking): {e}")
 
         deleted = db_delete_file(int(file_id))
         if deleted and deleted.get("filename"):
@@ -1680,9 +1734,26 @@ Idioma: {lang}""",
         # Save as file
         TYPE_LABELS = {"seo": "SEO Pack", "thumbnail": "Thumbnail Prompts", "music": "Music Prompts", "teaser": "Teaser Prompts"}
         TYPE_CATS = {"seo": "seo", "thumbnail": "outros", "music": "outros", "teaser": "outros"}
+        comp_filename = f"{comp_type}_{file_id}.md"
+        comp_label = f"{TYPE_LABELS[comp_type]} - {title[:40]}"
         save_file(f["project_id"], TYPE_CATS[comp_type],
-                 f"{TYPE_LABELS[comp_type]} - {title[:40]}",
-                 f"{comp_type}_{file_id}.md", result, visible_to_students=True)
+                 comp_label, comp_filename, result, visible_to_students=True)
+
+        # Auto-sync companion to Google Drive
+        try:
+            from database import get_student_drive_folder, save_student_drive_file
+            drive_folder_id = get_student_drive_folder(user["id"])
+            if drive_folder_id:
+                from protocols.google_export import find_or_create_subfolder, get_daily_folder, sync_file_to_drive
+                channel_name = niche or "General"
+                channel_folder_id = find_or_create_subfolder(channel_name, drive_folder_id)
+                daily_folder_id = get_daily_folder(channel_folder_id)
+                comp_drive_id = sync_file_to_drive(result, comp_filename, comp_label, daily_folder_id)
+                if comp_drive_id:
+                    save_student_drive_file(user["id"], int(file_id), comp_drive_id, daily_folder_id, comp_filename, comp_label, comp_type)
+                    logger.info(f"[DRIVE-SYNC] Companion {comp_type} synced for student {user['id']}")
+        except Exception as e:
+            logger.warning(f"[DRIVE-SYNC] Failed to sync companion to Drive (non-blocking): {e}")
 
         return JSONResponse({"ok": True, "type": comp_type})
 
