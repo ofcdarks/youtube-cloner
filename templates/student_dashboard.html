@@ -379,7 +379,7 @@
         {% for cat_key, cat in categories.items() %}
         <div class="category-card" style="margin-bottom:12px;">
             <div class="category-header" style="border-color:{{ cat.color }}">
-                <span class="cat-icon">{{ cat.icon }}</span>
+                <span class="cat-icon">{{ cat.icon|safe }}</span>
                 <span class="cat-label">{{ cat.label }}</span>
                 <span class="cat-count">{{ cat.files|length }}</span>
             </div>

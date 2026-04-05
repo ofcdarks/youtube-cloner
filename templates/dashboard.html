@@ -243,11 +243,11 @@
                         <div class="file-item" id="file-row-{{ f.id }}">
                             <span class="file-dot" style="background:{{ cat.color }}"></span>
                             <span class="file-label" onclick="loadFile('{{ f.path }}')" style="cursor:pointer" role="button" tabindex="0">{{ f.name|replace("loaded_dice_", "")|replace("_", " ")|title }}</span>
-                            <span class="file-size">{{ (f.size // 1024) }}KB</span>
+                            <span class="file-size">{% if f.size >= 1048576 %}{{ "%.1f"|format(f.size / 1048576) }}MB{% elif f.size >= 1024 %}{{ "%.1f"|format(f.size / 1024) }}KB{% elif f.size > 0 %}{{ f.size }}B{% else %}vazio{% endif %}</span>
                             <button type="button" class="copy-file-btn" onclick="copyFile('{{ f.path }}')" title="Copiar conteudo" aria-label="Copiar conteudo">&#128203;</button>
                             {% if user and user.role == 'admin' and f.id %}
                             <button type="button" class="visibility-toggle {% if f.visible %}vis-on{% else %}vis-off{% endif %}" id="vis-{{ f.id }}" onclick="toggleVisibility({{ f.id }})" title="{{ 'Visivel para alunos' if f.visible else 'Oculto dos alunos' }}">
-                                {{ '&#128065;' if f.visible else '&#128683;' }}
+                                {{ ('&#128065;' if f.visible else '&#128683;')|safe }}
                             </button>
                             <button type="button" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;padding:2px 4px;opacity:.5" onclick="deleteFile({{ f.id }}, '{{ f.name|replace("'", "")|truncate(30) }}')" title="Excluir arquivo">&#128465;</button>
                             {% endif %}
