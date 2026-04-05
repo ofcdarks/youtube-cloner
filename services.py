@@ -14,6 +14,29 @@ from config import OUTPUT_DIR, PROJECTS_DIR, MAX_TOKENS_LARGE, MAX_TOKENS_MEDIUM
 logger = logging.getLogger("ytcloner.services")
 
 
+def get_project_sop(project_id: str) -> str:
+    """Load SOP content for a project — single source of truth.
+
+    Priority: DB files (category='analise', label contains 'sop') → legacy file fallback.
+    """
+    try:
+        from database import get_files
+        for f in get_files(project_id, "analise"):
+            if "sop" in f.get("label", "").lower() and f.get("content"):
+                return f["content"]
+    except Exception:
+        pass
+
+    # Legacy fallback
+    sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
+    if sop_path.exists():
+        try:
+            return sop_path.read_text(encoding="utf-8")
+        except Exception:
+            pass
+    return ""
+
+
 # ── Data Helpers ─────────────────────────────────────────
 
 def get_filesystem_projects() -> list[dict]:

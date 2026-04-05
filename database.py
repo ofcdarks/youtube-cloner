@@ -32,7 +32,7 @@ def get_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), timeout=10)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    # WAL is persistent — set once in init_db(), not per-connection
     conn.execute("PRAGMA foreign_keys=ON")
     try:
         yield conn
@@ -47,6 +47,8 @@ def get_db():
 def init_db():
     """Create all tables and run migrations."""
     with get_db() as conn:
+        # WAL mode is persistent — set once here, not per-connection
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS projects (
                 id TEXT PRIMARY KEY,
@@ -367,17 +369,16 @@ def _encrypt_api_key(key: str) -> str:
 
 
 def _decrypt_api_key(encrypted: str) -> str:
-    """Decrypt API key. Supports Fernet and legacy base64."""
+    """Decrypt API key using Fernet. Returns empty string if decryption fails."""
     if not encrypted:
         return ""
     try:
         return _get_fernet().decrypt(encrypted.encode()).decode()
     except Exception:
-        # Legacy base64 fallback
-        try:
-            return base64.b64decode(encrypted.encode()).decode()
-        except Exception:
-            return ""
+        # SECURITY: Removed legacy base64 fallback (base64 is encoding, not encryption).
+        # If decryption fails, user must re-enter their API key.
+        logger.warning("API key decryption failed — user must re-enter key")
+        return ""
 
 
 # ── Projects ─────────────────────────────────────────────

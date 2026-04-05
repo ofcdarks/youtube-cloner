@@ -143,7 +143,7 @@ def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 800
 def generate_script(title: str, hook: str, sop: str, niche: str = "System Breakers", language: str = "pt-BR") -> str:
     """Gera um roteiro completo para um titulo."""
 
-    LANG_LABELS = {"pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol", "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano"}
+    from config import LANG_LABELS
     lang_label = LANG_LABELS.get(language, language)
 
     system = f"""Voce e um roteirista profissional de YouTube especializado em canais faceless de storytelling.

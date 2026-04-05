@@ -161,7 +161,7 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         if not proj:
             proj = get_project(pid)
         lang = (proj or {}).get("language", "pt-BR")
-        LANG_LABELS = {"pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol", "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano"}
+        from config import LANG_LABELS
         lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {LANG_LABELS.get(lang, lang)}."
 
         existing = get_ideas(pid)
@@ -169,14 +169,8 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         next_num = max([i.get("num", 0) for i in existing], default=0) + 1
 
         # Load SOP
-        sop = ""
-        for f in db_get_files(pid, "analise"):
-            if "sop" in f.get("label", "").lower() and f.get("content"):
-                sop = f["content"]
-                break
-        if not sop:
-            sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
-            sop = sop_path.read_text(encoding="utf-8") if sop_path.exists() else ""
+        from services import get_project_sop
+        sop = get_project_sop(pid)
 
         prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
 
@@ -246,14 +240,8 @@ async def api_generate_script(request: Request, user=Depends(require_auth)):
         lang = (proj or {}).get("language", "pt-BR")
 
         # Load SOP
-        sop = ""
-        for f in db_get_files(pid, "analise"):
-            if "sop" in f.get("label", "").lower() and f.get("content"):
-                sop = f["content"]
-                break
-        if not sop:
-            sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
-            sop = sop_path.read_text(encoding="utf-8") if sop_path.exists() else ""
+        from services import get_project_sop
+        sop = get_project_sop(pid)
 
         script = generate_script(idea["title"], idea.get("hook", ""), sop, language=lang)
 
@@ -447,8 +435,7 @@ async def api_clone_language(request: Request, user=Depends(require_auth)):
     if not source_project_id or not target_language:
         return JSONResponse({"error": "project_id e target_language obrigatorios"}, status_code=400)
 
-    LANG_LABELS = {"pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol",
-                   "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano"}
+    from config import LANG_LABELS
 
     if target_language not in LANG_LABELS:
         return JSONResponse({"error": f"Idioma invalido. Use: {', '.join(LANG_LABELS.keys())}"}, status_code=400)

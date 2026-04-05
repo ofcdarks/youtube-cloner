@@ -610,10 +610,7 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
         language = "pt-BR"
 
     # Language labels for AI prompts
-    LANG_LABELS = {
-        "pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol",
-        "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano",
-    }
+    from config import LANG_LABELS
     lang_label = LANG_LABELS.get(language, language)
     lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {lang_label}."
 

@@ -72,6 +72,13 @@ MAX_TOKENS_MEDIUM = 4000
 MAX_IDEAS_PER_REQUEST = 50
 SESSION_EXPIRY_DAYS = 7
 
+# ── Language labels (single source of truth) ─────────────
+LANG_LABELS = {
+    "pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol",
+    "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano",
+}
+VALID_LANGS = set(LANG_LABELS.keys())
+
 # ── Cookie settings ──────────────────────────────────────
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true"
 COOKIE_HTTPONLY = True
@@ -79,7 +86,7 @@ COOKIE_SAMESITE = "lax"
 COOKIE_MAX_AGE = SESSION_EXPIRY_DAYS * 24 * 3600
 
 
-def validate_startup() -> list[str]:
+def validate_startup() -> tuple[list[str], list[str]]:
     """Validate required configuration. Returns list of warnings/errors."""
     errors: list[str] = []
     warnings: list[str] = []

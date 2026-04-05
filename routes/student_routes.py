@@ -415,26 +415,12 @@ async def api_student_generate_script(request: Request, user=Depends(require_aut
         except Exception:
             pass
 
-        LANG_LABELS = {"pt-BR": "Portugues Brasileiro", "en": "English", "es": "Espanol", "fr": "Francais", "de": "Deutsch", "it": "Italiano", "ja": "Japones", "ko": "Coreano"}
+        from config import LANG_LABELS
         lang_label = LANG_LABELS.get(lang, lang)
 
-        # Load SOP from DB (project files), not hardcoded path
-        sop = ""
-        try:
-            with get_db() as conn:
-                sop_row = conn.execute(
-                    "SELECT content FROM files WHERE project_id=? AND category='analise' ORDER BY created_at LIMIT 1",
-                    (project_id,),
-                ).fetchone()
-                if sop_row and sop_row["content"]:
-                    sop = sop_row["content"]
-        except Exception:
-            pass
-
-        # Fallback to legacy file
-        if not sop:
-            sop_path = OUTPUT_DIR / "loaded_dice_sop.md"
-            sop = sop_path.read_text(encoding="utf-8") if sop_path.exists() else ""
+        # Load SOP — centralized function handles DB + legacy fallback
+        from services import get_project_sop
+        sop = get_project_sop(project_id)
 
         # The SOP contains a complete replication manual (17 sections) including:
         # - Section 15: System prompt for AI to generate identical scripts
