@@ -808,11 +808,11 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
         # Step 1b: Google Drive folder
         drive_folder_id = ""
         try:
-            from protocols.google_export import create_folder
-            drive_folder_id = create_folder(f"YT Cloner - {niche_name}")
+            from protocols.google_export import get_or_create_project_folder
+            drive_folder_id = get_or_create_project_folder(niche_name)
             update_project(project_id, drive_folder_id=drive_folder_id,
                           drive_folder_url=f"https://drive.google.com/drive/folders/{drive_folder_id}")
-            logger.info(f"[ANALYZE] Drive folder created: {drive_folder_id}")
+            logger.info(f"[ANALYZE] Drive folder: {drive_folder_id}")
         except Exception as e:
             logger.warning(f"[ANALYZE] Drive folder creation failed (projeto continua sem Drive): {e}")
 
@@ -1554,8 +1554,9 @@ async def api_connect_drive(request: Request, user=Depends(require_admin)):
 
         niche_name = proj.get("niche_chosen") or proj.get("name", "Projeto")
 
-        # Create main folder
-        folder_id = create_folder(f"YT Cloner - {niche_name}")
+        # Get or create project folder (no duplicates)
+        from protocols.google_export import get_or_create_project_folder
+        folder_id = get_or_create_project_folder(niche_name)
         drive_url = f"https://drive.google.com/drive/folders/{folder_id}"
         update_project(project_id, drive_folder_id=folder_id, drive_folder_url=drive_url)
 
@@ -2043,8 +2044,8 @@ async def api_create_student_drive(request: Request, user=Depends(require_admin)
         return JSONResponse({"error": "Aluno ja tem pasta Drive"}, status_code=400)
 
     try:
-        from protocols.google_export import create_folder, share_folder
-        folder_id = create_folder(f"YT Cloner - {student['name']}")
+        from protocols.google_export import get_or_create_student_folder, share_folder
+        folder_id = get_or_create_student_folder(student["name"])
         share_folder(folder_id, student["email"], "writer")
         set_student_drive_folder(int(student_id), folder_id)
         log_activity("", "drive_student_created",

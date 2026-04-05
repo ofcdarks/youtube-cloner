@@ -810,7 +810,8 @@ async def api_student_sync_to_drive(request: Request, user=Depends(require_auth)
         # Get or create student's Drive folder
         folder_id = get_student_drive_folder(user["id"])
         if not folder_id:
-            folder_id = create_folder(f"YT Cloner - {user['name']}")
+            from protocols.google_export import get_or_create_student_folder
+            folder_id = get_or_create_student_folder(user["name"])
             set_student_drive_folder(user["id"], folder_id)
 
         # Upload file

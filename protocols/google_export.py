@@ -239,6 +239,68 @@ def export_project(project_name: str, files: dict) -> dict:
     return results
 
 
+# ── Admin Root Folder ────────────────────────────────────
+
+_admin_root_id = None  # cached per-process
+
+
+def get_admin_root_folder() -> str:
+    """Get or create the admin root folder 'YT Cloner' in Google Drive.
+    All project and student folders live inside this root.
+    Cached per-process to avoid repeated API calls.
+    """
+    global _admin_root_id
+    if _admin_root_id:
+        return _admin_root_id
+
+    # Check DB for saved root folder ID
+    try:
+        from database import get_setting, set_setting
+        saved = get_setting("drive_admin_root_id")
+        if saved:
+            # Verify it still exists
+            try:
+                drive = get_drive_service()
+                drive.files().get(fileId=saved, fields="id").execute()
+                _admin_root_id = saved
+                return saved
+            except Exception:
+                pass  # Folder deleted, recreate
+
+        # Create root folder
+        drive = get_drive_service()
+        metadata = {
+            "name": "YT Cloner",
+            "mimeType": "application/vnd.google-apps.folder",
+        }
+        folder = drive.files().create(body=metadata, fields="id").execute()
+        _admin_root_id = folder["id"]
+        set_setting("drive_admin_root_id", _admin_root_id)
+        logger.info(f"Admin root folder created: {_admin_root_id}")
+        return _admin_root_id
+    except Exception as e:
+        logger.warning(f"Failed to get/create admin root folder: {e}")
+        return ""
+
+
+def get_or_create_project_folder(project_name: str) -> str:
+    """Get or create a project folder inside the admin root. No duplicates."""
+    root = get_admin_root_folder()
+    if not root:
+        return create_folder(f"YT Cloner - {project_name}")
+    folder_name = f"Projeto - {project_name}"
+    return find_or_create_subfolder(folder_name, root)
+
+
+def get_or_create_student_folder(student_name: str) -> str:
+    """Get or create a student folder inside the admin root. No duplicates."""
+    root = get_admin_root_folder()
+    if not root:
+        return create_folder(f"YT Cloner - {student_name}")
+    folder_name = f"Aluno - {student_name}"
+    return find_or_create_subfolder(folder_name, root)
+
+
 # ── Drive Helpers (Student Auto-Sync) ────────────────────
 
 
