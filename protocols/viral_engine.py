@@ -107,6 +107,80 @@ def research_autocomplete_keywords(seed_keywords: list[str], lang: str = "es") -
     return list(clean)
 
 
+# ═══════════════════════════════════════════════════════════
+# CHANNEL'S OWN BEST VIDEOS — What already works for THIS channel
+# ═══════════════════════════════════════════════════════════
+
+def analyze_channel_best_videos(channel_url: str) -> list[dict]:
+    """
+    Get the channel's own top videos by views using yt-dlp.
+    Returns the titles that ALREADY WORK for this specific channel.
+    """
+    if not channel_url:
+        return []
+
+    try:
+        import subprocess
+        import json as _json
+
+        # Get top videos sorted by view count
+        cmd = [
+            "yt-dlp", "--flat-playlist", "--dump-json",
+            "--playlist-end", "30", "--no-warnings", "--quiet",
+            "--extractor-args", "youtube:player_skip=webpage",
+            f"{channel_url}/videos",
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=25)
+        if proc.returncode != 0:
+            return []
+
+        videos = []
+        for line in proc.stdout.strip().split("\n"):
+            if not line:
+                continue
+            try:
+                data = _json.loads(line)
+                title = data.get("title", "")
+                views = data.get("view_count", 0) or 0
+                if title and views > 0:
+                    videos.append({"title": title, "views": views})
+            except _json.JSONDecodeError:
+                pass
+
+        # Sort by views descending, return top 15
+        videos.sort(key=lambda x: x["views"], reverse=True)
+        logger.info(f"Channel analysis: {len(videos)} videos, top views: {videos[0]['views']:,}" if videos else "No videos found")
+        return videos[:15]
+
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        logger.warning(f"Channel analysis failed: {e}")
+        return []
+
+
+def format_channel_winners(best_videos: list[dict]) -> str:
+    """Format the channel's best videos into a prompt block."""
+    if not best_videos:
+        return ""
+
+    lines = [
+        "═══════════════════════════════════════════",
+        "TITULOS CAMPEOES DESTE CANAL (os que JA funcionaram):",
+        "═══════════════════════════════════════════",
+        "Estes sao os titulos com MAIS VIEWS deste canal.",
+        "A IA DEVE replicar os padroes que funcionaram aqui.",
+        "",
+    ]
+    for i, v in enumerate(best_videos[:10], 1):
+        lines.append(f"  {i}. [{v['views']:>10,} views] {v['title']}")
+
+    lines.append("")
+    lines.append("ANALISE: Identifique os padroes em comum destes titulos campeoes")
+    lines.append("(formato, CAPS, hooks, estrutura) e REPLIQUE nos novos titulos.")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def _get_question_prefixes(lang: str) -> list[str]:
     """Question prefixes that reveal high-intent searches."""
     prefixes = {
@@ -385,9 +459,11 @@ def build_viral_prompt(
     lang: str = "es",
     count: int = 30,
     existing_titles: list[str] | None = None,
+    channel_best_videos: list[dict] | None = None,
 ) -> tuple[str, str]:
     """
     Build the ultimate viral title generation prompt.
+    SOP is the VOICE — the AI becomes the channel owner.
 
     Returns: (system_prompt, user_prompt)
     """
@@ -404,18 +480,16 @@ def build_viral_prompt(
     sop_analysis = analyze_sop(sop_text, existing_titles)
     sop_analysis_block = format_sop_analysis(sop_analysis)
 
-    # Merge channel's own power words with generic viral words
+    # Channel's own power words OVERRIDE generic
     channel_power_words = sop_analysis.get("power_words", [])
     if channel_power_words:
-        # Channel's own words take priority
         formulas["power_words"] = channel_power_words + [
             w for w in formulas["power_words"] if w not in channel_power_words
         ]
 
-    # Build niches text
+    # Build data blocks
     niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in niches])
 
-    # Build keywords block (top 30 by volume)
     kw_lines = []
     for kw in keywords_with_volume[:30]:
         vol = kw.get("vol", 0)
@@ -423,119 +497,76 @@ def build_viral_prompt(
         comp_label = "BAIXA" if comp < 0.3 else ("MEDIA" if comp < 0.6 else "ALTA")
         kw_lines.append(f'  "{kw["keyword"]}": {vol:,}/mes (comp: {comp_label})')
 
-    # Build autocomplete block (what people actually search)
-    auto_lines = []
-    for s in sorted(autocomplete_suggestions)[:30]:
-        auto_lines.append(f'  - "{s}"')
+    auto_lines = [f'  - "{s}"' for s in sorted(autocomplete_suggestions)[:25]]
 
-    # Highlight golden keywords: high volume + low competition
     golden = [kw for kw in keywords_with_volume if kw.get("vol", 0) >= 100 and kw.get("competition", 1) < 0.4]
-    golden_lines = [f'  ⭐ "{kw["keyword"]}": {kw["vol"]:,}/mes (competição BAIXA!)' for kw in golden[:10]]
+    golden_lines = [f'  "{kw["keyword"]}": {kw["vol"]:,}/mes' for kw in golden[:10]]
+
+    # Format channel's best videos
+    winners_block = format_channel_winners(channel_best_videos or [])
 
     # ═══════════════════════════════════════════════════
-    # SYSTEM PROMPT — makes the AI think like a viral expert
+    # SYSTEM PROMPT — short, surgical, SOP-driven
     # ═══════════════════════════════════════════════════
-    system_prompt = f"""Você é um ESPECIALISTA MUNDIAL em títulos virais para YouTube com 15 anos de experiência.
+    system_prompt = f"""Voce E o dono do canal "{channel_name}". Voce nao esta ajudando — voce esta ESCREVENDO seus proprios titulos.
 
-Sua especialidade: criar títulos que combinam DEMANDA DE BUSCA REAL com GATILHOS EMOCIONAIS que geram cliques compulsivos.
+Seu SOP (seu estilo, sua voz, seu DNA) esta abaixo. Cada titulo que voce cria DEVE soar como se VOCE tivesse escrito — porque voce escreveu.
 
-PRINCÍPIOS FUNDAMENTAIS de títulos virais:
+Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 
-1. CURIOSITY GAP — O título promete informação que o espectador PRECISA saber, mas não revela tudo
-   ✅ "TEOTIHUACÁN: El MISTERIO que la Ciencia NO Puede Explicar"
-   ❌ "Historia de Teotihuacán explicada"
+3 regras inviolaveis:
+1. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
+2. Pelo menos 1 POWER WORD em CAPS (emocao)
+3. CURIOSITY GAP — prometa sem revelar (o espectador PRECISA clicar)
 
-2. POWER WORDS — Palavras em CAPS que disparam emoções fortes
-   Palavras comprovadas: {', '.join(formulas['power_words'][:12])}
-
-3. KEYWORD-FIRST — O título COMEÇA com a keyword de alto volume para SEO
-   ✅ "PIRÁMIDES AZTECAS: El Secreto que México Oculta"
-   ❌ "El secreto que México oculta sobre las pirámides"
-
-4. PATTERN INTERRUPT — Algo inesperado que quebra o padrão mental
-   ✅ "Los MAYAS tenían INTERNET hace 2000 Años"
-   ❌ "Tecnología avanzada de los Mayas"
-
-5. SPECIFICITY — Números e dados específicos geram credibilidade
-   ✅ "Las 7 CIUDADES que Desaparecieron en UNA NOCHE"
-   ❌ "Ciudades que desaparecieron"
-
-6. EMOTIONAL TRIGGERS que comprovadamente geram cliques:
-{chr(10).join(f'   - "{t}"' for t in formulas['emotional_triggers'][:8])}
-
-FÓRMULAS COMPROVADAS (use como base):
-{chr(10).join(f'   {i+1}. {f}' for i, f in enumerate(formulas['formulas']))}
-
-REGRAS ABSOLUTAS:
-- Idioma: {lang_label}
-- CADA título DEVE conter pelo menos 1 keyword com volume de busca real
-- A keyword principal deve estar nos PRIMEIROS 40 caracteres
-- Mínimo 1 POWER WORD em CAPS por título
-- Máximo 80 caracteres (ideal: 50-70)
-- O título deve criar DESEJO IRRESISTÍVEL de clicar
-- NUNCA use título genérico ou descritivo — sempre viral e emocional"""
+Idioma: {lang_label}. Maximo 80 caracteres por titulo."""
 
     # ═══════════════════════════════════════════════════
-    # USER PROMPT — the specific request with all data
+    # USER PROMPT — structured data, SOP as foundation
     # ═══════════════════════════════════════════════════
-    user_prompt = f"""Gere {count} títulos VIRAIS para o canal "{channel_name}".
+    user_prompt = f"""Gere {count} titulos para meu canal.
+
+{sop_analysis_block}
+
+{winners_block}
 
 ═══════════════════════════════════════════
-NICHOS (títulos EXCLUSIVAMENTE sobre estes):
+MEU SOP (minha voz, meu estilo — SIGA FIELMENTE):
+═══════════════════════════════════════════
+{sop_text[:3000]}
+
+═══════════════════════════════════════════
+NICHOS (titulos EXCLUSIVAMENTE sobre estes):
 ═══════════════════════════════════════════
 {niches_text}
 
 ═══════════════════════════════════════════
-KEYWORDS COM VOLUME DE BUSCA REAL (DataForSEO):
+KEYWORDS COM VOLUME REAL ({len(kw_lines)} keywords):
 ═══════════════════════════════════════════
-{chr(10).join(kw_lines) if kw_lines else '(sem dados de volume)'}
+{chr(10).join(kw_lines) if kw_lines else '(sem dados)'}
 
-{f'''═══════════════════════════════════════════
-OPORTUNIDADES DE OURO (volume alto + competição baixa):
-═══════════════════════════════════════════
+{f'''OPORTUNIDADES DE OURO (volume alto + competicao baixa — PRIORIZE):
 {chr(10).join(golden_lines)}''' if golden_lines else ''}
 
 ═══════════════════════════════════════════
-O QUE AS PESSOAS REALMENTE BUSCAM NO YOUTUBE:
-(YouTube Autocomplete — buscas reais dos usuários)
+BUSCAS REAIS NO YOUTUBE (autocomplete):
 ═══════════════════════════════════════════
-{chr(10).join(auto_lines) if auto_lines else '(sem dados de autocomplete)'}
+{chr(10).join(auto_lines) if auto_lines else '(sem dados)'}
 
 {demand_summary}
 
-{sop_analysis_block}
-
 ═══════════════════════════════════════════
-SOP COMPLETO (referência de tom e voz):
+INSTRUCOES:
 ═══════════════════════════════════════════
-{sop_text[:2500]}
-
-═══════════════════════════════════════════
-INSTRUÇÕES FINAIS:
-═══════════════════════════════════════════
-
-PRIORIDADE 1 — IDENTIDADE DO CANAL:
-- Os títulos DEVEM parecer que o DONO do canal escreveu
-- Use as MESMAS fórmulas e power words que o canal já usa
-- Mantenha o TOM e ESTILO do SOP (não invente um estilo novo)
-
-PRIORIDADE 2 — DEMANDA DE BUSCA:
-- CADA título DEVE conter pelo menos 1 keyword com volume real
-- Keyword principal nos PRIMEIROS 40 caracteres (SEO)
-- Priorize OPORTUNIDADES DE OURO (alto volume + baixa competição)
-
-PRIORIDADE 3 — VIRALIDADE:
-- 1+ POWER WORD em CAPS por título (use as do canal)
-- CURIOSITY GAP irresistível — prometa sem revelar
-- Máximo 80 caracteres (ideal: 50-70)
-
-4. DISTRIBUA igualmente entre os sub-nichos
-
-5. Para as 10 ideias ALTA, gere VARIANTE B (title_b) com ângulo diferente
-
-6. O campo "pillar" DEVE ser o nome do sub-nicho
-
-7. MISTURE: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
+1. CADA titulo DEVE conter pelo menos 1 keyword da lista de volume
+2. Keyword nos PRIMEIROS 40 caracteres
+3. 1+ POWER WORD em CAPS (use as MINHAS: {', '.join(formulas['power_words'][:8])})
+4. CURIOSITY GAP em cada titulo
+5. Distribua igualmente entre os sub-nichos
+6. Para as 10 ALTA, inclua variante B (title_b)
+7. O campo "pillar" = nome do sub-nicho
+8. Mix: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
+9. Maximo 80 caracteres por titulo
 
 Retorne APENAS JSON válido:
 [{{"title":"...","title_b":"...(opcional para ALTA)","hook":"primeiros 30s do video","summary":"2 linhas","pillar":"nome do sub-nicho","priority":"ALTA"}}]"""

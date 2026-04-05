@@ -2051,6 +2051,17 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         except Exception as e:
             logger.warning(f"YouTube autocomplete failed (non-blocking): {e}")
 
+        # Analyze channel's OWN best videos (what already works)
+        channel_best_videos = []
+        try:
+            from protocols.viral_engine import analyze_channel_best_videos
+            channel_url = project.get("channel_original", "")
+            if channel_url:
+                channel_best_videos = analyze_channel_best_videos(channel_url)
+                logger.info(f"Channel analysis: {len(channel_best_videos)} top videos found")
+        except Exception as e:
+            logger.warning(f"Channel best videos analysis failed (non-blocking): {e}")
+
         # Delete existing ideas (not assigned to students)
         with get_db() as conn:
             conn.execute("""
@@ -2070,8 +2081,9 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             autocomplete_suggestions=autocomplete_suggestions,
             demand_summary=demand_summary,
             lang=lang,
-            count=30,
+            count=35,  # Generate 35 so quality gate can filter to best 30
             existing_titles=existing_titles,
+            channel_best_videos=channel_best_videos,
         )
 
         response = await asyncio.to_thread(
@@ -2093,13 +2105,15 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         from protocols.keywords_everywhere import _strip_accents, _GENERIC_SINGLE_WORDS, match_keyword_in_title
 
         # Map volume using keyword matching
-        if niche_keywords:
+        def _map_volumes(ideas_list):
+            if not niche_keywords:
+                return
             kw_vol_map = {
                 _strip_accents(kw["keyword"].lower()): kw["vol"]
                 for kw in niche_keywords
                 if " " in kw["keyword"] or kw["keyword"].lower() not in _GENERIC_SINGLE_WORDS
             }
-            for idea in new_ideas[:30]:
+            for idea in ideas_list:
                 title_lower = _strip_accents(idea.get("title", "").lower())
                 best_vol = 0
                 for kw_text, kw_vol in kw_vol_map.items():
@@ -2107,12 +2121,51 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                         best_vol = kw_vol
                 idea["vol"] = best_vol if best_vol > 0 else -1
 
-        # Score and filter — only keep titles with viral potential
-        accepted, rejected = filter_best_titles(new_ideas[:30], niche_keywords, lang[:2])
-        logger.info(f"Quality gate: {len(accepted)} accepted, {len(rejected)} rejected")
+        _map_volumes(new_ideas)
 
-        # Use accepted titles (already sorted by viral score)
-        new_ideas = accepted
+        # Score and filter — only keep titles with viral potential
+        accepted, rejected = filter_best_titles(new_ideas, niche_keywords, lang[:2])
+        logger.info(f"Quality gate R1: {len(accepted)} accepted, {len(rejected)} rejected")
+
+        # REGENERATION LOOP — if too many rejected, ask AI to replace them
+        if len(accepted) < 28 and len(rejected) >= 3:
+            missing = 30 - len(accepted)
+            rejected_titles = [r.get("title", "") for r in rejected[:5]]
+            rejected_issues = []
+            for r in rejected[:5]:
+                issues = r.get("_viral_issues", [])
+                if issues:
+                    rejected_issues.append(f'  "{r.get("title", "")[:50]}" — problemas: {", ".join(issues)}')
+
+            regen_prompt = f"""Estes {len(rejected)} titulos foram REJEITADOS pelo quality gate:
+{chr(10).join(rejected_issues)}
+
+Gere {missing} titulos SUBSTITUTOS que corrijam esses problemas.
+CADA titulo DEVE:
+- Conter keyword de volume: {', '.join(f'"{kw["keyword"]}"' for kw in niche_keywords[:10])}
+- Ter POWER WORD em CAPS
+- Criar CURIOSITY GAP
+- Maximo 80 caracteres
+- Seguir o estilo do SOP
+
+Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]"""
+
+            try:
+                regen_response = await asyncio.to_thread(
+                    chat, regen_prompt, system_prompt, None, MAX_TOKENS_MEDIUM, 0.9,
+                )
+                regen_match = re.search(r'\[.*\]', regen_response, re.DOTALL)
+                if regen_match:
+                    regen_ideas = json.loads(regen_match.group())
+                    _map_volumes(regen_ideas)
+                    regen_accepted, _ = filter_best_titles(regen_ideas, niche_keywords, lang[:2], min_score=30)
+                    accepted.extend(regen_accepted)
+                    logger.info(f"Quality gate R2: +{len(regen_accepted)} from regeneration")
+            except Exception as e:
+                logger.warning(f"Regeneration loop failed (non-blocking): {e}")
+
+        # Use accepted titles (sorted by viral score, cap at 30)
+        new_ideas = accepted[:30]
 
         kw_hit_count = sum(1 for idea in new_ideas if idea.get("vol", 0) and idea.get("vol", 0) > 0)
 
