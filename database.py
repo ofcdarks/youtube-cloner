@@ -935,6 +935,7 @@ def get_admin_overview() -> list[dict]:
     with get_db() as conn:
         rows = conn.execute("""
             SELECT u.id, u.name, u.email, u.api_key_encrypted, u.last_login, u.created_at,
+                   u.drive_folder_id, u.active,
                    GROUP_CONCAT(DISTINCT a.niche) as niches,
                    COALESCE(SUM(p_counts.total), 0) as total_assigned,
                    COALESCE(SUM(p_counts.completed), 0) as total_completed,
@@ -962,6 +963,9 @@ def get_admin_overview() -> list[dict]:
             "total_completed": r["total_completed"],
             "total_in_progress": r["total_in_progress"],
             "has_api_key": bool(r["api_key_encrypted"]),
+            "has_drive": bool(r["drive_folder_id"]),
+            "drive_folder_id": r["drive_folder_id"] or "",
+            "active": r["active"],
             "last_login": r["last_login"] or "Nunca",
             "created_at": r["created_at"],
         } for r in rows]

@@ -1823,6 +1823,72 @@ async def api_toggle_student(request: Request, user=Depends(require_admin)):
     return JSONResponse({"ok": True})
 
 
+@app.post("/api/admin/create-student-drive")
+@limiter.limit("5/minute")
+async def api_create_student_drive(request: Request, user=Depends(require_admin)):
+    """Create Google Drive folder for a student and share with their email."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    if not student_id:
+        return JSONResponse({"error": "student_id obrigatorio"}, status_code=400)
+
+    from database import get_user, set_student_drive_folder, log_activity
+    student = get_user(int(student_id))
+    if not student:
+        return JSONResponse({"error": "Aluno nao encontrado"}, status_code=404)
+
+    if student.get("drive_folder_id"):
+        return JSONResponse({"error": "Aluno ja tem pasta Drive"}, status_code=400)
+
+    try:
+        from protocols.google_export import create_folder, share_folder
+        folder_id = create_folder(f"YT Cloner - {student['name']}")
+        share_folder(folder_id, student["email"], "writer")
+        set_student_drive_folder(int(student_id), folder_id)
+        log_activity("", "drive_student_created",
+                     f"Pasta Drive criada para {student['name']} ({student['email']})")
+        return JSONResponse({
+            "ok": True,
+            "folder_id": folder_id,
+            "folder_url": f"https://drive.google.com/drive/folders/{folder_id}",
+        })
+    except Exception as e:
+        logger.error(f"create-student-drive error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao criar pasta Drive. Verifique a conexao Google Drive."}, status_code=500)
+
+
+@app.post("/api/admin/delete-student-drive")
+@limiter.limit("5/minute")
+async def api_delete_student_drive(request: Request, user=Depends(require_admin)):
+    """Delete a student's Google Drive folder."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    if not student_id:
+        return JSONResponse({"error": "student_id obrigatorio"}, status_code=400)
+
+    from database import get_user, set_student_drive_folder, log_activity
+    student = get_user(int(student_id))
+    if not student:
+        return JSONResponse({"error": "Aluno nao encontrado"}, status_code=404)
+
+    folder_id = student.get("drive_folder_id", "")
+    if not folder_id:
+        return JSONResponse({"error": "Aluno nao tem pasta Drive"}, status_code=400)
+
+    try:
+        from protocols.google_export import delete_drive_file
+        delete_drive_file(folder_id)  # Deleting a folder deletes all contents
+        set_student_drive_folder(int(student_id), "")
+        log_activity("", "drive_student_deleted",
+                     f"Pasta Drive removida de {student['name']}")
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.error(f"delete-student-drive error: {e}", exc_info=True)
+        # Even if Drive delete fails, clear the reference
+        set_student_drive_folder(int(student_id), "")
+        return JSONResponse({"ok": True, "warning": "Pasta pode nao ter sido removida do Drive"})
+
+
 @app.post("/api/admin/delete-student")
 @limiter.limit("10/minute")
 async def api_delete_student(request: Request, user=Depends(require_admin)):

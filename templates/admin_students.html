@@ -39,6 +39,7 @@
                     <th>Titulos</th>
                     <th>Progresso</th>
                     <th>API</th>
+                    <th>Drive</th>
                     <th>Ultimo Acesso</th>
                     <th>Acoes</th>
                 </tr>
@@ -66,6 +67,16 @@
                         <span class="badge badge-api">Sim</span>
                         {% else %}
                         <span class="badge badge-no-api">Nao</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.has_drive %}
+                        <div style="display:flex;align-items:center;gap:4px">
+                            <a href="https://drive.google.com/drive/folders/{{ s.drive_folder_id }}" target="_blank" style="color:#22c55e;font-size:.72em;text-decoration:none" title="Abrir pasta no Drive">&#128194; Abrir</a>
+                            <button type="button" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:.72em;padding:2px" onclick="deleteDriveFolder({{ s.id }}, '{{ s.name }}')" title="Remover pasta Drive">&#128465;</button>
+                        </div>
+                        {% else %}
+                        <button type="button" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40;padding:3px 8px;border-radius:4px;font-size:.7em;cursor:pointer" onclick="createDriveFolder({{ s.id }}, '{{ s.name }}', '{{ s.email }}')">&#128194; Criar</button>
                         {% endif %}
                     </td>
                     <td style="font-size:.78em;color:#666">{{ s.last_login[:16] if s.last_login and s.last_login != 'Nunca' else 'Nunca' }}</td>
@@ -225,6 +236,39 @@ function toggleBlockStudent(studentId, name, block) {
             }
         })
         .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function createDriveFolder(studentId, name, email) {
+    showConfirm('Criar Pasta Drive', 'Criar pasta no Google Drive para <strong>' + name + '</strong> e compartilhar com <strong>' + email + '</strong>?', function() {
+        var loading = showToast('Criando pasta no Drive...', 'loading');
+        apiPost('/api/admin/create-student-drive', {student_id: studentId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Pasta criada e compartilhada com ' + email + '!', 'success', 3000);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function deleteDriveFolder(studentId, name) {
+    showConfirm('Remover Pasta Drive', 'Remover a pasta do Google Drive de <strong>' + name + '</strong>?<br><br>Os arquivos no Drive serao excluidos permanentemente.', function() {
+        apiPost('/api/admin/delete-student-drive', {student_id: studentId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                showToast('Pasta removida!', 'success', 2000);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        });
     });
 }
 
