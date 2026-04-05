@@ -2097,6 +2097,127 @@ async def api_download_resource(request: Request, resource_id: int, user=Depends
     return FileResponse(str(fpath), filename=row["filename"], media_type="application/octet-stream")
 
 
+@app.post("/api/admin/generate-agent")
+@limiter.limit("3/minute")
+async def api_generate_agent(request: Request, user=Depends(require_admin)):
+    """Generate a pipeline agent for a student's channel based on the SOP."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    channel_id = body.get("channel_id", 0)
+    project_id = body.get("project_id", "")
+
+    if not student_id or not project_id:
+        return JSONResponse({"error": "student_id e project_id obrigatorios"}, status_code=400)
+
+    from database import get_user, get_project, get_db
+    from services import get_project_sop
+    from protocols.ai_client import chat
+    import asyncio
+
+    student = get_user(int(student_id))
+    project = get_project(project_id)
+    if not student or not project:
+        return JSONResponse({"error": "Aluno ou projeto nao encontrado"}, status_code=404)
+
+    sop = get_project_sop(project_id)
+    if not sop:
+        return JSONResponse({"error": "SOP nao encontrado"}, status_code=400)
+
+    niche = project.get("niche_chosen", project["name"])
+    lang = project.get("language", "pt-BR")
+
+    # Get channel info if available
+    channel_name = niche
+    channel_url = project.get("channel_original", "")
+    if channel_id:
+        with get_db() as conn:
+            ch = conn.execute("SELECT * FROM student_channels WHERE id=?", (int(channel_id),)).fetchone()
+            if ch:
+                channel_name = ch["channel_name"]
+                channel_url = ch["channel_url"] or channel_url
+
+    try:
+        # Generate agent prompt based on SOP
+        agent_prompt = f"""Baseado neste SOP de canal YouTube, crie um AGENTE DE PRODUCAO DE VIDEO completo.
+
+SOP DO CANAL:
+{sop[:8000]}
+
+O agente deve ser um prompt que o usuario cola no Claude ou Gemini para gerar videos completos.
+
+FORMATO DO AGENTE (OBRIGATORIO):
+O agente deve instruir a IA a gerar:
+1. Calculo de cenas (duracao / 8 segundos por cena)
+2. Roteiro completo com narracao
+3. Prompts VEO 3 para cada cena (75-150 palavras cada)
+4. Config ElevenLabs (stability: 0.71, similarity: 0.80, speed calculado)
+5. 4 prompts de trilha sonora (Suno)
+6. SEO Pack (titulo, descricao, tags)
+7. Legendas SRT sincronizadas
+8. Export LCDF (bloco copiavel para extensao La Casa Dark Flow)
+
+DADOS DO CANAL:
+- Nome: {channel_name}
+- URL: {channel_url}
+- Nicho: {niche}
+- Idioma: {lang}
+
+REGRAS DO AGENTE:
+- O agente aceita 2 modos: TITULO+DURACAO (cria do zero) ou TITULO+DURACAO+ROTEIRO (adapta roteiro)
+- Cada cena = 8 segundos = ~20 palavras de narracao
+- Prompts VEO 3 em prosa natural com: camera, estilo, iluminacao, sujeito, locacao, acao, audio
+- Cada prompt termina com "Audio: [sons especificos]. No dialogue, no human voice."
+- Export LCDF delimitado por ===WILDHOPE_EXPORT_START=== e ===WILDHOPE_EXPORT_END===
+- Campos: [FIELD:prompts], [FIELD:sync_map], [FIELD:elevenlabs_config], [FIELD:narration], [FIELD:subtitles]
+- NICHE_HANDLED: true no header
+- Formato v2.0: cada cena tem PROMPT: + EDITOR_META: (com narration_sync)
+
+Escreva o agente COMPLETO em {lang}. O resultado deve ser um texto que o usuario copia inteiro e cola como primeira mensagem no Claude/Gemini."""
+
+        agent_text = await asyncio.to_thread(
+            chat, agent_prompt,
+            "Voce cria agentes de producao de video YouTube. O agente gerado sera usado pelo aluno para criar videos profissionais.",
+            None, 8000, 0.7,
+        )
+
+        if not agent_text or len(agent_text) < 500:
+            return JSONResponse({"error": "IA retornou agente vazio"}, status_code=500)
+
+        # Save as resource for the student
+        from datetime import datetime
+        resources_dir = OUTPUT_DIR / "resources"
+        resources_dir.mkdir(exist_ok=True)
+
+        import secrets as _sec
+        filename = f"AGENT_{niche.replace(' ', '_').upper()[:20]}_{_sec.token_hex(3)}.md"
+        file_path = resources_dir / filename
+        file_path.write_text(agent_text, encoding="utf-8")
+
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO admin_resources (label, description, filename, file_path, file_size, category, badge_color, badge_icon, target_student_id, active, created_at) VALUES (?,?,?,?,?,?,?,?,?,1,?)",
+                (f"Agente {niche[:30]}", f"Agente de producao para {channel_name} — cole no Claude/Gemini",
+                 filename, filename, len(agent_text.encode("utf-8")), "agente", "#7c3aed", "🤖",
+                 int(student_id), datetime.now().isoformat()),
+            )
+
+        from database import log_activity, create_notification
+        log_activity(project_id, "agent_generated", f"Agente gerado para {student['name']}: {niche}")
+        create_notification(int(student_id), "agent", "Novo Agente Disponivel",
+                           f"O admin gerou um agente de producao para o canal {channel_name}. Baixe em Recursos.",
+                           link="/student")
+
+        return JSONResponse({
+            "ok": True,
+            "filename": filename,
+            "size": len(agent_text),
+            "niche": niche,
+        })
+    except Exception as e:
+        logger.error(f"generate-agent error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao gerar agente."}, status_code=500)
+
+
 @app.post("/api/admin/set-ai-model")
 @limiter.limit("10/minute")
 async def api_set_ai_model(request: Request, user=Depends(require_admin)):
@@ -2199,11 +2320,18 @@ async def api_sync_student_drive(request: Request, user=Depends(require_admin)):
                 return JSONResponse({"ok": True, "synced": 0, "message": "Nenhum projeto atribuido"})
 
             placeholders = ",".join("?" * len(project_ids))
+            # Sync ALL files: visible ones + student-generated (roteiro_student, seo_, etc)
             files = conn.execute(f"""
                 SELECT f.id, f.category, f.label, f.filename, f.content, f.project_id
                 FROM files f
                 WHERE f.project_id IN ({placeholders})
-                AND f.visible_to_students = 1
+                AND (f.visible_to_students = 1
+                     OR f.filename LIKE 'roteiro_student_%'
+                     OR f.filename LIKE 'narracao_student_%'
+                     OR f.filename LIKE 'seo_%'
+                     OR f.filename LIKE 'thumbnail_%'
+                     OR f.filename LIKE 'music_%'
+                     OR f.filename LIKE 'teaser_%')
                 AND f.content IS NOT NULL AND f.content != ''
                 AND LENGTH(f.content) > 50
                 ORDER BY f.created_at

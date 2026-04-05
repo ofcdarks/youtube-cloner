@@ -261,6 +261,9 @@
     <div class="section">
         <div class="section-title" style="justify-content:space-between">
             <span><span class="sec-icon">&#128230;</span> Recursos para {{ student.name }}</span>
+            {% if assignments %}
+            <button type="button" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="generateAgent()" title="Gera um agente IA baseado no SOP para o aluno usar no Claude/Gemini">&#129302; Gerar Agente do Nicho</button>
+            {% endif %}
         </div>
 
         {% if resources %}
@@ -425,6 +428,35 @@ function createAssignment() {
         }
     })
     .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+}
+
+function generateAgent() {
+    {% if assignments %}
+    var firstAssignment = {{ assignments[0].project_id|tojson }};
+    {% else %}
+    var firstAssignment = '';
+    {% endif %}
+    if (!firstAssignment) { showToast('Aluno nao tem projeto atribuido', 'warning'); return; }
+
+    showConfirm('Gerar Agente do Nicho', 'Gerar um agente IA baseado no SOP deste projeto?<br><br>O agente sera disponibilizado como recurso para o aluno baixar e usar no Claude/Gemini para produzir videos.<br><br>Isso consome creditos de API (~$0.10).', function() {
+        var loading = showToast('Gerando agente IA... (~60s)', 'loading');
+        apiPost('/api/admin/generate-agent', {
+            student_id: {{ student.id }},
+            project_id: firstAssignment,
+            channel_id: {{ channels[0].id if channels else 0 }}
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Agente gerado! ' + data.niche + ' (' + Math.round(data.size/1024) + 'KB). Disponivel em Recursos.', 'success', 5000);
+                setTimeout(function() { location.reload(); }, 2000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
 }
 
 function uploadResource() {
