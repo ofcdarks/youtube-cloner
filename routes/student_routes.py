@@ -670,8 +670,21 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
     except ValueError as e:
         logger.error(f"student generate-script config error: {e}")
         return JSONResponse({"error": "Erro de configuracao. Reconfigure sua API key."}, status_code=400)
+    except httpx.TimeoutException:
+        logger.error(f"student generate-script timeout for progress_id={progress_id}")
+        return JSONResponse({"error": "Timeout — a IA demorou muito para responder. Tente novamente."}, status_code=504)
+    except httpx.ConnectError:
+        logger.error(f"student generate-script connection error")
+        return JSONResponse({"error": "Erro de conexao com a API. Verifique sua chave e tente novamente."}, status_code=502)
     except Exception as e:
+        err_str = str(e).lower()
         logger.error(f"student generate-script error: {e}", exc_info=True)
+        if "api_key" in err_str or "unauthorized" in err_str or "401" in err_str:
+            return JSONResponse({"error": "Chave API invalida ou expirada. Reconfigure em Configuracao da API."}, status_code=400)
+        if "rate" in err_str or "429" in err_str or "quota" in err_str:
+            return JSONResponse({"error": "Limite de requisicoes atingido. Aguarde alguns minutos."}, status_code=429)
+        if "model" in err_str or "not found" in err_str:
+            return JSONResponse({"error": "Modelo de IA nao encontrado. Peca ao admin para verificar a configuracao."}, status_code=400)
         return JSONResponse({"error": "Falha ao gerar roteiro. Tente novamente."}, status_code=500)
 
 
