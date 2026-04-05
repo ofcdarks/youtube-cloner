@@ -429,7 +429,12 @@
     <!-- MEUS ARQUIVOS -->
     {% if categories %}
     <div class="section">
-        <div class="section-title"><span class="sec-icon">&#128193;</span> Meus Arquivos</div>
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128193;</span> Meus Arquivos</span>
+            {% if user.drive_folder_id|default('') %}
+            <a href="https://drive.google.com/drive/folders/{{ user.drive_folder_id }}" target="_blank" rel="noopener" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40;padding:6px 14px;border-radius:6px;font-size:12px;text-decoration:none;font-weight:600">&#128194; Abrir no Google Drive</a>
+            {% endif %}
+        </div>
         {% for cat_key, cat in categories.items() %}
         <div class="category-card" style="margin-bottom:12px;">
             <div class="category-header" style="border-color:{{ cat.color }}">

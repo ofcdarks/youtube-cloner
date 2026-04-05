@@ -1875,6 +1875,98 @@ async def api_create_student_drive(request: Request, user=Depends(require_admin)
         return JSONResponse({"error": "Falha ao criar pasta Drive. Verifique a conexao Google Drive."}, status_code=500)
 
 
+@app.post("/api/admin/sync-student-drive")
+@limiter.limit("3/minute")
+async def api_sync_student_drive(request: Request, user=Depends(require_admin)):
+    """Sync all existing student files to their Google Drive folder."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    if not student_id:
+        return JSONResponse({"error": "student_id obrigatorio"}, status_code=400)
+
+    from database import get_user, get_db, get_student_drive_folder
+
+    student = get_user(int(student_id))
+    if not student:
+        return JSONResponse({"error": "Aluno nao encontrado"}, status_code=404)
+
+    folder_id = get_student_drive_folder(int(student_id))
+    if not folder_id:
+        return JSONResponse({"error": "Aluno nao tem pasta Drive. Crie primeiro."}, status_code=400)
+
+    try:
+        from protocols.google_export import create_doc, find_or_create_subfolder
+        from database import get_student_channels, save_student_drive_file
+
+        synced = 0
+
+        # Get all visible files for projects this student is assigned to
+        with get_db() as conn:
+            assignments = conn.execute(
+                "SELECT DISTINCT project_id FROM assignments WHERE student_id=?",
+                (int(student_id),),
+            ).fetchall()
+            project_ids = [a["project_id"] for a in assignments]
+
+            if not project_ids:
+                return JSONResponse({"ok": True, "synced": 0, "message": "Nenhum projeto atribuido"})
+
+            placeholders = ",".join("?" * len(project_ids))
+            files = conn.execute(f"""
+                SELECT f.id, f.category, f.label, f.filename, f.content, f.project_id
+                FROM files f
+                WHERE f.project_id IN ({placeholders})
+                AND f.visible_to_students = 1
+                AND f.content IS NOT NULL AND f.content != ''
+                AND LENGTH(f.content) > 50
+                ORDER BY f.created_at
+            """, project_ids).fetchall()
+
+        # Get channels for subfolder naming
+        channels = get_student_channels(int(student_id))
+        channel_by_project = {}
+        for ch in channels:
+            if ch.get("project_id"):
+                channel_by_project[ch["project_id"]] = ch.get("channel_name", "Canal")
+
+        # Check which files are already synced
+        with get_db() as conn:
+            existing = set()
+            for row in conn.execute(
+                "SELECT file_id FROM student_drive_files WHERE student_id=?",
+                (int(student_id),),
+            ).fetchall():
+                existing.add(row["file_id"])
+
+        # Sync each file
+        for f in files:
+            f = dict(f)
+            if f["id"] in existing:
+                continue  # Already synced
+
+            try:
+                # Create channel subfolder
+                channel_name = channel_by_project.get(f["project_id"], "Projeto")
+                channel_folder = find_or_create_subfolder(channel_name, folder_id)
+
+                # Create doc in Drive
+                doc_id = create_doc(f["label"], f["content"], channel_folder)
+                if doc_id:
+                    save_student_drive_file(
+                        int(student_id), f["id"], doc_id, channel_folder,
+                        f["filename"], f["label"], f["category"],
+                    )
+                    synced += 1
+            except Exception as e:
+                logger.warning(f"Sync file {f['filename']} failed: {e}")
+                continue
+
+        return JSONResponse({"ok": True, "synced": synced})
+    except Exception as e:
+        logger.error(f"sync-student-drive error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao sincronizar arquivos."}, status_code=500)
+
+
 @app.post("/api/admin/delete-student-drive")
 @limiter.limit("5/minute")
 async def api_delete_student_drive(request: Request, user=Depends(require_admin)):
