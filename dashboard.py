@@ -2295,16 +2295,79 @@ async def api_create_student_drive(request: Request, user=Depends(require_admin)
         return JSONResponse({"error": "Aluno ja tem pasta Drive"}, status_code=400)
 
     try:
-        from protocols.google_export import get_or_create_student_folder, share_folder
+        from protocols.google_export import get_or_create_student_folder, share_folder, find_or_create_subfolder, create_doc
+        from database import get_student_channels, get_db, save_student_drive_file
+
+        # 1. Create root folder + share
         folder_id = get_or_create_student_folder(student["name"])
         share_folder(folder_id, student["email"], "writer")
         set_student_drive_folder(int(student_id), folder_id)
+
+        # 2. Create channel subfolders
+        channels = get_student_channels(int(student_id))
+        synced = 0
+        for ch in channels:
+            ch_name = ch.get("channel_name", "Canal")
+            find_or_create_subfolder(ch_name, folder_id)
+            logger.info(f"[DRIVE] Channel folder created: {ch_name}")
+
+        # 3. Auto-sync existing files
+        with get_db() as conn:
+            assignments = conn.execute(
+                "SELECT DISTINCT project_id FROM assignments WHERE student_id=?",
+                (int(student_id),),
+            ).fetchall()
+            project_ids = [a["project_id"] for a in assignments]
+
+            if project_ids:
+                placeholders = ",".join("?" * len(project_ids))
+                files = conn.execute(f"""
+                    SELECT f.id, f.category, f.label, f.filename, f.content, f.project_id
+                    FROM files f
+                    WHERE f.project_id IN ({placeholders})
+                    AND f.category NOT IN ('analise', 'visual')
+                    AND f.content IS NOT NULL AND f.content != ''
+                    AND LENGTH(f.content) > 50
+                    ORDER BY f.created_at
+                """, project_ids).fetchall()
+
+                # Check already synced
+                existing_synced = set()
+                for row in conn.execute(
+                    "SELECT file_id FROM student_drive_files WHERE student_id=?",
+                    (int(student_id),),
+                ).fetchall():
+                    existing_synced.add(row["file_id"])
+
+                # Map channels to projects
+                channel_by_project = {}
+                for ch in channels:
+                    if ch.get("project_id"):
+                        channel_by_project[ch["project_id"]] = ch.get("channel_name", "Canal")
+
+                for f in files:
+                    f = dict(f)
+                    if f["id"] in existing_synced:
+                        continue
+                    try:
+                        ch_name = channel_by_project.get(f["project_id"], "Projeto")
+                        ch_folder = find_or_create_subfolder(ch_name, folder_id)
+                        doc_id = create_doc(f["label"], f["content"], ch_folder)
+                        if doc_id:
+                            save_student_drive_file(int(student_id), f["id"], doc_id, ch_folder,
+                                                   f["filename"], f["label"], f["category"])
+                            synced += 1
+                    except Exception as e:
+                        logger.warning(f"[DRIVE] Sync file failed: {f['filename']}: {e}")
+
         log_activity("", "drive_student_created",
-                     f"Pasta Drive criada para {student['name']} ({student['email']})")
+                     f"Pasta Drive criada para {student['name']} + {synced} arquivos sincronizados")
         return JSONResponse({
             "ok": True,
             "folder_id": folder_id,
             "folder_url": f"https://drive.google.com/drive/folders/{folder_id}",
+            "channels_created": len(channels),
+            "files_synced": synced,
         })
     except Exception as e:
         logger.error(f"create-student-drive error: {e}", exc_info=True)

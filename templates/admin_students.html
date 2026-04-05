@@ -274,8 +274,11 @@ function createDriveFolder(studentId, name, email) {
         .then(function(data) {
             removeToast(loading);
             if (data.ok) {
-                showToast('Pasta criada e compartilhada com ' + email + '!', 'success', 3000);
-                setTimeout(function() { location.reload(); }, 1500);
+                var msg = 'Pasta criada para ' + name + '!';
+                if (data.channels_created) msg += ' ' + data.channels_created + ' canais criados.';
+                if (data.files_synced) msg += ' ' + data.files_synced + ' arquivos sincronizados.';
+                showToast(msg, 'success', 5000);
+                setTimeout(function() { location.reload(); }, 2000);
             } else {
                 showToast('Erro: ' + (data.error || ''), 'error');
             }
