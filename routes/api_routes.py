@@ -259,7 +259,10 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
             lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
             country = lang_to_country.get(lang[:2], "us")
             niche_names = [n["name"] for n in chosen_niches] if chosen_niches else [niche]
-            niche_keywords = research_niche_keywords(niche_names, language=lang, country=country)
+            niche_keywords = research_niche_keywords(
+                niche_names, language=lang, country=country,
+                sop_text=sop or "", existing_titles=existing_titles,
+            )
             if niche_keywords:
                 kw_lines = [f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes' for kw in niche_keywords[:20]]
                 keywords_block = (
@@ -300,18 +303,19 @@ Retorne APENAS o JSON.{lang_instruction}"""
         new_ideas = json.loads(json_match.group())
 
         # Map volume from pre-researched keywords (no extra API call)
-        # Only match 2+ word keywords (single words are too generic)
+        # Exclude generic single words that match too broadly
         if niche_keywords:
-            from protocols.keywords_everywhere import _strip_accents
+            from protocols.keywords_everywhere import _strip_accents, _GENERIC_SINGLE_WORDS, match_keyword_in_title
             kw_vol_map = {
                 _strip_accents(kw["keyword"].lower()): kw["vol"]
-                for kw in niche_keywords if " " in kw["keyword"]
+                for kw in niche_keywords
+                if " " in kw["keyword"] or kw["keyword"].lower() not in _GENERIC_SINGLE_WORDS
             }
             for idea in new_ideas[:30]:
                 title_lower = _strip_accents(idea.get("title", "").lower())
                 best_vol = 0
                 for kw_text, kw_vol in kw_vol_map.items():
-                    if kw_text in title_lower and kw_vol > best_vol:
+                    if match_keyword_in_title(kw_text, title_lower) and kw_vol > best_vol:
                         best_vol = kw_vol
                 idea["vol"] = best_vol if best_vol > 0 else -1
         else:

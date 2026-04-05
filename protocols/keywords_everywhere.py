@@ -130,61 +130,146 @@ def get_youtube_keyword_data(keywords: list[str], country: str = "us") -> list[d
     return get_keyword_data(keywords, country=country, language=country_lang.get(country.lower(), "en"))
 
 
-def research_niche_keywords(niches: list[str], language: str = "es", country: str = "es") -> list[dict]:
+def _extract_sop_keywords(sop_text: str) -> list[str]:
+    """
+    Extract potential search keywords from SOP content.
+    Finds proper nouns (capitalized words), recurring terms, and topic-specific words.
+    """
+    if not sop_text:
+        return []
+
+    # Clean and normalize
+    clean = re.sub(r'[#*_\-=>{}\[\]|]', ' ', sop_text)
+    clean = re.sub(r'https?://\S+', '', clean)
+    clean = re.sub(r'\d{4,}', '', clean)  # Remove long numbers (years ok)
+
+    # Extract capitalized proper nouns (civilization names, places, etc.)
+    # e.g. "Aztecas", "Teotihuacán", "Pirámides", "Olmecas"
+    proper_nouns = re.findall(r'\b([A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]{3,})\b', clean)
+    # Also extract ALL-CAPS words (often important terms in SOP)
+    caps_words = re.findall(r'\b([A-ZÁÉÍÓÚÑÜ]{4,})\b', clean)
+
+    # Count frequency to find recurring topics
+    from collections import Counter
+    word_counts = Counter()
+    for w in proper_nouns:
+        word_counts[_strip_accents(w.lower())] += 1
+    for w in caps_words:
+        word_counts[_strip_accents(w.lower())] += 1
+
+    # Common non-topic words to exclude
+    noise = {
+        "como", "para", "pero", "cada", "esta", "este", "todo", "todos",
+        "tiene", "hace", "puede", "solo", "entre", "sobre", "desde", "hasta",
+        "donde", "quien", "cual", "sido", "sera", "debe", "caso", "tipo",
+        "forma", "parte", "modo", "gran", "cosas", "otros", "otras",
+        "these", "those", "their", "about", "which", "would", "could",
+        "from", "with", "that", "this", "they", "have", "been", "will",
+        "canal", "video", "titulo", "hook", "content", "contenido",
+        "seccion", "pilar", "resumo", "prioridade", "alta", "media", "baixa",
+        "importante", "regra", "reglas", "formato", "estilo",
+    }
+
+    # Get unique keywords sorted by frequency (most recurring = most relevant)
+    keywords = []
+    for word, count in word_counts.most_common(100):
+        if word not in noise and len(word) >= 4 and count >= 1:
+            keywords.append(word)
+
+    return keywords[:60]
+
+
+def _extract_title_keywords(titles: list[str]) -> list[str]:
+    """Extract recurring keywords from existing channel titles."""
+    if not titles:
+        return []
+
+    from collections import Counter
+    word_counts = Counter()
+    noise = _STOP_WORDS | {
+        "canal", "video", "parte", "capitulo", "episodio",
+    }
+
+    for title in titles:
+        clean = re.sub(r'[^\w\s]', ' ', title.lower())
+        clean = _strip_accents(clean)
+        words = [w for w in clean.split() if len(w) >= 4 and w not in noise]
+        word_counts.update(words)
+
+    # Words appearing in 2+ titles are recurring topics
+    keywords = [w for w, c in word_counts.most_common(50) if c >= 2]
+    return keywords
+
+
+def research_niche_keywords(
+    niches: list[str],
+    language: str = "es",
+    country: str = "es",
+    sop_text: str = "",
+    existing_titles: list[str] | None = None,
+) -> list[dict]:
     """
     Research high-volume keywords for given niches.
-    Generates seed variations from niche names and looks up volume via DataForSEO.
+
+    Extracts seed keywords from 3 sources:
+    1. Niche names + modifiers
+    2. SOP content (proper nouns, recurring terms = real channel topics)
+    3. Existing title keywords (what already works for the channel)
 
     Returns sorted list: [{"keyword": "...", "vol": 12400, "cpc": 0.45, ...}]
     Only returns keywords with vol > 0, sorted by volume descending.
     """
-    if not niches:
-        return []
+    seeds = set()
 
-    # Generate seed keywords: the niche name + common modifiers per language
-    seeds = []
+    # Source 1: Niche names + modifiers
     modifiers_by_lang = {
-        "es": ["", "historia", "misterios", "secretos", "antiguos", "documental",
-               "curiosidades", "top", "increibles", "desconocidos", "explicacion"],
-        "pt": ["", "historia", "misterios", "segredos", "antigos", "documentario",
-               "curiosidades", "top", "incriveis", "desconhecidos", "explicacao"],
-        "en": ["", "history", "mysteries", "secrets", "ancient", "documentary",
-               "facts", "top", "incredible", "unknown", "explained"],
+        "es": ["historia", "misterios", "secretos", "documental", "antiguos",
+               "perdidos", "ocultos", "prohibido", "descubrimiento"],
+        "pt": ["historia", "misterios", "segredos", "documentario", "antigos",
+               "perdidos", "ocultos", "proibido", "descoberta"],
+        "en": ["history", "mysteries", "secrets", "documentary", "ancient",
+               "lost", "hidden", "forbidden", "discovery"],
     }
     lang_code = language[:2]
     modifiers = modifiers_by_lang.get(lang_code, modifiers_by_lang["en"])
 
-    for niche in niches:
+    for niche in (niches or []):
         niche_clean = _strip_accents(niche.lower().strip())
-        # Add the niche itself
-        seeds.append(niche_clean)
-        # Add niche + each modifier
+        seeds.add(niche_clean)
         for mod in modifiers:
-            if mod:
-                seeds.append(f"{niche_clean} {mod}")
-        # Also add each word of the niche if multi-word (e.g. "civilizaciones antiguas" → "civilizaciones")
-        words = [w for w in niche_clean.split() if len(w) > 4]
-        for w in words:
-            seeds.append(w)
+            seeds.add(f"{niche_clean} {mod}")
+        # Each word of multi-word niches
+        for w in niche_clean.split():
+            if len(w) >= 4:
+                seeds.add(w)
 
-    # Deduplicate
-    seen = set()
-    unique_seeds = []
-    for s in seeds:
-        if s and s not in seen:
-            seen.add(s)
-            unique_seeds.append(s)
+    # Source 2: SOP keywords (the real channel topics)
+    sop_keywords = _extract_sop_keywords(sop_text)
+    for kw in sop_keywords:
+        seeds.add(kw)
+        # Also try keyword + niche modifier
+        for niche in (niches or [])[:2]:
+            niche_word = _strip_accents(niche.lower().split()[0]) if niche else ""
+            if niche_word and len(niche_word) >= 4:
+                seeds.add(f"{kw} {niche_word}")
 
-    if not unique_seeds:
+    # Source 3: Existing title keywords (what already works)
+    title_keywords = _extract_title_keywords(existing_titles or [])
+    for kw in title_keywords:
+        seeds.add(kw)
+
+    if not seeds:
         return []
 
-    # Batch lookup (DataForSEO supports up to 700 per call)
+    unique_seeds = sorted(seeds)[:300]  # DataForSEO limit: 700/call, stay safe
+
+    # Batch lookup
     country_lang = {
         "br": "pt", "us": "en", "es": "es", "mx": "es", "gb": "en",
         "fr": "fr", "de": "de", "it": "it", "jp": "ja", "kr": "ko",
     }
     results = get_keyword_data(
-        unique_seeds[:200],
+        unique_seeds,
         country=country,
         language=country_lang.get(country.lower(), lang_code),
     )
@@ -197,11 +282,46 @@ def research_niche_keywords(niches: list[str], language: str = "es", country: st
     return with_volume
 
 
+def match_keyword_in_title(keyword: str, title: str) -> bool:
+    """Check if keyword appears in title, handling singular/plural (es/pt/en)."""
+    if keyword in title:
+        return True
+    # Try stem matching: remove common plural suffixes
+    # "mayas"→"maya", "aztecas"→"azteca", "piramides"→"piramide", "cities"→"citi"
+    for suffix in ("s", "es", "as", "os"):
+        stem = keyword.rstrip(suffix) if keyword.endswith(suffix) and len(keyword) > len(suffix) + 3 else ""
+        if stem and stem in title:
+            return True
+    # Also try the reverse: title word is plural of keyword
+    for suffix in ("s", "es"):
+        if (keyword + suffix) in title:
+            return True
+    return False
+
+
 def _strip_accents(text: str) -> str:
     """Remove accents/diacritics for keyword matching (e.g. tecnología → tecnologia)."""
     nfkd = unicodedata.normalize("NFKD", text)
     return "".join(c for c in nfkd if not unicodedata.combining(c))
 
+
+# Generic single words excluded from volume badge matching (too broad)
+# Niche-specific words like "piramides", "aztecas", "teotihuacan" are NOT here
+_GENERIC_SINGLE_WORDS = {
+    "antigua", "antiguas", "antiguo", "antiguos", "ancient",
+    "ciudad", "ciudades", "city", "cities",
+    "secreto", "secretos", "secret", "secrets", "segredo", "segredos",
+    "historia", "history", "historia",
+    "misterio", "misterios", "mystery", "mysteries", "misterio", "misterios",
+    "mundo", "world",
+    "perdida", "perdido", "perdidas", "perdidos", "lost",
+    "oculto", "oculta", "ocultos", "ocultas", "hidden",
+    "tecnologia", "technology",
+    "descubrimiento", "descubrimientos", "discovery",
+    "civilizacion", "civilizaciones", "civilization",
+    "cultura", "culturas", "culture",
+    "temas", "caps", "numeros", "patrones", "numbers", "patterns",
+}
 
 _STOP_WORDS = {
     # English
