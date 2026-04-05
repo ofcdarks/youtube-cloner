@@ -262,7 +262,16 @@
         <div class="section-title" style="justify-content:space-between">
             <span><span class="sec-icon">&#128230;</span> Recursos para {{ student.name }}</span>
             {% if assignments %}
-            <button type="button" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="generateAgent()" title="Gera um agente IA baseado no SOP para o aluno usar no Claude/Gemini">&#129302; Gerar Agente do Nicho</button>
+            <div style="display:flex;gap:6px;align-items:center">
+                <select id="agent-style" style="font-size:11px;padding:4px 8px;background:#131a2e;color:#ccc;border:1px solid #334155;border-radius:4px" title="Estilo visual do agente">
+                    <option value="">Sem estilo visual</option>
+                    <option value="cartoon_meme">🎨 Cartoon Meme</option>
+                    <option value="stickman_premium">🖊️ Stickman Premium</option>
+                    <option value="chibi_dark_tech">👾 Chibi Dark Tech</option>
+                    <option value="faceless_mannequin_realistic">🤍 Faceless Mannequin</option>
+                </select>
+                <button type="button" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="generateAgent()" title="Gera agente COMPLETO (~30KB) do pipeline ATOMACAO para o aluno usar no Claude/Gemini">&#129302; Gerar Agente Completo</button>
+            </div>
             {% endif %}
         </div>
 
@@ -440,10 +449,12 @@ function generateAgent() {
 
     showConfirm('Gerar Agente do Nicho', 'Gerar um agente IA baseado no SOP deste projeto?<br><br>O agente sera disponibilizado como recurso para o aluno baixar e usar no Claude/Gemini para produzir videos.<br><br>Isso consome creditos de API (~$0.10).', function() {
         var loading = showToast('Gerando agente IA... (~60s)', 'loading');
+        var style = document.getElementById('agent-style') ? document.getElementById('agent-style').value : '';
         apiPost('/api/admin/generate-agent', {
             student_id: {{ student.id }},
             project_id: firstAssignment,
-            channel_id: {{ channels[0].id if channels else 0 }}
+            channel_id: {{ channels[0].id if channels else 0 }},
+            style: style
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {

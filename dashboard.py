@@ -2137,81 +2137,109 @@ async def api_generate_agent(request: Request, user=Depends(require_admin)):
                 channel_url = ch["channel_url"] or channel_url
 
     try:
-        # Generate agent prompt based on SOP
-        agent_prompt = f"""Baseado neste SOP de canal YouTube, crie um AGENTE DE PRODUCAO DE VIDEO completo.
+        # Use the REAL build_agent.py from ATOMACAO pipeline
+        # This generates the FULL 30KB agent with all VEO3 rules, EDITOR_META, sync, etc.
+        import sys
+        from pathlib import Path as _Path
+        from datetime import datetime
 
-SOP DO CANAL:
-{sop[:8000]}
+        ATOMACAO_DIR = _Path(__file__).parent.parent / "ATOMACAO CANAL FULL"
+        AGENT_TOOLS = ATOMACAO_DIR / "agent" / "tools"
+        AGENT_BASE = ATOMACAO_DIR / "agent" / "base" / "AGENT_BASE.md"
+        NICHE_CONFIG = ATOMACAO_DIR / "agent" / "niches" / "niche_configs.json"
+        STYLES_CONFIG = ATOMACAO_DIR / "agent" / "styles" / "visual_styles.json"
 
-O agente deve ser um prompt que o usuario cola no Claude ou Gemini para gerar videos completos.
+        if not AGENT_BASE.exists():
+            return JSONResponse({"error": "Template de agente nao encontrado. Verifique a pasta ATOMACAO CANAL FULL."}, status_code=500)
 
-FORMATO DO AGENTE (OBRIGATORIO):
-O agente deve instruir a IA a gerar:
-1. Calculo de cenas (duracao / 8 segundos por cena)
-2. Roteiro completo com narracao
-3. Prompts VEO 3 para cada cena (75-150 palavras cada)
-4. Config ElevenLabs (stability: 0.71, similarity: 0.80, speed calculado)
-5. 4 prompts de trilha sonora (Suno)
-6. SEO Pack (titulo, descricao, tags)
-7. Legendas SRT sincronizadas
-8. Export LCDF (bloco copiavel para extensao La Casa Dark Flow)
+        # Find best matching niche from configs
+        import json as _json
+        niche_configs = _json.loads(NICHE_CONFIG.read_text(encoding="utf-8"))
+        styles_config = {}
+        if STYLES_CONFIG.exists():
+            styles_config = _json.loads(STYLES_CONFIG.read_text(encoding="utf-8"))
+            styles_config.pop("_meta", None)
 
-DADOS DO CANAL:
-- Nome: {channel_name}
-- URL: {channel_url}
-- Nicho: {niche}
-- Idioma: {lang}
+        # Match niche key by name similarity
+        niche_lower = niche.lower()
+        best_key = None
+        best_score = 0
+        for key, cfg in niche_configs.items():
+            score = 0
+            check_names = [key, cfg.get("title", ""), cfg.get("agent_name", "")]
+            for name in check_names:
+                if niche_lower in name.lower() or name.lower() in niche_lower:
+                    score = max(score, len(name))
+            # Check keywords
+            for word in niche_lower.split():
+                if len(word) > 3 and word in key.lower():
+                    score += 5
+            if score > best_score:
+                best_score = score
+                best_key = key
 
-REGRAS DO AGENTE:
-- O agente aceita 2 modos: TITULO+DURACAO (cria do zero) ou TITULO+DURACAO+ROTEIRO (adapta roteiro)
-- Cada cena = 8 segundos = ~20 palavras de narracao
-- Prompts VEO 3 em prosa natural com: camera, estilo, iluminacao, sujeito, locacao, acao, audio
-- Cada prompt termina com "Audio: [sons especificos]. No dialogue, no human voice."
-- Export LCDF delimitado por ===WILDHOPE_EXPORT_START=== e ===WILDHOPE_EXPORT_END===
-- Campos: [FIELD:prompts], [FIELD:sync_map], [FIELD:elevenlabs_config], [FIELD:narration], [FIELD:subtitles]
-- NICHE_HANDLED: true no header
-- Formato v2.0: cada cena tem PROMPT: + EDITOR_META: (com narration_sync)
+        if not best_key:
+            # Default to civilizacao_historica or first available
+            best_key = list(niche_configs.keys())[0]
+            logger.warning(f"No niche match for '{niche}', using default: {best_key}")
 
-Escreva o agente COMPLETO em {lang}. O resultado deve ser um texto que o usuario copia inteiro e cola como primeira mensagem no Claude/Gemini."""
+        cfg = niche_configs[best_key]
+        agent_name = cfg.get("agent_name", "AGENT")
 
-        agent_text = await asyncio.to_thread(
-            chat, agent_prompt,
-            "Voce cria agentes de producao de video YouTube. O agente gerado sera usado pelo aluno para criar videos profissionais.",
-            None, 8000, 0.7,
-        )
+        # Get style from request
+        style_key = body.get("style", "")
+        style_cfg = styles_config.get(style_key) if style_key else None
 
-        if not agent_text or len(agent_text) < 500:
-            return JSONResponse({"error": "IA retornou agente vazio"}, status_code=500)
+        # Import and run build_agent
+        sys.path.insert(0, str(AGENT_TOOLS))
+        try:
+            from build_agent import build_agent, load_base
+            base_template = AGENT_BASE.read_text(encoding="utf-8")
+            agent_text = build_agent(best_key, cfg, base_template, style_cfg)
+        finally:
+            sys.path.pop(0)
+
+        if not agent_text or len(agent_text) < 1000:
+            return JSONResponse({"error": "Agente gerado muito curto"}, status_code=500)
 
         # Save as resource for the student
-        from datetime import datetime
         resources_dir = OUTPUT_DIR / "resources"
         resources_dir.mkdir(exist_ok=True)
 
-        import secrets as _sec
-        filename = f"AGENT_{niche.replace(' ', '_').upper()[:20]}_{_sec.token_hex(3)}.md"
+        style_suffix = f"_{style_key}" if style_key else ""
+        filename = f"AGENT_{agent_name}_v2.0{style_suffix}.md"
         file_path = resources_dir / filename
         file_path.write_text(agent_text, encoding="utf-8")
+        file_size = len(agent_text.encode("utf-8"))
 
         with get_db() as conn:
+            # Remove previous agent for same student+niche if exists
+            conn.execute(
+                "DELETE FROM admin_resources WHERE target_student_id=? AND category='agente' AND label LIKE ?",
+                (int(student_id), f"Agente {agent_name}%"),
+            )
             conn.execute(
                 "INSERT INTO admin_resources (label, description, filename, file_path, file_size, category, badge_color, badge_icon, target_student_id, active, created_at) VALUES (?,?,?,?,?,?,?,?,?,1,?)",
-                (f"Agente {niche[:30]}", f"Agente de producao para {channel_name} — cole no Claude/Gemini",
-                 filename, filename, len(agent_text.encode("utf-8")), "agente", "#7c3aed", "🤖",
+                (f"Agente {agent_name} v2.0{style_suffix}",
+                 f"Agente COMPLETO ({file_size // 1024}KB) para {channel_name} — cole no Claude/Gemini para produzir videos",
+                 filename, filename, file_size, "agente", "#7c3aed", "🤖",
                  int(student_id), datetime.now().isoformat()),
             )
 
         from database import log_activity, create_notification
-        log_activity(project_id, "agent_generated", f"Agente gerado para {student['name']}: {niche}")
-        create_notification(int(student_id), "agent", "Novo Agente Disponivel",
-                           f"O admin gerou um agente de producao para o canal {channel_name}. Baixe em Recursos.",
+        log_activity(project_id, "agent_generated",
+                     f"Agente {agent_name} v2.0{style_suffix} ({file_size // 1024}KB) gerado para {student['name']}")
+        create_notification(int(student_id), "agent", f"Agente {agent_name} Disponivel",
+                           f"Seu agente de producao ({file_size // 1024}KB) esta pronto para download. Cole no Claude/Gemini.",
                            link="/student")
 
         return JSONResponse({
             "ok": True,
             "filename": filename,
-            "size": len(agent_text),
+            "size": file_size,
             "niche": niche,
+            "agent_name": agent_name,
+            "niche_key": best_key,
         })
     except Exception as e:
         logger.error(f"generate-agent error: {e}", exc_info=True)
