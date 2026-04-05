@@ -2348,18 +2348,11 @@ async def api_sync_student_drive(request: Request, user=Depends(require_admin)):
                 return JSONResponse({"ok": True, "synced": 0, "message": "Nenhum projeto atribuido"})
 
             placeholders = ",".join("?" * len(project_ids))
-            # Sync ALL files: visible ones + student-generated (roteiro_student, seo_, etc)
+            # Sync ALL project files — no visibility filter (admin Drive has everything)
             files = conn.execute(f"""
                 SELECT f.id, f.category, f.label, f.filename, f.content, f.project_id
                 FROM files f
                 WHERE f.project_id IN ({placeholders})
-                AND (f.visible_to_students = 1
-                     OR f.filename LIKE 'roteiro_student_%'
-                     OR f.filename LIKE 'narracao_student_%'
-                     OR f.filename LIKE 'seo_%'
-                     OR f.filename LIKE 'thumbnail_%'
-                     OR f.filename LIKE 'music_%'
-                     OR f.filename LIKE 'teaser_%')
                 AND f.content IS NOT NULL AND f.content != ''
                 AND LENGTH(f.content) > 50
                 ORDER BY f.created_at
