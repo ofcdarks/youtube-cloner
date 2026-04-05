@@ -257,6 +257,69 @@
         </div>
     </div>
 
+    <!-- RECURSOS PARA O ALUNO -->
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128230;</span> Recursos para {{ student.name }}</span>
+        </div>
+
+        {% if resources %}
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+            {% for res in resources %}
+            <div style="display:flex;align-items:center;gap:8px;background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:10px 14px;min-width:200px">
+                <span style="font-size:22px">{{ res.badge_icon|safe }}</span>
+                <div style="flex:1">
+                    <div style="font-size:12px;font-weight:600;color:#fff">{{ res.label }}</div>
+                    <div style="font-size:10px;color:#888">{{ res.category }} | {{ res.downloads }} downloads</div>
+                </div>
+                <button type="button" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px" onclick="deleteResource({{ res.id }})" title="Remover">&#128465;</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:#666;font-size:12px;margin-bottom:12px">Nenhum recurso disponibilizado para este aluno.</p>
+        {% endif %}
+
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:14px">
+            <div style="font-size:13px;font-weight:600;color:var(--fg-primary);margin-bottom:10px">Enviar Recurso</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Nome do recurso *</label>
+                    <input type="text" id="res-label" class="form-input" placeholder="Ex: Agente CHRONOS v2">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Categoria</label>
+                    <select id="res-category" class="form-input" title="Categoria do recurso">
+                        <option value="agente">🤖 Agente IA</option>
+                        <option value="extensao">🧩 Extensao Chrome</option>
+                        <option value="template">📄 Template</option>
+                        <option value="guia">📖 Guia/Tutorial</option>
+                        <option value="ferramenta">🔧 Ferramenta</option>
+                        <option value="outro">📦 Outro</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Descricao (opcional)</label>
+                    <input type="text" id="res-desc" class="form-input" placeholder="Breve descricao do recurso">
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--fg-dim)">Disponivel para</label>
+                    <select id="res-target" class="form-input" title="Quem pode baixar">
+                        <option value="0">Todos os alunos</option>
+                        <option value="{{ student.id }}" selected>Somente {{ student.name }}</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:10px">
+                <label style="font-size:11px;color:var(--fg-dim)">Arquivo *</label>
+                <input type="file" id="res-file" style="font-size:12px;color:#ccc;margin-top:4px">
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+                <button type="button" class="btn-primary" style="font-size:12px;padding:6px 16px" onclick="uploadResource()">&#128228; Enviar Recurso</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <div id="toast-container"></div>
@@ -362,6 +425,49 @@ function createAssignment() {
         }
     })
     .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+}
+
+function uploadResource() {
+    var label = document.getElementById('res-label').value.trim();
+    var file = document.getElementById('res-file').files[0];
+    if (!label || !file) { showToast('Nome e arquivo obrigatorios', 'warning'); return; }
+
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('label', label);
+    formData.append('description', document.getElementById('res-desc').value.trim());
+    formData.append('category', document.getElementById('res-category').value);
+    formData.append('target_student_id', document.getElementById('res-target').value);
+    formData.append('badge_icon', {'agente':'🤖','extensao':'🧩','template':'📄','guia':'📖','ferramenta':'🔧','outro':'📦'}[document.getElementById('res-category').value] || '📦');
+
+    var loading = showToast('Enviando recurso...', 'loading');
+    var token = window.__SESSION_TOKEN || localStorage.getItem('session_token') || '';
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    var headers = {'X-Session': token};
+    if (csrf) headers['X-CSRF-Token'] = csrf.content;
+
+    fetch('/api/admin/upload-resource', {method: 'POST', body: formData, headers: headers})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        if (data.ok) {
+            showToast('Recurso enviado: ' + data.filename, 'success');
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    })
+    .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+}
+
+function deleteResource(resourceId) {
+    showConfirm('Remover Recurso', 'Remover este recurso?', function() {
+        apiPost('/api/admin/delete-resource', {resource_id: resourceId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) { showToast('Removido!', 'success'); setTimeout(function() { location.reload(); }, 1000); }
+        });
+    });
 }
 
 function linkChannelProject(channelId) {

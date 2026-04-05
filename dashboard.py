@@ -583,6 +583,17 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
         a["project_channel"] = proj.get("channel_original", "") if proj else ""
         a["project_language"] = proj.get("language", "pt-BR") if proj else ""
 
+    # Get resources for this student
+    student_resources = []
+    try:
+        with get_db() as conn:
+            student_resources = [dict(r) for r in conn.execute(
+                "SELECT * FROM admin_resources WHERE active=1 AND (target_student_id=0 OR target_student_id=?) ORDER BY created_at DESC",
+                (student_id,),
+            ).fetchall()]
+    except Exception:
+        pass
+
     return render(request, "admin_student_detail.html", {
         "user": user,
         "student": student,
@@ -592,6 +603,7 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
         "status_colors": status_colors,
         "channels": channels,
         "all_projects": all_projects,
+        "resources": student_resources,
     })
 
 
@@ -1993,6 +2005,96 @@ Retorne APENAS o JSON.{lang_instruction}"""
     except Exception as e:
         logger.error(f"regenerate-titles error: {e}", exc_info=True)
         return JSONResponse({"error": "Falha ao re-gerar titulos."}, status_code=500)
+
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN RESOURCES — Files shared with students for download
+# ═══════════════════════════════════════════════════════════
+
+@app.post("/api/admin/upload-resource")
+@limiter.limit("10/minute")
+async def api_upload_resource(request: Request, user=Depends(require_admin)):
+    """Upload a resource file for students to download."""
+    from database import get_db
+    from datetime import datetime
+
+    form = await request.form()
+    file = form.get("file")
+    label = form.get("label", "").strip()
+    description = form.get("description", "").strip()
+    category = form.get("category", "general").strip()
+    badge_color = form.get("badge_color", "#7c3aed").strip()
+    badge_icon = form.get("badge_icon", "📦").strip()
+    target_student = int(form.get("target_student_id", 0) or 0)
+    target_project = form.get("target_project_id", "").strip()
+
+    if not file or not label:
+        return JSONResponse({"error": "Arquivo e label obrigatorios"}, status_code=400)
+
+    # Save file to output/resources/
+    resources_dir = OUTPUT_DIR / "resources"
+    resources_dir.mkdir(exist_ok=True)
+
+    import secrets as _sec
+    safe_name = f"{_sec.token_hex(4)}_{file.filename}"
+    file_path = resources_dir / safe_name
+    content = await file.read()
+    file_path.write_bytes(content)
+
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO admin_resources (label, description, filename, file_path, file_size, category, badge_color, badge_icon, target_student_id, target_project_id, active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)",
+            (label, description, file.filename, str(safe_name), len(content), category, badge_color, badge_icon, target_student, target_project, datetime.now().isoformat()),
+        )
+
+    logger.info(f"Resource uploaded: {label} ({len(content)} bytes)")
+    return JSONResponse({"ok": True, "filename": file.filename, "size": len(content)})
+
+
+@app.post("/api/admin/delete-resource")
+@limiter.limit("20/minute")
+async def api_delete_resource(request: Request, user=Depends(require_admin)):
+    """Delete a resource."""
+    body = await request.json()
+    resource_id = body.get("resource_id")
+    if not resource_id:
+        return JSONResponse({"error": "resource_id obrigatorio"}, status_code=400)
+
+    from database import get_db
+    with get_db() as conn:
+        row = conn.execute("SELECT file_path FROM admin_resources WHERE id=?", (int(resource_id),)).fetchone()
+        if row:
+            fpath = OUTPUT_DIR / "resources" / row["file_path"]
+            if fpath.exists():
+                fpath.unlink()
+            conn.execute("DELETE FROM admin_resources WHERE id=?", (int(resource_id),))
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/resource/download/{resource_id}")
+async def api_download_resource(request: Request, resource_id: int, user=Depends(require_auth)):
+    """Download a resource file."""
+    from database import get_db
+    from fastapi.responses import FileResponse
+
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM admin_resources WHERE id=? AND active=1", (resource_id,)).fetchone()
+        if not row:
+            return JSONResponse({"error": "Recurso nao encontrado"}, status_code=404)
+        row = dict(row)
+
+        # Check if resource is targeted to specific student
+        if row["target_student_id"] and row["target_student_id"] != user["id"] and user.get("role") != "admin":
+            return JSONResponse({"error": "Sem permissao"}, status_code=403)
+
+        # Increment download counter
+        conn.execute("UPDATE admin_resources SET downloads = downloads + 1 WHERE id=?", (resource_id,))
+
+    fpath = OUTPUT_DIR / "resources" / row["file_path"]
+    if not fpath.exists():
+        return JSONResponse({"error": "Arquivo nao encontrado no servidor"}, status_code=404)
+
+    return FileResponse(str(fpath), filename=row["filename"], media_type="application/octet-stream")
 
 
 @app.post("/api/admin/set-ai-model")

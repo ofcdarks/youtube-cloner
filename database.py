@@ -314,6 +314,24 @@ def _run_migrations():
         ("idx_video_perf_student", "CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id)"),
         # Allow admin to share their API key with students
         ("users_use_admin_api", "ALTER TABLE users ADD COLUMN use_admin_api INTEGER DEFAULT 0"),
+        # Admin resources — files shared with students for download
+        ("create_admin_resources", """CREATE TABLE IF NOT EXISTS admin_resources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            filename TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_size INTEGER DEFAULT 0,
+            category TEXT DEFAULT 'general',
+            badge_color TEXT DEFAULT '#7c3aed',
+            badge_icon TEXT DEFAULT '📦',
+            target_student_id INTEGER DEFAULT 0,
+            target_project_id TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            downloads INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (target_student_id) REFERENCES users(id)
+        )"""),
     ]
     with get_db() as conn:
         for migration_id, sql in migrations:

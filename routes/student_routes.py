@@ -47,6 +47,21 @@ def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
 router = APIRouter(tags=["student"])
 
 
+def _get_student_resources(student_id: int) -> list[dict]:
+    """Get resources available to a student (global + targeted)."""
+    try:
+        from database import get_db
+        with get_db() as conn:
+            rows = conn.execute("""
+                SELECT * FROM admin_resources
+                WHERE active=1 AND (target_student_id=0 OR target_student_id=?)
+                ORDER BY created_at DESC
+            """, (student_id,)).fetchall()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
 def _render(request, template, ctx=None):
     from dashboard import render
     return render(request, template, ctx)
@@ -358,6 +373,7 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
         "unread_notifs": count_unread_notifications(target_user["id"]) if not impersonating else 0,
         "trend_files": trend_files,
         "has_yt_key": has_yt_key,
+        "resources": _get_student_resources(target_user["id"]),
     })
 
 
