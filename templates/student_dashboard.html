@@ -450,9 +450,10 @@
                 </div>
                 {% if cat_key == 'roteiro' and f.id %}
                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px 20px;">
+                    <button type="button" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="generateAll({{ f.id }}, this)" title="Gerar SEO + Thumbnail + Music + Teaser de uma vez">&#9889; Gerar Tudo</button>
                     <button type="button" style="background:#22c55e;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="copyNarration({{ f.id }})" title="Copiar narracao limpa (sem marcacoes) para ElevenLabs">&#127908; Copiar Narracao</button>
-                    <button type="button" style="background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'seo', this)">&#128200; Gerar SEO</button>
-                    <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)">&#127912; Thumbnail</button>
+                    <button type="button" style="background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'seo', this)">&#128200; SEO</button>
+                    <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)">&#127912; Thumb</button>
                     <button type="button" style="background:#e040fb;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'music', this)">&#127925; Music</button>
                     <button type="button" style="background:#00d4ff;color:#000;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'teaser', this)">&#127916; Teaser</button>
                 </div>
@@ -1096,12 +1097,85 @@ function updateCalendar() {
 function copyNarration(fileId) {
     apiFetch('/file?id=' + fileId).then(function(r) { return r.text(); })
     .then(function(content) {
-        // Remove [MUSICA:...], [SFX:...], [B-ROLL:...] markers
-        var clean = content.replace(/\[.*?\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
+        // Extract ONLY voice-over narration text — remove everything else
+        var clean = content;
+        // Remove markdown headers (## TITULO, # ROTEIRO, etc)
+        clean = clean.replace(/^#{1,6}\s+.*$/gm, '');
+        // Remove horizontal rules (---, ***)
+        clean = clean.replace(/^[-*_]{3,}$/gm, '');
+        // Remove all bracketed markers [MUSICA:...], [SFX:...], [B-ROLL:...], [PAUSA...]
+        clean = clean.replace(/\[.*?\]/g, '');
+        // Remove bold/italic markers (**text**, *text*)
+        clean = clean.replace(/\*{1,3}([^*]*)\*{1,3}/g, '$1');
+        // Remove stage directions in parentheses like (sussurro intenso), (tom grave)
+        clean = clean.replace(/\([^)]{3,60}\)/g, '');
+        // Remove speaker labels like "NARRADOR:" or "NARRADOR (tom):"
+        clean = clean.replace(/^.*NARRADOR[^:]*:\s*/gm, '');
+        // Remove analysis sections at the end (## ANALISE, FRAMEWORKS, SCORE, etc)
+        clean = clean.replace(/##\s*(AN[AÁ]LISE|FRAMEWORKS?|SCORE|DIFERENCIAL|OPEN LOOPS?)[\s\S]*/i, '');
+        // Remove duration/format metadata lines
+        clean = clean.replace(/^\*\*DURA[CÇ][AÃ]O.*$/gm, '');
+        clean = clean.replace(/^\*\*FORMATO.*$/gm, '');
+        clean = clean.replace(/^\*\*ESTILO.*$/gm, '');
+        // Remove empty lines and excess whitespace
+        clean = clean.replace(/\n{3,}/g, '\n\n').trim();
+        // Remove lines that are just whitespace
+        clean = clean.split('\n').filter(function(l) { return l.trim().length > 0; }).join('\n');
+
+        var wordCount = clean.split(/\s+/).length;
+        var duration = (wordCount / 150).toFixed(1);
+
         navigator.clipboard.writeText(clean).then(function() {
-            showToast('Narracao copiada! Cole no ElevenLabs.', 'success', 3000);
+            showToast('Narracao copiada! ' + wordCount + ' palavras (~' + duration + ' min). Cole no ElevenLabs.', 'success', 5000);
         });
-    }).catch(function(e) { showToast('Erro: ' + e.message, 'error'); });
+    }).catch(function(e) { showToast('Erro ao copiar: ' + e.message, 'error'); });
+}
+
+/* ── Generate All Companion Content at once ────────── */
+function generateAll(fileId, btn) {
+    showConfirm('Gerar Tudo', 'Gerar SEO + Thumbnail + Music + Teaser de uma vez?<br><br>Isso fara 4 chamadas de API e consumira mais creditos.', function() {
+        btn.disabled = true;
+        btn.textContent = 'Gerando...';
+
+        var types = ['seo', 'thumbnail', 'music', 'teaser'];
+        var labels = {seo:'SEO', thumbnail:'Thumbnail', music:'Music', teaser:'Teaser'};
+        var completed = 0;
+        var errors = [];
+
+        types.forEach(function(type) {
+            apiPost('/api/student/generate-companion', {file_id: fileId, type: type})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                completed++;
+                if (data.ok) {
+                    showToast(labels[type] + ' gerado!', 'success', 2000);
+                } else {
+                    errors.push(labels[type] + ': ' + (data.error || 'erro'));
+                }
+                if (completed >= 4) {
+                    btn.disabled = false;
+                    btn.innerHTML = '&#9889; Gerar Tudo';
+                    if (errors.length > 0) {
+                        showToast('Erros: ' + errors.join(', '), 'error');
+                    } else {
+                        showToast('Todos os 4 conteudos gerados!', 'success', 3000);
+                        setTimeout(function() { location.reload(); }, 2000);
+                    }
+                } else {
+                    btn.textContent = completed + '/4 gerados...';
+                }
+            })
+            .catch(function(e) {
+                completed++;
+                errors.push(labels[type] + ': ' + e.message);
+                if (completed >= 4) {
+                    btn.disabled = false;
+                    btn.innerHTML = '&#9889; Gerar Tudo';
+                    showToast('Erros: ' + errors.join(', '), 'error');
+                }
+            });
+        });
+    });
 }
 
 /* ── Generate Companion Content ────────── */
