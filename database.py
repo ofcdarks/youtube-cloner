@@ -312,6 +312,8 @@ def _run_migrations():
         # Performance indexes for migration-created tables
         ("idx_notif_user_read", "CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications(user_id, read)"),
         ("idx_video_perf_student", "CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id)"),
+        # Allow admin to share their API key with students
+        ("users_use_admin_api", "ALTER TABLE users ADD COLUMN use_admin_api INTEGER DEFAULT 0"),
     ]
     with get_db() as conn:
         for migration_id, sql in migrations:
@@ -777,7 +779,7 @@ def get_user(user_id: int) -> dict | None:
 
 
 def update_user(user_id: int, **kwargs):
-    allowed = {"name", "email", "role", "api_provider", "api_key_encrypted", "max_titles", "active"}
+    allowed = {"name", "email", "role", "api_provider", "api_key_encrypted", "max_titles", "active", "use_admin_api"}
     updates, values = [], []
     for k, v in kwargs.items():
         if k in allowed:
@@ -935,7 +937,7 @@ def get_admin_overview() -> list[dict]:
     with get_db() as conn:
         rows = conn.execute("""
             SELECT u.id, u.name, u.email, u.api_key_encrypted, u.last_login, u.created_at,
-                   u.drive_folder_id, u.active,
+                   u.drive_folder_id, u.active, u.use_admin_api,
                    GROUP_CONCAT(DISTINCT a.niche) as niches,
                    COALESCE(SUM(p_counts.total), 0) as total_assigned,
                    COALESCE(SUM(p_counts.completed), 0) as total_completed,
@@ -966,6 +968,7 @@ def get_admin_overview() -> list[dict]:
             "has_drive": bool(r["drive_folder_id"]),
             "drive_folder_id": r["drive_folder_id"] or "",
             "active": r["active"],
+            "use_admin_api": bool(r["use_admin_api"]),
             "last_login": r["last_login"] or "Nunca",
             "created_at": r["created_at"],
         } for r in rows]

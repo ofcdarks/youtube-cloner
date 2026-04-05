@@ -38,7 +38,8 @@
                     <th>Nicho</th>
                     <th>Titulos</th>
                     <th>Progresso</th>
-                    <th>API</th>
+                    <th>API Aluno</th>
+                    <th>API Admin</th>
                     <th>Drive</th>
                     <th>Ultimo Acesso</th>
                     <th>Acoes</th>
@@ -68,6 +69,15 @@
                         {% else %}
                         <span class="badge badge-no-api">Nao</span>
                         {% endif %}
+                    </td>
+                    <td>
+                        <button type="button" id="admin-api-{{ s.id }}"
+                            style="border:none;padding:4px 10px;border-radius:4px;font-size:.7em;cursor:pointer;font-weight:600;
+                            {% if s.use_admin_api %}background:#7c3aed;color:#fff{% else %}background:#334155;color:#888{% endif %}"
+                            onclick="toggleAdminApi({{ s.id }}, {{ 'false' if s.use_admin_api else 'true' }})"
+                            title="{{ 'Aluno usa API do admin (LaoZhang)' if s.use_admin_api else 'Clique para liberar API do admin' }}">
+                            {% if s.use_admin_api %}&#10003; Liberado{% else %}Liberar{% endif %}
+                        </button>
                     </td>
                     <td>
                         {% if s.has_drive %}
@@ -236,6 +246,22 @@ function toggleBlockStudent(studentId, name, block) {
             }
         })
         .catch(e => { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function toggleAdminApi(studentId, enable) {
+    var action = enable ? 'Liberar uso da API do admin (LaoZhang) para este aluno?' : 'Revogar acesso a API do admin?';
+    showConfirm('API Admin', action, function() {
+        apiPost('/api/admin/toggle-admin-api', {student_id: studentId, enable: enable})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                showToast(enable ? 'API admin liberada!' : 'Acesso revogado.', 'success', 2000);
+                setTimeout(function() { location.reload(); }, 1000);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        });
     });
 }
 

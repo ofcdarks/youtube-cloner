@@ -13,6 +13,26 @@ from rate_limit import limiter
 
 logger = logging.getLogger("ytcloner.routes.student")
 
+
+def _get_student_ai_config(user: dict) -> tuple[str, str]:
+    """Get API key and provider for a student.
+
+    If use_admin_api is enabled, returns admin's LaoZhang API key.
+    Otherwise returns the student's own configured key.
+    """
+    from database import _decrypt_api_key, get_db
+
+    # Check if student is allowed to use admin API
+    if user.get("use_admin_api"):
+        from config import LAOZHANG_API_KEY
+        if LAOZHANG_API_KEY:
+            return LAOZHANG_API_KEY, "laozhang"
+
+    # Fall back to student's own key
+    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
+    provider = user.get("api_provider", "")
+    return api_key, provider
+
 router = APIRouter(tags=["student"])
 
 
@@ -129,7 +149,7 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
 
     # ── API key info ──
     api_provider = target_user.get("api_provider", "")
-    has_api_key = bool(target_user.get("api_key_encrypted"))
+    has_api_key = bool(target_user.get("api_key_encrypted")) or bool(target_user.get("use_admin_api"))
 
     # ── Student's files (proper DB-based access control) ──
     student_categories = {}
@@ -402,10 +422,9 @@ async def api_student_generate_script(request: Request, user=Depends(require_aut
     progress = dict(progress)
 
     try:
-        api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
-        provider = user.get("api_provider", "")
+        api_key, provider = _get_student_ai_config(user)
         if not api_key or not provider:
-            return JSONResponse({"error": "Configure sua API key primeiro"}, status_code=400)
+            return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
         title = progress["title"]
         hook = progress.get("hook", "")
@@ -850,11 +869,10 @@ async def api_score_script(request: Request, user=Depends(require_auth)):
     if not sop_content:
         return JSONResponse({"error": "SOP do projeto nao encontrado"}, status_code=400)
 
-    # Get student API key
-    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
-    provider = user.get("api_provider", "")
+    # Get API key (student's own or admin's if authorized)
+    api_key, provider = _get_student_ai_config(user)
     if not api_key or not provider:
-        return JSONResponse({"error": "Configure sua API key primeiro"}, status_code=400)
+        return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
     try:
         judge_prompt = f"""Voce e um JUIZ IMPLACAVEL de roteiros YouTube. Seu trabalho: avaliar o roteiro CONTRA o SOP do canal.
@@ -1033,10 +1051,9 @@ async def api_improve_script(request: Request, user=Depends(require_auth)):
     from services import get_project_sop
     sop = get_project_sop(f["project_id"])
 
-    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
-    provider = user.get("api_provider", "")
+    api_key, provider = _get_student_ai_config(user)
     if not api_key:
-        return JSONResponse({"error": "Configure sua API key"}, status_code=400)
+        return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
     prompt = f"""VOCE E UM EDITOR QUE TRANSFORMA ROTEIROS DE SCORE 30-70 EM SCORE 85+.
 
@@ -1644,10 +1661,9 @@ async def api_generate_companion(request: Request, user=Depends(require_auth)):
     if not roteiro or len(roteiro) < 200:
         return JSONResponse({"error": "Roteiro muito curto"}, status_code=400)
 
-    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
-    provider = user.get("api_provider", "")
+    api_key, provider = _get_student_ai_config(user)
     if not api_key:
-        return JSONResponse({"error": "Configure sua API key"}, status_code=400)
+        return JSONResponse({"error": "Configure sua API key ou peca ao admin para liberar a API."}, status_code=400)
 
     PROMPTS = {
         "seo": f"""Gere o SEO COMPLETO para publicar este video no YouTube:

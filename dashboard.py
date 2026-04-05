@@ -1823,6 +1823,24 @@ async def api_toggle_student(request: Request, user=Depends(require_admin)):
     return JSONResponse({"ok": True})
 
 
+@app.post("/api/admin/toggle-admin-api")
+@limiter.limit("20/minute")
+async def api_toggle_admin_api(request: Request, user=Depends(require_admin)):
+    """Toggle whether a student can use the admin's LaoZhang API key."""
+    body = await request.json()
+    student_id = body.get("student_id")
+    enable = body.get("enable", False)
+
+    if not student_id:
+        return JSONResponse({"error": "student_id obrigatorio"}, status_code=400)
+
+    from database import update_user, log_activity
+    update_user(int(student_id), use_admin_api=1 if enable else 0)
+    log_activity("", "admin_api_toggle",
+                 f"API admin {'liberada' if enable else 'revogada'} para aluno {student_id}")
+    return JSONResponse({"ok": True})
+
+
 @app.post("/api/admin/create-student-drive")
 @limiter.limit("5/minute")
 async def api_create_student_drive(request: Request, user=Depends(require_admin)):

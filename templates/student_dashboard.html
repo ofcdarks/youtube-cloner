@@ -71,6 +71,12 @@
 
     <!-- API KEY CONFIG -->
     {% if not readonly %}
+    {% if user.use_admin_api|default(false) %}
+    <div class="config-section" style="border:1px solid #7c3aed40;background:#7c3aed08">
+        <h3>&#128273; API — Usando API do Admin</h3>
+        <p style="color:#a78bfa;font-size:.85em;margin-bottom:8px">&#10003; O admin liberou acesso a API. Voce pode gerar roteiros, scores e conteudo sem configurar sua propria chave.</p>
+    </div>
+    {% else %}
     <div class="config-section">
         <h3>&#128273; Configuracao da API</h3>
         <p style="color:#666;font-size:.78em;margin-bottom:12px">Configure sua chave de API para gerar roteiros. Sua chave e armazenada de forma segura e nunca compartilhada.</p>
@@ -88,6 +94,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}{# end use_admin_api check #}
     {% else %}
     <div class="config-section" style="opacity:.6">
         <h3>&#128273; Configuracao da API</h3>
