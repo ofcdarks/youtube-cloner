@@ -1198,6 +1198,22 @@ async def api_fetch_channel_stats(request: Request, user=Depends(require_auth)):
                     engagement_rates.append(eng)
             avg_engagement = round(sum(engagement_rates) / len(engagement_rates), 2) if engagement_rates else 0
 
+            # Auto-detect language from YouTube API
+            detected_lang = snippet.get("defaultLanguage", "") or snippet.get("country", "")
+            COUNTRY_TO_LANG = {"BR": "pt-BR", "PT": "pt-BR", "US": "en", "GB": "en", "ES": "es", "MX": "es",
+                               "FR": "fr", "DE": "de", "IT": "it", "JP": "ja", "KR": "ko"}
+            if detected_lang and len(detected_lang) == 2:
+                detected_lang = COUNTRY_TO_LANG.get(detected_lang.upper(), detected_lang.lower())
+
+            # Auto-update channel language in DB if detected
+            if detected_lang and channel_db_id:
+                try:
+                    with get_db() as conn:
+                        conn.execute("UPDATE student_channels SET language=? WHERE id=? AND student_id=?",
+                                    (detected_lang, int(channel_db_id), user["id"]))
+                except Exception:
+                    pass
+
             response_data = {
                 "ok": True,
                 "channel": {
@@ -1206,6 +1222,8 @@ async def api_fetch_channel_stats(request: Request, user=Depends(require_auth)):
                     "total_views": int(stats.get("viewCount", 0)),
                     "total_videos": int(stats.get("videoCount", 0)),
                     "thumbnail": snippet.get("thumbnails", {}).get("default", {}).get("url", ""),
+                    "language": detected_lang,
+                    "country": snippet.get("country", ""),
                 },
                 "videos": videos[:15],
                 "insights": {

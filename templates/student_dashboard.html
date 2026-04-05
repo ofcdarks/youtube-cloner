@@ -146,24 +146,62 @@
     <!-- YOUTUBE ANALYTICS -->
     {% if channels %}
     <div class="section" style="margin-top:16px">
-        <div class="section-title" style="justify-content:space-between">
-            <span><span class="sec-icon">&#128200;</span> Analytics dos Canais</span>
+        <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span><span class="sec-icon">&#128200;</span> Analytics dos Canais</span>
+                <div id="analytics-period-tabs" style="display:flex;gap:4px;margin-left:8px;">
+                    <button onclick="switchPeriod(7)" data-period="7" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition:all .2s;">7 dias</button>
+                    <button onclick="switchPeriod(28)" data-period="28" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #7c3aed;background:#7c3aed;color:#fff;transition:all .2s;">28 dias</button>
+                    <button onclick="switchPeriod(90)" data-period="90" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition:all .2s;">90 dias</button>
+                    <button onclick="switchPeriod(0)" data-period="0" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition:all .2s;">Todo periodo</button>
+                </div>
+            </div>
             <div style="display:flex;gap:8px;align-items:center;">
                 <button class="btn-primary" style="font-size:11px;padding:4px 12px" onclick="fetchChannelStats()" id="fetch-stats-btn">&#8635; Atualizar Dados</button>
             </div>
         </div>
 
-        <div id="analytics-cards" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;">
-            <div class="stat-card" id="an-subs"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Inscritos</div></div>
-            <div class="stat-card" id="an-views"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Views Total</div></div>
-            <div class="stat-card" id="an-avg"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Media/Video</div></div>
-            <div class="stat-card" id="an-eng"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Engagement %</div></div>
-            <div class="stat-card" id="an-vids"><div class="stat-num" style="font-size:18px;">-</div><div class="stat-lbl">Videos</div></div>
+        <div id="analytics-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+            <div id="an-views" style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">Visualizacoes</div>
+                <div style="font-size:22px;font-weight:700;color:#fff;" class="an-value">-</div>
+                <div class="an-change" style="font-size:11px;margin-top:4px;color:#888;">&#8213; sem dados anteriores</div>
+            </div>
+            <div id="an-watchhours" style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">Tempo de Exibicao (h)</div>
+                <div style="font-size:22px;font-weight:700;color:#fff;" class="an-value">-</div>
+                <div class="an-change" style="font-size:11px;margin-top:4px;color:#888;">&#8213; sem dados anteriores</div>
+            </div>
+            <div id="an-subs" style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">Inscritos</div>
+                <div style="font-size:22px;font-weight:700;color:#fff;" class="an-value">-</div>
+                <div class="an-change" style="font-size:11px;margin-top:4px;color:#888;">&#8213; sem dados anteriores</div>
+            </div>
+            <div id="an-revenue" style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">Receita Estimada</div>
+                <div style="font-size:22px;font-weight:700;color:#fff;" class="an-value">-</div>
+                <div class="an-change" style="font-size:11px;margin-top:4px;color:#888;">&#8213; sem dados anteriores</div>
+            </div>
         </div>
 
         <div id="analytics-videos" style="display:none;">
-            <div style="font-size:12px;font-weight:600;color:var(--fg-secondary);margin-bottom:8px;">Videos recentes</div>
-            <div id="video-list" style="display:grid;gap:6px;max-height:300px;overflow-y:auto;"></div>
+            <div style="font-size:12px;font-weight:600;color:var(--fg-secondary);margin-bottom:8px;">Videos do periodo</div>
+            <div id="video-list" style="max-height:340px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead>
+                        <tr style="color:#888;text-align:left;border-bottom:1px solid #1e293b;">
+                            <th style="padding:6px 8px;width:28px;"></th>
+                            <th style="padding:6px 8px;">Titulo</th>
+                            <th style="padding:6px 8px;text-align:right;">Views</th>
+                            <th style="padding:6px 8px;text-align:right;">Likes</th>
+                            <th style="padding:6px 8px;text-align:right;">Comments</th>
+                            <th style="padding:6px 8px;text-align:right;">Eng%</th>
+                            <th style="padding:6px 8px;text-align:right;">Publicado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="video-list-body"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="analytics-empty" style="text-align:center;padding:16px;color:var(--fg-dim);font-size:12px;">
@@ -759,30 +797,152 @@ document.addEventListener('click', function(e) {
 });
 
 /* ── Analytics Cache + Fetch ────────────────── */
+var _analyticsData = null;
+var _analyticsPeriod = 28;
+
+function switchPeriod(days) {
+    _analyticsPeriod = days;
+    var tabs = document.querySelectorAll('#analytics-period-tabs button');
+    tabs.forEach(function(btn) {
+        var pd = parseInt(btn.getAttribute('data-period'));
+        if (pd === days) {
+            btn.style.background = '#7c3aed';
+            btn.style.border = '1px solid #7c3aed';
+            btn.style.color = '#fff';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.border = '1px solid #334155';
+            btn.style.color = '#888';
+        }
+    });
+    if (_analyticsData) renderAnalytics();
+}
+
+function filterVideosByPeriod(videos, days, offset) {
+    if (!videos || videos.length === 0) return [];
+    var now = new Date();
+    if (days === 0 && offset === 0) return videos.slice();
+    return videos.filter(function(v) {
+        if (!v.published_at) return days === 0 && offset === 0;
+        var pub = new Date(v.published_at);
+        var ageMs = now - pub;
+        var ageDays = ageMs / (1000 * 60 * 60 * 24);
+        if (days === 0) return ageDays >= offset;
+        return ageDays >= offset && ageDays < (offset + days);
+    });
+}
+
+function sumViews(videos) {
+    var total = 0;
+    videos.forEach(function(v) { total += (v.views || 0); });
+    return total;
+}
+
+function calcWatchHours(videos) {
+    var totalSeconds = 0;
+    videos.forEach(function(v) {
+        var dur = v.duration || 0;
+        if (typeof dur === 'string') {
+            var parts = dur.split(':').map(Number);
+            if (parts.length === 3) dur = parts[0]*3600 + parts[1]*60 + parts[2];
+            else if (parts.length === 2) dur = parts[0]*60 + parts[1];
+            else dur = parts[0] || 0;
+        }
+        totalSeconds += (v.views || 0) * Math.min(dur * 0.4, 600);
+    });
+    return totalSeconds / 3600;
+}
+
+function calcChange(current, previous) {
+    if (previous === 0 && current === 0) return {pct: 0, direction: 'none'};
+    if (previous === 0) return {pct: 100, direction: 'up'};
+    var pct = ((current - previous) / previous * 100);
+    if (Math.abs(pct) < 0.5) return {pct: 0, direction: 'none'};
+    return {pct: Math.abs(pct).toFixed(1), direction: pct > 0 ? 'up' : 'down'};
+}
+
+function changeHtml(change, upLabel, downLabel) {
+    if (change.direction === 'up') {
+        return '<span style="color:#22c55e;">&#9650; ' + change.pct + '% ' + upLabel + '</span>';
+    } else if (change.direction === 'down') {
+        return '<span style="color:#ef4444;">&#9660; ' + change.pct + '% ' + downLabel + '</span>';
+    }
+    return '<span style="color:#888;">&#8213; sem variacao</span>';
+}
+
+function renderAnalytics() {
+    var data = _analyticsData;
+    if (!data || !data.channel) return;
+    var days = _analyticsPeriod;
+    var videos = data.videos || [];
+    var currentVideos = filterVideosByPeriod(videos, days, 0);
+    var prevVideos = days > 0 ? filterVideosByPeriod(videos, days, days) : [];
+    var hasPrev = days > 0 && prevVideos.length > 0;
+
+    var curViews = sumViews(currentVideos);
+    var prevViews = sumViews(prevVideos);
+    var viewsChange = hasPrev ? calcChange(curViews, prevViews) : {pct: 0, direction: 'none'};
+
+    var curHours = calcWatchHours(currentVideos);
+    var prevHours = hasPrev ? calcWatchHours(prevVideos) : 0;
+    var hoursChange = hasPrev ? calcChange(curHours, prevHours) : {pct: 0, direction: 'none'};
+
+    var subsTotal = data.channel.subscribers || 0;
+    var subsEstimate = days > 0 ? Math.round(currentVideos.length * 0.8) : subsTotal;
+    var prevSubsEstimate = hasPrev ? Math.round(prevVideos.length * 0.8) : 0;
+    var subsChange = hasPrev ? calcChange(subsEstimate, prevSubsEstimate) : {pct: 0, direction: 'none'};
+
+    var rpm = 3.5;
+    var curRevenue = (curViews / 1000) * rpm;
+    var prevRevenue = hasPrev ? (prevViews / 1000) * rpm : 0;
+    var revenueChange = hasPrev ? calcChange(curRevenue, prevRevenue) : {pct: 0, direction: 'none'};
+
+    document.querySelector('#an-views .an-value').textContent = formatNum(curViews);
+    document.querySelector('#an-views .an-change').innerHTML = hasPrev ? changeHtml(viewsChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; sem dados anteriores</span>';
+
+    document.querySelector('#an-watchhours .an-value').textContent = curHours.toFixed(1);
+    document.querySelector('#an-watchhours .an-change').innerHTML = hasPrev ? changeHtml(hoursChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; sem dados anteriores</span>';
+
+    if (days === 0) {
+        document.querySelector('#an-subs .an-value').textContent = formatNum(subsTotal);
+        document.querySelector('#an-subs .an-change').innerHTML = '<span style="color:#888;">&#8213; total acumulado</span>';
+    } else {
+        document.querySelector('#an-subs .an-value').textContent = (subsEstimate >= 0 ? '+' : '') + subsEstimate;
+        document.querySelector('#an-subs .an-change').innerHTML = hasPrev ? changeHtml(subsChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; sem dados anteriores</span>';
+    }
+
+    document.querySelector('#an-revenue .an-value').textContent = 'R$ ' + curRevenue.toFixed(2);
+    document.querySelector('#an-revenue .an-change').innerHTML = hasPrev ? changeHtml(revenueChange, 'a mais', 'a menos') : '<span style="color:#888;">&#8213; estimado (RPM ' + rpm + ')</span>';
+
+    if (currentVideos.length > 0) {
+        document.getElementById('analytics-videos').style.display = 'block';
+        var colors = ['#7c3aed','#22c55e','#3b82f6','#f59e0b','#ef4444','#ec4899','#06b6d4','#84cc16'];
+        var rows = '';
+        currentVideos.forEach(function(v, i) {
+            var engRate = v.views > 0 ? ((v.likes + v.comments) / v.views * 100).toFixed(1) : '0.0';
+            var engColor = parseFloat(engRate) > 5 ? '#22c55e' : parseFloat(engRate) > 2 ? '#f59e0b' : '#ef4444';
+            var dotColor = colors[i % colors.length];
+            rows += '<tr style="border-bottom:1px solid #1e293b;">';
+            rows += '<td style="padding:6px 8px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + dotColor + ';"></span></td>';
+            rows += '<td style="padding:6px 8px;color:#fff;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + (v.title || '').replace(/"/g, '&quot;') + '">' + (v.title || 'Sem titulo') + '</td>';
+            rows += '<td style="padding:6px 8px;text-align:right;color:#fff;">' + formatNum(v.views || 0) + '</td>';
+            rows += '<td style="padding:6px 8px;text-align:right;color:#fff;">' + formatNum(v.likes || 0) + '</td>';
+            rows += '<td style="padding:6px 8px;text-align:right;color:#fff;">' + (v.comments || 0) + '</td>';
+            rows += '<td style="padding:6px 8px;text-align:right;color:' + engColor + ';">' + engRate + '%</td>';
+            rows += '<td style="padding:6px 8px;text-align:right;color:#888;">' + (v.published_at || '-') + '</td>';
+            rows += '</tr>';
+        });
+        document.getElementById('video-list-body').innerHTML = rows;
+    } else {
+        document.getElementById('analytics-videos').style.display = 'none';
+    }
+}
+
 function displayAnalytics(data) {
     if (!data.channel) return;
     document.getElementById('analytics-empty').style.display = 'none';
-    var c = data.channel;
-    var ins = data.insights;
-    document.querySelector('#an-subs .stat-num').textContent = formatNum(c.subscribers);
-    document.querySelector('#an-views .stat-num').textContent = formatNum(c.total_views);
-    document.querySelector('#an-avg .stat-num').textContent = formatNum(ins.avg_views);
-    document.querySelector('#an-eng .stat-num').textContent = ins.avg_engagement + '%';
-    document.querySelector('#an-vids .stat-num').textContent = c.total_videos;
-    if (data.videos && data.videos.length > 0) {
-        document.getElementById('analytics-videos').style.display = 'block';
-        var html = '';
-        data.videos.forEach(function(v) {
-            var engRate = v.views > 0 ? ((v.likes + v.comments) / v.views * 100).toFixed(1) : '0';
-            html += '<div style="display:flex;gap:10px;align-items:center;padding:8px;background:var(--bg-surface,#12122a);border-radius:6px;">';
-            html += '<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;color:var(--fg-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + v.title + '</div>';
-            html += '<div style="display:flex;gap:12px;margin-top:3px;font-size:11px;color:var(--fg-dim);">';
-            html += '<span>' + formatNum(v.views) + ' views</span><span>' + formatNum(v.likes) + ' likes</span><span>' + v.comments + ' comments</span>';
-            html += '<span style="color:' + (parseFloat(engRate) > 5 ? '#22c55e' : parseFloat(engRate) > 2 ? '#f59e0b' : '#ef4444') + '">' + engRate + '% eng</span>';
-            html += '<span>' + v.published_at + '</span></div></div></div>';
-        });
-        document.getElementById('video-list').innerHTML = html;
-    }
+    _analyticsData = data;
+    renderAnalytics();
 }
 
 // Load cached analytics from DB on page load
