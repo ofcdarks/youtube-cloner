@@ -1493,6 +1493,17 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
     except Exception:
         pass
 
+    # Check DataForSEO credentials
+    try:
+        from database import get_setting as _gs
+        dfs_login = _gs("dataforseo_login") or os.environ.get("DATAFORSEO_LOGIN", "")
+        dfs_pass = _gs("dataforseo_password") or os.environ.get("DATAFORSEO_PASSWORD", "")
+        api_keys["dataforseo"] = bool(dfs_login and dfs_pass)
+        api_keys["dataforseo_masked"] = (dfs_login[:8] + "...") if dfs_login else ""
+    except Exception:
+        api_keys["dataforseo"] = False
+        api_keys["dataforseo_masked"] = ""
+
     # AI Usage stats
     ai_usage = {"total_tokens": 0, "total_cost": 0, "total_calls": 0, "by_project": [], "by_operation": []}
     try:
@@ -2737,6 +2748,36 @@ async def api_admin_youtube_settings(request: Request, user=Depends(require_admi
         cleaned = _extract_channel_identifier(channel_id)
         set_setting("youtube_channel_id", cleaned)
     return JSONResponse({"ok": True})
+
+
+@app.post("/api/admin/save-dataforseo")
+@limiter.limit("10/minute")
+async def api_save_dataforseo(request: Request, user=Depends(require_admin)):
+    """Save DataForSEO credentials to admin_settings."""
+    body = await request.json()
+    login = (body.get("login") or "").strip()
+    password = (body.get("password") or "").strip()
+
+    if not login or not password:
+        return JSONResponse({"error": "Login e password obrigatorios"}, status_code=400)
+
+    from database import set_setting
+    set_setting("dataforseo_login", login)
+    set_setting("dataforseo_password", password)
+
+    # Clear cached credentials so next call picks up new ones
+    from protocols.keywords_everywhere import _DATAFORSEO_LOGIN
+    import protocols.keywords_everywhere as kw_mod
+    kw_mod._DATAFORSEO_LOGIN = ""
+    kw_mod._DATAFORSEO_PASSWORD = ""
+
+    # Quick validation — check balance
+    from protocols.keywords_everywhere import check_credits
+    result = check_credits()
+    if "error" in result:
+        return JSONResponse({"ok": True, "warning": f"Salvo, mas verificacao falhou: {result['error']}"})
+
+    return JSONResponse({"ok": True, "balance": result.get("balance", 0)})
 
 
 def _extract_channel_identifier(raw: str) -> str:

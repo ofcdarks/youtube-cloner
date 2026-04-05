@@ -67,6 +67,16 @@
                     <span style="color:{{ '#22c55e' if api_keys.youtube else '#ef4444' }};font-size:12px;align-self:center">{{ ('✓ Ativa' if api_keys.youtube else '✗ Nao configurada') }}</span>
                 </div>
             </div>
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>DataForSEO (Volume de Busca)</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <input type="text" id="dfs-login" class="form-input" placeholder="Login (email)" style="flex:1" value="{{ api_keys.dataforseo_masked }}">
+                    <input type="password" id="dfs-password" class="form-input" placeholder="Password" style="flex:1">
+                    <button onclick="saveDataForSEO()" style="background:#06b6d4;color:#fff;border:none;padding:6px 14px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap">Salvar</button>
+                    <span style="color:{{ '#22c55e' if api_keys.dataforseo else '#ef4444' }};font-size:12px">{{ ('&#10003; Ativa' if api_keys.dataforseo else '&#10007; Nao configurada')|safe }}</span>
+                </div>
+                <div style="font-size:10px;color:#71717a;margin-top:4px">dataforseo.com — pay-as-you-go, sem mensalidade. Usado para badge de volume nos titulos.</div>
+            </div>
             <div class="form-group">
                 <label>Google Drive OAuth</label>
                 <div style="display:flex;gap:8px;align-items:center">
@@ -295,6 +305,25 @@ function deleteUser(userId, name) {
             alert('Erro: ' + e.message);
         });
     };
+}
+
+function saveDataForSEO() {
+    var login = document.getElementById('dfs-login').value.trim();
+    var password = document.getElementById('dfs-password').value.trim();
+    if (!login || !password) { alert('Preencha login e password do DataForSEO'); return; }
+    fetch('/api/admin/save-dataforseo', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({login: login, password: password})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        if (data.warning) { alert(data.warning); }
+        else { alert('DataForSEO salvo! Saldo: $' + (data.balance || 0).toFixed(2)); }
+        location.reload();
+    })
+    .catch(function(e) { alert('Erro: ' + e.message); });
 }
 </script>
 {% endblock %}
