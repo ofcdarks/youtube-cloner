@@ -401,12 +401,12 @@ async def api_student_generate_script(request: Request, user=Depends(require_aut
         return JSONResponse({"error": "Progresso nao encontrado"}, status_code=404)
     progress = dict(progress)
 
-    api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
-    provider = user.get("api_provider", "")
-    if not api_key or not provider:
-        return JSONResponse({"error": "Configure sua API key primeiro"}, status_code=400)
-
     try:
+        api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
+        provider = user.get("api_provider", "")
+        if not api_key or not provider:
+            return JSONResponse({"error": "Configure sua API key primeiro"}, status_code=400)
+
         title = progress["title"]
         hook = progress.get("hook", "")
         project_id = progress["project_id"]
@@ -561,9 +561,12 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
             "words": vo_words,
             "duration_estimate": f"~{vo_minutes} min",
         })
+    except ValueError as e:
+        logger.error(f"student generate-script config error: {e}")
+        return JSONResponse({"error": "Erro de configuracao. Reconfigure sua API key."}, status_code=400)
     except Exception as e:
-        logger.error(f"student generate-script error: {e}")
-        return JSONResponse({"error": "Falha ao gerar roteiro"}, status_code=500)
+        logger.error(f"student generate-script error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao gerar roteiro. Tente novamente."}, status_code=500)
 
 
 @router.post("/api/student/delete-file")
@@ -607,9 +610,7 @@ async def api_student_delete_file(request: Request, user=Depends(require_auth)):
             if not assignment:
                 return JSONResponse({"error": "Sem permissao"}, status_code=403)
 
-            # Student can only delete roteiro/narracao files
-            if f["category"] not in ("roteiro", "narracao"):
-                return JSONResponse({"error": "Sem permissao para excluir este tipo de arquivo"}, status_code=403)
+            # Student can delete their own generated files (already validated above via filename pattern)
 
     deleted = db_delete_file(int(file_id))
     if deleted and deleted.get("filename"):
