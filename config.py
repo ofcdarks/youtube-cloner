@@ -41,8 +41,9 @@ LAOZHANG_API_KEY = os.environ.get("LAOZHANG_API_KEY", "")
 LAOZHANG_BASE_URL = os.environ.get("LAOZHANG_BASE_URL", "https://api.laozhang.ai/v1")
 AI_MODEL = os.environ.get("AI_MODEL", "claude-sonnet-4-6")
 
-# ── Keywords Everywhere ─────────────────────────────────
-KEYWORDS_EVERYWHERE_API_KEY = os.environ.get("KEYWORDS_EVERYWHERE_API_KEY", "")
+# ── DataForSEO (keyword volume — pay-as-you-go) ────────
+DATAFORSEO_LOGIN = os.environ.get("DATAFORSEO_LOGIN", "")
+DATAFORSEO_PASSWORD = os.environ.get("DATAFORSEO_PASSWORD", "")
 
 # ── Encryption ───────────────────────────────────────────
 ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
