@@ -562,14 +562,20 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
 
     has_api = bool(student.get("api_key_encrypted"))
 
-    from database import get_student_channels, get_projects
+    from database import get_student_channels, get_projects, get_db
     channels = get_student_channels(student_id)
 
     # All projects for assignment dropdown
     all_projects = get_projects()
+    projects_by_id = {p["id"]: p for p in all_projects}
+
+    # Enrich channels with linked project info
+    for ch in channels:
+        proj = projects_by_id.get(ch.get("project_id", ""))
+        ch["project_name"] = proj["name"] if proj else ""
+        ch["project_niche"] = proj.get("niche_chosen", "") if proj else ""
 
     # Enrich assignments with project info
-    projects_by_id = {p["id"]: p for p in all_projects}
     for a in assignments:
         proj = projects_by_id.get(a.get("project_id"))
         a["project_name"] = proj["name"] if proj else "Sem projeto"
@@ -586,6 +592,54 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
         "channels": channels,
         "all_projects": all_projects,
     })
+
+
+@app.post("/api/admin/link-channel-project")
+@limiter.limit("20/minute")
+async def api_link_channel_project(request: Request, user=Depends(require_admin)):
+    """Link a student channel to a project. Also creates/updates assignment to sync."""
+    body = await request.json()
+    channel_id = body.get("channel_id")
+    project_id = body.get("project_id", "").strip()
+    student_id = body.get("student_id")
+
+    if not channel_id or not project_id or not student_id:
+        return JSONResponse({"error": "channel_id, project_id e student_id obrigatorios"}, status_code=400)
+
+    from database import get_project, get_db, create_assignment, log_activity
+    proj = get_project(project_id)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    niche = proj.get("niche_chosen", proj["name"])
+
+    try:
+        with get_db() as conn:
+            # Update channel → project link
+            conn.execute(
+                "UPDATE student_channels SET project_id=?, niche=? WHERE id=? AND student_id=?",
+                (project_id, niche, int(channel_id), int(student_id)),
+            )
+
+            # Check if assignment already exists for this student+project
+            existing = conn.execute(
+                "SELECT id FROM assignments WHERE student_id=? AND project_id=?",
+                (int(student_id), project_id),
+            ).fetchone()
+
+            if not existing:
+                # Auto-create assignment with 5 titles
+                aid = create_assignment(int(student_id), project_id, niche, 5)
+                log_activity(project_id, "channel_project_linked",
+                             f"Canal {channel_id} vinculado ao projeto + assignment {aid} criado com 5 titulos")
+            else:
+                log_activity(project_id, "channel_project_linked",
+                             f"Canal {channel_id} vinculado ao projeto (assignment ja existe)")
+
+        return JSONResponse({"ok": True, "project_name": proj["name"]})
+    except Exception as e:
+        logger.error(f"link-channel-project error: {e}")
+        return JSONResponse({"error": "Falha ao vincular projeto ao canal."}, status_code=500)
 
 
 @app.post("/api/admin/assign-project")

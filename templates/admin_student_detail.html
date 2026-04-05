@@ -190,6 +190,7 @@
                     <th>URL</th>
                     <th>Nicho</th>
                     <th>Idioma</th>
+                    <th>Projeto Vinculado</th>
                     <th>Acoes</th>
                 </tr>
             </thead>
@@ -200,6 +201,20 @@
                     <td style="font-size:11px">{% if ch.channel_url %}<a href="{{ ch.channel_url }}" target="_blank" style="color:#a78bfa">{{ ch.channel_url[:40] }}</a>{% else %}-{% endif %}</td>
                     <td><span style="color:#b388ff;font-size:12px">{{ ch.niche or '-' }}</span></td>
                     <td style="font-size:12px">{{ ch.language }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:6px">
+                            <select id="ch-proj-{{ ch.id }}" class="form-input" style="font-size:11px;padding:3px 6px;width:160px" title="Projeto vinculado ao canal">
+                                <option value="">Sem projeto</option>
+                                {% for p in all_projects %}
+                                <option value="{{ p.id }}" {% if p.id == ch.project_id %}selected{% endif %}>{{ p.name[:25] }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" style="background:#7c3aed;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;white-space:nowrap" onclick="linkChannelProject({{ ch.id }})">Vincular</button>
+                        </div>
+                        {% if ch.project_name %}
+                        <div style="font-size:10px;color:#22c55e;margin-top:3px">{{ ch.project_name }}</div>
+                        {% endif %}
+                    </td>
                     <td><button class="delete-file-btn" onclick="removeStudentChannel({{ ch.id }})" title="Remover canal">&#128465;</button></td>
                 </tr>
                 {% endfor %}
@@ -347,6 +362,29 @@ function createAssignment() {
         }
     })
     .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+}
+
+function linkChannelProject(channelId) {
+    var sel = document.getElementById('ch-proj-' + channelId);
+    var projectId = sel.value;
+    if (!projectId) { showToast('Selecione um projeto', 'warning'); return; }
+    showConfirm('Vincular Projeto', 'Vincular este projeto ao canal? Se nao existir atribuicao, sera criada automaticamente com 5 titulos.', function() {
+        var loading = showToast('Vinculando...', 'loading');
+        apiPost('/api/admin/link-channel-project', {
+            channel_id: channelId, project_id: projectId, student_id: {{ student.id }}
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Projeto vinculado: ' + data.project_name, 'success');
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                showToast('Erro: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
 }
 
 function removeStudentChannel(channelId) {
