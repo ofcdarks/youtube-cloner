@@ -597,8 +597,22 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
             drive_folder_id = get_student_drive_folder(user["id"])
             if drive_folder_id:
                 from protocols.google_export import find_or_create_subfolder, get_daily_folder, sync_file_to_drive
+
+                # Get DB file IDs we just saved
+                with get_db() as conn:
+                    script_file_row = conn.execute(
+                        "SELECT id FROM files WHERE filename=? AND project_id=? ORDER BY created_at DESC LIMIT 1",
+                        (roteiro_filename, project_id)
+                    ).fetchone()
+                    narr_file_row = conn.execute(
+                        "SELECT id FROM files WHERE filename=? AND project_id=? ORDER BY created_at DESC LIMIT 1",
+                        (narracao_filename, project_id)
+                    ).fetchone()
+                script_file_id = script_file_row["id"] if script_file_row else 0
+                narr_file_id = narr_file_row["id"] if narr_file_row else 0
+
                 # Find/create channel subfolder
-                channel_name = niche if (niche := progress.get("niche")) else "General"
+                channel_name = "Canal"
                 try:
                     with get_db() as conn:
                         ch_row = conn.execute(
@@ -614,18 +628,18 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
                 # Sync script
                 script_drive_id = sync_file_to_drive(script, roteiro_filename, f"Roteiro - {safe_title}", daily_folder_id)
-                if script_drive_id:
-                    save_student_drive_file(user["id"], None, script_drive_id, daily_folder_id, roteiro_filename, f"Roteiro - {safe_title}", "roteiro")
+                if script_drive_id and script_file_id:
+                    save_student_drive_file(user["id"], script_file_id, script_drive_id, daily_folder_id, roteiro_filename, f"Roteiro - {safe_title}", "roteiro")
 
                 # Sync narration
                 if narracao and len(narracao) > 200:
                     narr_drive_id = sync_file_to_drive(narracao, narracao_filename, f"Narracao - {safe_title}", daily_folder_id)
-                    if narr_drive_id:
-                        save_student_drive_file(user["id"], None, narr_drive_id, daily_folder_id, narracao_filename, f"Narracao - {safe_title}", "narracao")
+                    if narr_drive_id and narr_file_id:
+                        save_student_drive_file(user["id"], narr_file_id, narr_drive_id, daily_folder_id, narracao_filename, f"Narracao - {safe_title}", "narracao")
 
-                logger.info(f"[DRIVE-SYNC] Script+narration synced for student {user['id']}, progress {progress_id}")
+                logger.info(f"[DRIVE-SYNC] Script+narration synced for student {user['id']}")
         except Exception as e:
-            logger.warning(f"[DRIVE-SYNC] Failed to sync script to Drive (non-blocking): {e}")
+            logger.warning(f"[DRIVE-SYNC] Failed to sync to Drive (non-blocking): {e}")
 
         # Count voice-over words only (narration without markers/instructions)
         vo_words = len(narracao.split()) if narracao else len(script.split())
@@ -687,19 +701,23 @@ async def api_student_delete_file(request: Request, user=Depends(require_auth)):
                 if not assignment:
                     return JSONResponse({"error": "Sem permissao"}, status_code=403)
 
-        # Delete from Google Drive if synced
+        # Delete from Google Drive if synced (search by file_id AND filename)
         try:
             from database import get_db as _get_db
+            fname = f.get("filename", "")
             with _get_db() as dconn:
                 drive_rows = dconn.execute(
-                    "SELECT drive_file_id FROM student_drive_files WHERE file_id=? AND student_id=?",
-                    (int(file_id), user["id"])
+                    "SELECT drive_file_id FROM student_drive_files WHERE (file_id=? OR filename=?) AND student_id=?",
+                    (int(file_id), fname, user["id"])
                 ).fetchall()
             if drive_rows:
                 from protocols.google_export import delete_drive_file
                 from database import delete_student_drive_file
                 for dr in drive_rows:
-                    delete_drive_file(dr["drive_file_id"])
+                    try:
+                        delete_drive_file(dr["drive_file_id"])
+                    except Exception:
+                        pass
                     delete_student_drive_file(dr["drive_file_id"], user["id"])
                 logger.info(f"[DRIVE-SYNC] Deleted {len(drive_rows)} Drive file(s) for file_id={file_id}")
         except Exception as e:
@@ -1809,12 +1827,20 @@ Idioma: {lang}""",
             drive_folder_id = get_student_drive_folder(user["id"])
             if drive_folder_id:
                 from protocols.google_export import find_or_create_subfolder, get_daily_folder, sync_file_to_drive
-                channel_name = niche or "General"
+                # Get the DB file ID of the companion we just saved
+                with get_db() as conn:
+                    comp_row = conn.execute(
+                        "SELECT id FROM files WHERE filename=? AND project_id=? ORDER BY created_at DESC LIMIT 1",
+                        (comp_filename, f["project_id"])
+                    ).fetchone()
+                comp_db_id = comp_row["id"] if comp_row else 0
+
+                channel_name = niche or "Canal"
                 channel_folder_id = find_or_create_subfolder(channel_name, drive_folder_id)
                 daily_folder_id = get_daily_folder(channel_folder_id)
                 comp_drive_id = sync_file_to_drive(result, comp_filename, comp_label, daily_folder_id)
-                if comp_drive_id:
-                    save_student_drive_file(user["id"], int(file_id), comp_drive_id, daily_folder_id, comp_filename, comp_label, comp_type)
+                if comp_drive_id and comp_db_id:
+                    save_student_drive_file(user["id"], comp_db_id, comp_drive_id, daily_folder_id, comp_filename, comp_label, comp_type)
                     logger.info(f"[DRIVE-SYNC] Companion {comp_type} synced for student {user['id']}")
         except Exception as e:
             logger.warning(f"[DRIVE-SYNC] Failed to sync companion to Drive (non-blocking): {e}")
