@@ -126,7 +126,7 @@ body{
 .project-select option{background:var(--bg-elevated);color:var(--fg-secondary)}
 
 /* ── LAYOUT ────────────────────────────────────────── */
-.page{max-width:1400px;margin:0 auto;padding:28px 32px}
+.page{max-width:100%;margin:0;padding:28px 40px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .grid-5{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
