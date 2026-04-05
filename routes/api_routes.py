@@ -225,8 +225,9 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         from services import get_project_sop
         sop = get_project_sop(pid)
 
-        # Pre-research demand data
+        # Pre-research demand data (YouTube trending + Google Trends)
         demand_summary = ""
+        demand_data = {}
         try:
             from protocols.trend_research import research_niche_demand
             from database import get_db as _gdb
@@ -237,8 +238,8 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
                     yt_key = yt_row["value"]
             from database import get_project
             proj_data = get_project(pid)
-            demand = research_niche_demand(niche, proj_data.get("language", "pt-BR") if proj_data else "pt-BR", yt_key)
-            demand_summary = demand.get("summary", "")
+            demand_data = research_niche_demand(niche, proj_data.get("language", "pt-BR") if proj_data else "pt-BR", yt_key)
+            demand_summary = demand_data.get("summary", "")
         except Exception:
             pass
 
@@ -251,7 +252,7 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         else:
             niches_instruction = ""
 
-        # KEYWORD RESEARCH: get high-volume keywords for the niches
+        # KEYWORD RESEARCH: SOP + niches + titles + trending
         keywords_block = ""
         niche_keywords = []
         try:
@@ -259,9 +260,17 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
             lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
             country = lang_to_country.get(lang[:2], "us")
             niche_names = [n["name"] for n in chosen_niches] if chosen_niches else [niche]
+
+            # Collect trending keywords from YouTube + Google Trends
+            trending_seeds = []
+            trending_seeds.extend(demand_data.get("trending_keywords", []))
+            for rs in demand_data.get("rising_searches", []):
+                trending_seeds.append(rs.get("query", ""))
+
             niche_keywords = research_niche_keywords(
                 niche_names, language=lang, country=country,
                 sop_text=sop or "", existing_titles=existing_titles,
+                trending_keywords=trending_seeds,
             )
             if niche_keywords:
                 kw_lines = [f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes' for kw in niche_keywords[:20]]

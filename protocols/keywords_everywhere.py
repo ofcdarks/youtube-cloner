@@ -207,14 +207,16 @@ def research_niche_keywords(
     country: str = "es",
     sop_text: str = "",
     existing_titles: list[str] | None = None,
+    trending_keywords: list[str] | None = None,
 ) -> list[dict]:
     """
     Research high-volume keywords for given niches.
 
-    Extracts seed keywords from 3 sources:
+    Extracts seed keywords from 4 sources:
     1. Niche names + modifiers
     2. SOP content (proper nouns, recurring terms = real channel topics)
     3. Existing title keywords (what already works for the channel)
+    4. Trending keywords (from YouTube trending + Google Trends)
 
     Returns sorted list: [{"keyword": "...", "vol": 12400, "cpc": 0.45, ...}]
     Only returns keywords with vol > 0, sorted by volume descending.
@@ -257,6 +259,12 @@ def research_niche_keywords(
     title_keywords = _extract_title_keywords(existing_titles or [])
     for kw in title_keywords:
         seeds.add(kw)
+
+    # Source 4: Trending keywords (YouTube trending + Google Trends rising queries)
+    for kw in (trending_keywords or []):
+        clean = _strip_accents(kw.lower().strip())
+        if clean and len(clean) >= 3:
+            seeds.add(clean)
 
     if not seeds:
         return []

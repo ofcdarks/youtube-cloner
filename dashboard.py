@@ -1973,8 +1973,9 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
     lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {lang_label}."
 
     try:
-        # PRE-RESEARCH: collect real demand data before generating
+        # PRE-RESEARCH: collect trending data (YouTube + Google Trends)
         demand_summary = ""
+        demand_data = {}
         try:
             from protocols.trend_research import research_niche_demand
             yt_key = ""
@@ -1988,7 +1989,8 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         except Exception as e:
             logger.warning(f"Pre-research failed (non-blocking): {e}")
 
-        # KEYWORD RESEARCH: get high-volume keywords from SOP + niches + existing titles
+        # KEYWORD RESEARCH: SOP + niches + titles + trending keywords + Google Trends
+        # All sources feed into one DataForSEO volume lookup
         keywords_block = ""
         niche_keywords = []
         try:
@@ -1996,16 +1998,23 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
             country = lang_to_country.get(lang[:2], "us")
             niche_names = [n["name"] for n in chosen]
-            # Get existing titles for keyword extraction
             existing = get_ideas(project_id)
             existing_titles = [i["title"] for i in existing]
+
+            # Collect trending keywords from YouTube + Google Trends
+            trending_seeds = []
+            trending_seeds.extend(demand_data.get("trending_keywords", []))
+            for rs in demand_data.get("rising_searches", []):
+                trending_seeds.append(rs.get("query", ""))
+
             niche_keywords = research_niche_keywords(
                 niche_names, language=lang, country=country,
                 sop_text=sop, existing_titles=existing_titles,
+                trending_keywords=trending_seeds,
             )
             if niche_keywords:
                 kw_lines = []
-                for kw in niche_keywords[:20]:
+                for kw in niche_keywords[:25]:
                     kw_lines.append(f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes')
                 keywords_block = (
                     "\nKEYWORDS COM VOLUME REAL (DataForSEO — use obrigatoriamente nos titulos):\n"
