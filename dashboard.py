@@ -614,31 +614,31 @@ async def api_link_channel_project(request: Request, user=Depends(require_admin)
     niche = proj.get("niche_chosen", proj["name"])
 
     try:
+        # Step 1: Update channel → project link
         with get_db() as conn:
-            # Update channel → project link
             conn.execute(
                 "UPDATE student_channels SET project_id=?, niche=? WHERE id=? AND student_id=?",
                 (project_id, niche, int(channel_id), int(student_id)),
             )
 
-            # Check if assignment already exists for this student+project
+        # Step 2: Check/create assignment (separate connection to avoid deadlock)
+        with get_db() as conn:
             existing = conn.execute(
                 "SELECT id FROM assignments WHERE student_id=? AND project_id=?",
                 (int(student_id), project_id),
             ).fetchone()
 
-            if not existing:
-                # Auto-create assignment with 5 titles
-                aid = create_assignment(int(student_id), project_id, niche, 5)
-                log_activity(project_id, "channel_project_linked",
-                             f"Canal {channel_id} vinculado ao projeto + assignment {aid} criado com 5 titulos")
-            else:
-                log_activity(project_id, "channel_project_linked",
-                             f"Canal {channel_id} vinculado ao projeto (assignment ja existe)")
+        if not existing:
+            aid = create_assignment(int(student_id), project_id, niche, 5)
+            log_activity(project_id, "channel_project_linked",
+                         f"Canal {channel_id} vinculado + assignment {aid} criado com 5 titulos")
+        else:
+            log_activity(project_id, "channel_project_linked",
+                         f"Canal {channel_id} vinculado ao projeto (assignment ja existe)")
 
         return JSONResponse({"ok": True, "project_name": proj["name"]})
     except Exception as e:
-        logger.error(f"link-channel-project error: {e}")
+        logger.error(f"link-channel-project error: {e}", exc_info=True)
         return JSONResponse({"error": "Falha ao vincular projeto ao canal."}, status_code=500)
 
 
