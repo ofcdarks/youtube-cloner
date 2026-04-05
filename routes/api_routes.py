@@ -173,6 +173,23 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         from services import get_project_sop
         sop = get_project_sop(pid)
 
+        # Pre-research demand data
+        demand_summary = ""
+        try:
+            from protocols.trend_research import research_niche_demand
+            from database import get_db as _gdb
+            yt_key = ""
+            with _gdb() as conn:
+                yt_row = conn.execute("SELECT value FROM admin_settings WHERE key='youtube_api_key'").fetchone()
+                if yt_row:
+                    yt_key = yt_row["value"]
+            from database import get_project
+            proj_data = get_project(pid)
+            demand = research_niche_demand(niche, proj_data.get("language", "pt-BR") if proj_data else "pt-BR", yt_key)
+            demand_summary = demand.get("summary", "")
+        except Exception:
+            pass
+
         # Get chosen niches for focused title generation
         from database import get_niches
         chosen_niches = [n for n in get_niches(pid) if n.get("chosen")]
@@ -184,6 +201,8 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
 
         prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
 {niches_instruction}
+{demand_summary}
+
 REGRAS:
 - Cada ideia deve ser UNICA e diferente das existentes
 - Siga a mesma estrutura do SOP (hook forte, numeros impactantes, historia real)

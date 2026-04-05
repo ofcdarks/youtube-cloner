@@ -903,10 +903,27 @@ Retorne APENAS o JSON.{lang_instruction}"""
 
         log_activity(project_id, "niches_generated", f"{niches_generated} nichos")
 
-        _step(4, 'Gerando 30 titulos virais')
+        _step(4, 'Pesquisando demanda real + gerando 30 titulos', 'YouTube + Google Trends...')
 
-        # Step 4: Generate 30 titles — based on CHOSEN niches
-        # First check DB for admin-chosen niches, then fallback to generated list
+        # Step 4a: PRE-RESEARCH — collect real demand data
+        demand_summary = ""
+        try:
+            from protocols.trend_research import research_niche_demand
+            yt_key = ""
+            with get_db() as conn:
+                yt_row = conn.execute("SELECT value FROM admin_settings WHERE key='youtube_api_key'").fetchone()
+                if yt_row:
+                    yt_key = yt_row["value"]
+            demand_data = research_niche_demand(niche_name, language, yt_key)
+            demand_summary = demand_data.get("summary", "")
+            if demand_summary:
+                logger.info(f"[PIPELINE] Pre-research: {len(demand_data.get('trending_titles', []))} titles, "
+                           f"{len(demand_data.get('rising_searches', []))} trends, "
+                           f"{len(demand_data.get('trending_keywords', []))} keywords")
+        except Exception as e:
+            logger.warning(f"[PIPELINE] Pre-research failed (non-blocking): {e}")
+
+        # Step 4b: Generate 30 titles — based on CHOSEN niches + REAL demand data
         chosen_niches = []
         try:
             db_niches = get_niches(project_id)
@@ -925,16 +942,21 @@ Retorne APENAS o JSON.{lang_instruction}"""
 SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser sobre estes sub-nichos APENAS):
 {chosen_niches_text}
 
-IMPORTANTE: Todos os 30 titulos devem ser EXCLUSIVAMENTE sobre os sub-nichos listados acima.
-Distribua igualmente entre os sub-nichos escolhidos.
-NAO gere titulos sobre outros temas fora dos sub-nichos escolhidos.
+{demand_summary}
+
+IMPORTANTE:
+- Todos os 30 titulos EXCLUSIVAMENTE sobre os sub-nichos listados acima
+- Use as KEYWORDS DE ALTA FREQUENCIA da pre-pesquisa nos titulos
+- Siga os PADROES DE TITULO que funcionam (numeros, perguntas, CAPS, etc)
+- Cada titulo deve combinar DEMANDA REAL + estilo do SOP
+- Distribua igualmente entre os sub-nichos escolhidos
 
 SOP do canal (referencia de tom e estilo):
 {sop_content[:3000]}
 
 REGRAS OBRIGATORIAS DO YOUTUBE:
-- CADA titulo DEVE ter no MAXIMO 100 caracteres (incluindo espacos). Titulos maiores serao cortados pelo YouTube.
-- Titulos devem ser impactantes mesmo sendo curtos.
+- CADA titulo DEVE ter no MAXIMO 100 caracteres (incluindo espacos)
+- Titulos devem ser impactantes mesmo sendo curtos
 
 Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
 O campo "pillar" DEVE ser o nome do sub-nicho correspondente.
@@ -1940,9 +1962,23 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
     lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {lang_label}."
 
     try:
+        # PRE-RESEARCH: collect real demand data before generating
+        demand_summary = ""
+        try:
+            from protocols.trend_research import research_niche_demand
+            yt_key = ""
+            with get_db() as conn:
+                yt_row = conn.execute("SELECT value FROM admin_settings WHERE key='youtube_api_key'").fetchone()
+                if yt_row:
+                    yt_key = yt_row["value"]
+            niche_for_research = project.get("niche_chosen", project.get("name", ""))
+            demand_data = research_niche_demand(niche_for_research, lang, yt_key)
+            demand_summary = demand_data.get("summary", "")
+        except Exception as e:
+            logger.warning(f"Pre-research failed (non-blocking): {e}")
+
         # Delete existing ideas (not assigned to students)
         with get_db() as conn:
-            # Only delete ideas NOT linked to active progress
             conn.execute("""
                 DELETE FROM ideas WHERE project_id=? AND id NOT IN (
                     SELECT DISTINCT idea_id FROM progress WHERE idea_id IS NOT NULL
@@ -1950,20 +1986,26 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             """, (project_id,))
             deleted = conn.total_changes
 
-        # Generate new titles based on chosen niches + SOP
+        # Generate new titles based on chosen niches + SOP + REAL DEMAND
         prompt = f"""Gere 30 ideias de videos para o canal "{project.get('name', '')}".
 
 SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser EXCLUSIVAMENTE sobre estes):
 {niches_text}
 
-IMPORTANTE: Distribua igualmente entre os sub-nichos. O campo "pillar" DEVE ser o nome do sub-nicho.
+{demand_summary}
 
-SOP DO CANAL (referencia de tom, estilo e tecnicas — NAO modificar o SOP, apenas usar como guia):
+IMPORTANTE:
+- Distribua igualmente entre os sub-nichos
+- Use as KEYWORDS de alta frequencia da pre-pesquisa
+- Siga os PADROES de titulo que funcionam (numeros, CAPS, perguntas)
+- O campo "pillar" DEVE ser o nome do sub-nicho
+
+SOP DO CANAL (referencia de tom e estilo — NAO modificar):
 {sop[:4000]}
 
 REGRAS:
 - CADA titulo MAXIMO 100 caracteres
-- Titulos impactantes, virais, com numeros ou perguntas quando possivel
+- Titulos que combinam DEMANDA REAL + estilo do SOP
 - Hooks dos primeiros 30 segundos
 - Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
 
