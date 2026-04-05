@@ -211,11 +211,9 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_progress_assignment ON progress(assignment_id);
             CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
-            -- Performance indexes added in Phase 2
+            -- Performance indexes (tables that exist at init time)
             CREATE INDEX IF NOT EXISTS idx_files_visible ON files(project_id, visible_to_students);
-            CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications(user_id, read);
             CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token, expires_at);
-            CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id);
             CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
             CREATE INDEX IF NOT EXISTS idx_niches_project ON niches(project_id);
         """)
@@ -311,6 +309,9 @@ def _run_migrations():
         )"""),
         ("student_channels_project_id", "ALTER TABLE student_channels ADD COLUMN project_id TEXT DEFAULT ''"),
         ("student_channels_stats", "ALTER TABLE student_channels ADD COLUMN cached_stats TEXT DEFAULT ''"),
+        # Performance indexes for migration-created tables
+        ("idx_notif_user_read", "CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications(user_id, read)"),
+        ("idx_video_perf_student", "CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id)"),
     ]
     with get_db() as conn:
         for migration_id, sql in migrations:
