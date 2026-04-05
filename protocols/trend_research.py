@@ -43,18 +43,56 @@ def research_niche_demand(niche: str, language: str = "pt-BR", youtube_api_key: 
 
     lang_code = language[:2]  # "pt-BR" -> "pt"
 
-    # 1. YouTube Search — trending videos in niche (last 14 days)
+    # 1. YouTube Search — trending videos in MULTIPLE languages
+    # Search in: channel language + English (where most model channels operate) + global
     if youtube_api_key:
-        try:
-            result.update(_fetch_youtube_trending(niche, youtube_api_key, lang_code))
-        except Exception as e:
-            logger.warning(f"YouTube trending fetch failed: {e}")
+        all_titles = []
+        search_langs = list(dict.fromkeys([lang_code, "en"]))  # dedupe, channel lang first
 
-    # 2. Google Trends — rising queries
-    try:
-        result.update(_fetch_google_trends(niche, lang_code))
-    except Exception as e:
-        logger.warning(f"Google Trends fetch failed: {e}")
+        for sl in search_langs:
+            try:
+                yt_data = _fetch_youtube_trending(niche, youtube_api_key, sl)
+                new_titles = yt_data.get("trending_titles", [])
+                all_titles.extend(new_titles)
+                if sl == lang_code:
+                    result["avg_views"] = yt_data.get("avg_views", 0)
+                logger.info(f"YouTube [{sl}]: {len(new_titles)} videos found")
+            except Exception as e:
+                logger.warning(f"YouTube trending [{sl}] failed: {e}")
+
+        # Deduplicate titles
+        seen = set()
+        unique_titles = []
+        for t in all_titles:
+            if t.lower() not in seen:
+                seen.add(t.lower())
+                unique_titles.append(t)
+        result["trending_titles"] = unique_titles[:20]
+
+    # 2. Google Trends — rising queries in MULTIPLE regions
+    all_searches = []
+    trend_regions = list(dict.fromkeys([lang_code, "en"]))
+
+    for tr in trend_regions:
+        try:
+            trends = _fetch_google_trends(niche, tr)
+            new_searches = trends.get("rising_searches", [])
+            for s in new_searches:
+                s["region"] = tr
+            all_searches.extend(new_searches)
+            logger.info(f"Trends [{tr}]: {len(new_searches)} rising queries")
+        except Exception as e:
+            logger.warning(f"Google Trends [{tr}] failed: {e}")
+
+    # Deduplicate and sort by growth
+    seen_queries = set()
+    unique_searches = []
+    for s in sorted(all_searches, key=lambda x: int(str(x.get("growth", 0)).replace("%", "").replace(",", "") or 0), reverse=True):
+        q = s.get("query", "").lower()
+        if q not in seen_queries:
+            seen_queries.add(q)
+            unique_searches.append(s)
+    result["rising_searches"] = unique_searches[:20]
 
     # 3. Extract patterns from titles
     if result["trending_titles"]:
@@ -235,10 +273,12 @@ def _build_summary(data: dict, niche: str, language: str) -> str:
         lines.append("")
 
     if data["rising_searches"]:
-        lines.append(f"BUSCAS EM ALTA NO GOOGLE TRENDS (ultimos 7 dias):")
-        for rs in data["rising_searches"][:10]:
+        lines.append(f"BUSCAS EM ALTA NO GOOGLE TRENDS (ultimos 7 dias — multi-regiao):")
+        for rs in data["rising_searches"][:15]:
             growth = rs.get("growth", "")
-            lines.append(f"  - {rs['query']} (crescimento: {growth}%)")
+            region = rs.get("region", "")
+            region_label = {"en": "EN", "es": "ES", "pt": "BR", "fr": "FR", "de": "DE"}.get(region, region.upper())
+            lines.append(f"  - [{region_label}] {rs['query']} (crescimento: {growth}%)")
         lines.append("")
 
     if data["title_patterns"]:
