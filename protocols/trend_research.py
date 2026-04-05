@@ -116,14 +116,31 @@ def research_niche_demand(niche: str, language: str = "pt-BR", youtube_api_key: 
                 "pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de",
                 "it": "it", "ja": "jp", "ko": "kr",
             }
-            country = lang_to_country.get(language[:2], "us")
-            kw_data = get_youtube_keyword_data(volume_keywords, country=country)
+            # Search in BOTH: channel country + US (global/english)
+            countries_to_search = list(dict.fromkeys([
+                lang_to_country.get(language[:2], "us"),
+                "us",  # Always include US/English (where most SOPs originate)
+            ]))
+            all_kw_data = []
+            for country in countries_to_search:
+                try:
+                    kw_data = get_youtube_keyword_data(volume_keywords, country=country)
+                    for kw in kw_data:
+                        kw["country"] = country
+                    all_kw_data.extend(kw_data)
+                    logger.info(f"DataForSEO [{country}]: {len(kw_data)} volume results")
+                except Exception:
+                    pass
+            # Deduplicate keeping highest volume per keyword
+            best_per_kw = {}
+            for kw in all_kw_data:
+                key = kw.get("keyword", "")
+                if key not in best_per_kw or kw.get("vol", 0) > best_per_kw[key].get("vol", 0):
+                    best_per_kw[key] = kw
             result["keyword_volumes"] = sorted(
-                kw_data, key=lambda x: x.get("vol", 0), reverse=True
+                best_per_kw.values(), key=lambda x: x.get("vol", 0), reverse=True
             )
-            logger.info(
-                f"Keywords Everywhere: {len(kw_data)} volume results for {len(volume_keywords)} keywords"
-            )
+            logger.info(f"DataForSEO total: {len(result['keyword_volumes'])} unique keywords with volume")
     except Exception as e:
         logger.warning(f"Keywords Everywhere integration failed: {e}")
 
