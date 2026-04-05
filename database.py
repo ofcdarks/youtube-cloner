@@ -208,6 +208,14 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_progress_student ON progress(student_id);
             CREATE INDEX IF NOT EXISTS idx_progress_assignment ON progress(assignment_id);
             CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+            -- Performance indexes added in Phase 2
+            CREATE INDEX IF NOT EXISTS idx_files_visible ON files(project_id, visible_to_students);
+            CREATE INDEX IF NOT EXISTS idx_notif_user_read ON notifications(user_id, read);
+            CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token, expires_at);
+            CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id);
+            CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
+            CREATE INDEX IF NOT EXISTS idx_niches_project ON niches(project_id);
         """)
 
     # Run safe migrations for columns that may not exist
@@ -699,14 +707,24 @@ def search(query: str, project_id: str | None = None) -> dict:
 # ── Stats ────────────────────────────────────────────────
 
 def get_stats() -> dict:
+    """Get all table counts in a single query instead of 6 round-trips."""
     with get_db() as conn:
+        row = conn.execute("""
+            SELECT
+                (SELECT COUNT(*) FROM projects) as projects,
+                (SELECT COUNT(*) FROM ideas) as ideas,
+                (SELECT COUNT(*) FROM scripts) as scripts,
+                (SELECT COUNT(*) FROM niches) as niches,
+                (SELECT COUNT(*) FROM files) as files,
+                (SELECT COUNT(*) FROM seo_packs) as seo_packs
+        """).fetchone()
         return {
-            "projects": conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0],
-            "ideas": conn.execute("SELECT COUNT(*) FROM ideas").fetchone()[0],
-            "scripts": conn.execute("SELECT COUNT(*) FROM scripts").fetchone()[0],
-            "niches": conn.execute("SELECT COUNT(*) FROM niches").fetchone()[0],
-            "files": conn.execute("SELECT COUNT(*) FROM files").fetchone()[0],
-            "seo_packs": conn.execute("SELECT COUNT(*) FROM seo_packs").fetchone()[0],
+            "projects": row["projects"],
+            "ideas": row["ideas"],
+            "scripts": row["scripts"],
+            "niches": row["niches"],
+            "files": row["files"],
+            "seo_packs": row["seo_packs"],
         }
 
 
@@ -910,43 +928,40 @@ def mark_progress_script_generated(progress_id: int):
 
 
 def get_admin_overview() -> list[dict]:
+    """Get student overview with assignment stats — single query, no N+1."""
     with get_db() as conn:
-        students = conn.execute(
-            "SELECT * FROM users WHERE role='student' AND active=1 ORDER BY created_at DESC"
-        ).fetchall()
+        rows = conn.execute("""
+            SELECT u.id, u.name, u.email, u.api_key_encrypted, u.last_login, u.created_at,
+                   GROUP_CONCAT(DISTINCT a.niche) as niches,
+                   COALESCE(SUM(p_counts.total), 0) as total_assigned,
+                   COALESCE(SUM(p_counts.completed), 0) as total_completed,
+                   COALESCE(SUM(p_counts.in_progress), 0) as total_in_progress
+            FROM users u
+            LEFT JOIN assignments a ON a.student_id = u.id
+            LEFT JOIN (
+                SELECT assignment_id,
+                       COUNT(*) as total,
+                       SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) as completed,
+                       SUM(CASE WHEN status IN ('writing','recording','editing') THEN 1 ELSE 0 END) as in_progress
+                FROM progress GROUP BY assignment_id
+            ) p_counts ON p_counts.assignment_id = a.id
+            WHERE u.role='student' AND u.active=1
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
+        """).fetchall()
 
-        overview = []
-        for s in students:
-            sid = s["id"]
-            assignments = conn.execute("SELECT * FROM assignments WHERE student_id=?", (sid,)).fetchall()
-            total_assigned, total_completed, total_in_progress = 0, 0, 0
-            niches = []
-            for a in assignments:
-                niches.append(a["niche"])
-                counts = conn.execute(
-                    """SELECT COUNT(*) as total,
-                              SUM(CASE WHEN status='published' THEN 1 ELSE 0 END) as completed,
-                              SUM(CASE WHEN status IN ('writing','recording','editing') THEN 1 ELSE 0 END) as in_progress
-                       FROM progress WHERE assignment_id=?""",
-                    (a["id"],),
-                ).fetchone()
-                total_assigned += counts["total"] or 0
-                total_completed += counts["completed"] or 0
-                total_in_progress += counts["in_progress"] or 0
-
-            overview.append({
-                "id": s["id"],
-                "name": s["name"],
-                "email": s["email"],
-                "niches": ", ".join(niches) if niches else "Nenhum",
-                "total_assigned": total_assigned,
-                "total_completed": total_completed,
-                "total_in_progress": total_in_progress,
-                "has_api_key": bool(s["api_key_encrypted"]),
-                "last_login": s["last_login"] or "Nunca",
-                "created_at": s["created_at"],
-            })
-    return overview
+        return [{
+            "id": r["id"],
+            "name": r["name"],
+            "email": r["email"],
+            "niches": r["niches"] or "Nenhum",
+            "total_assigned": r["total_assigned"],
+            "total_completed": r["total_completed"],
+            "total_in_progress": r["total_in_progress"],
+            "has_api_key": bool(r["api_key_encrypted"]),
+            "last_login": r["last_login"] or "Nunca",
+            "created_at": r["created_at"],
+        } for r in rows]
 
 
 # ── Default Admin ────────────────────────────────────────

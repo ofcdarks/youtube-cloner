@@ -151,8 +151,10 @@ async def gdrive_auth(request: Request, user=Depends(require_admin)):
             status_code=400,
         )
 
+    # SECURITY: Only allow insecure transport in development (not production)
     import os as _os
-    _os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+    if _os.environ.get("APP_ENV", "").lower() in ("dev", "development", "local"):
+        _os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
     from google_auth_oauthlib.flow import Flow
 
@@ -260,7 +262,7 @@ async def gdrive_callback(request: Request):
         logger.error(f"GDrive OAuth callback error: {type(e).__name__}: {e}")
         logger.error(f"GDrive traceback: {traceback.format_exc()}")
         import urllib.parse
-        err_msg = urllib.parse.quote(f"{type(e).__name__}: {str(e)[:150]}")
+        err_msg = urllib.parse.quote("Falha na autenticacao com Google Drive. Tente novamente.")
         return RedirectResponse(f"/admin/panel?gdrive_error={err_msg}")
 
 

@@ -26,7 +26,7 @@ from config import (
     MAX_TOKENS_LARGE, MAX_TOKENS_MEDIUM, MAX_IDEAS_PER_REQUEST,
     validate_startup, print_startup_banner,
 )
-from middleware import CSRFMiddleware, SafeErrorMiddleware, RequestLogMiddleware, generate_csrf_token
+from middleware import CSRFMiddleware, SafeErrorMiddleware, RequestLogMiddleware, SecurityHeadersMiddleware, generate_csrf_token
 from auth import (
     require_auth, require_admin, optional_auth, check_auth,
     get_session_token, SESSIONS,
@@ -58,11 +58,16 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # ── Middleware (order matters: last added = first executed) ──
 app.add_middleware(SafeErrorMiddleware)
 app.add_middleware(RequestLogMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(CSRFMiddleware)
+# SECURITY: Never combine ["*"] with allow_credentials=True
+_cors_origins = ALLOWED_ORIGINS if ALLOWED_ORIGINS else []
+if not _cors_origins:
+    logger.warning("ALLOWED_ORIGINS not set — CORS will reject cross-origin credentialed requests")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS or ["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=bool(_cors_origins),
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
     expose_headers=["x-csrf-token"],
@@ -222,6 +227,9 @@ async def api_pipeline_progress(request: Request, niche: str = "", user=Depends(
                     break
             else:
                 no_update_count += 1
+                # Send keepalive every 15 seconds to prevent proxy timeouts (nginx, etc.)
+                if no_update_count % 15 == 0:
+                    yield ": keepalive\n\n"
 
             # Timeout after 10 minutes of no updates
             if no_update_count > 600:
@@ -385,8 +393,10 @@ async def serve_output_file(request: Request, name: str = "", user=Depends(requi
 
                 if not allowed and not is_student_file:
                     return JSONResponse({"error": "Acesso negado"}, status_code=403)
-        except Exception:
-            pass  # Fail open for admin, fail closed handled above
+        except Exception as e:
+            # SECURITY: Fail closed — if DB check fails, deny access for non-admin
+            logger.error(f"File access control check failed: {e}")
+            return JSONResponse({"error": "Acesso negado"}, status_code=403)
 
     # Determine content type
     suffix = Path(name).suffix.lower()
@@ -760,15 +770,22 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{l
 
         log_activity(project_id, "titles_generated", f"{titles_generated} titulos")
 
-        _step(5, 'Gerando SEO Pack', '10 videos com tags e descricoes')
+        _step(5, 'Gerando SEO + Thumbnails + Music + Teasers', 'Executando 4 tarefas em paralelo...')
 
-        # Step 6: SEO Pack
+        # ── Steps 5-8: SEO, Thumbnails, Music, Teasers (PARALLEL) ──
+        import concurrent.futures
+
+        # Pre-compute shared data for parallel tasks
+        top5 = json.loads(titles_json_match.group())[:5] if titles_json_match else []
+        titles_for_thumb = "\n".join([f'{i+1}. {t.get("title","")}' for i, t in enumerate(top5)])
         seo_generated = 0
-        if titles_json_match:
-            try:
-                top_titles = json.loads(titles_json_match.group())[:10]
-                titles_block = "\n".join([f'{i+1}. {t.get("title", "")}' for i, t in enumerate(top_titles)])
-                seo_prompt = f"""Gere SEO pack para estes 10 videos do canal "{niche_name}":
+
+        def _gen_seo():
+            if not titles_json_match:
+                return None
+            top_titles = json.loads(titles_json_match.group())[:10]
+            titles_block = "\n".join([f'{i+1}. {t.get("title", "")}' for i, t in enumerate(top_titles)])
+            seo_prompt = f"""Gere SEO pack para estes 10 videos do canal "{niche_name}":
 {titles_block}
 
 REGRAS OBRIGATORIAS DO YOUTUBE:
@@ -777,20 +794,9 @@ REGRAS OBRIGATORIAS DO YOUTUBE:
 - Descricao: 150-200 palavras. OBRIGATORIO incluir no FINAL da descricao: "⚠️ Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas apresentadas sao reconstituicoes ficcionais baseadas em fatos e pesquisas, com fins de entretenimento e educacao."
 
 Para CADA video: 3 variacoes de titulo (max 100 chars cada), descricao YouTube (com disclaimer no final), tags (max 500 chars total), 5 hashtags.{lang_instruction}"""
-                seo_content = chat(seo_prompt, system="Especialista em YouTube SEO.", max_tokens=MAX_TOKENS_LARGE, temperature=0.7)
-                if seo_content and len(seo_content) > 100:
-                    save_file(project_id, "seo", "SEO Pack", f"seo_pack_{project_id}.md", seo_content)
-                    seo_generated = 10
-                    log_activity(project_id, "seo_generated", f"SEO Pack para {seo_generated} videos")
-            except Exception as e:
-                logger.error(f"SEO generation failed: {e}")
+            return chat(seo_prompt, system="Especialista em YouTube SEO.", max_tokens=MAX_TOKENS_LARGE, temperature=0.7)
 
-        _step(6, 'Gerando Thumbnail Prompts', 'Midjourney + DALL-E')
-
-        # ── Step 7: Thumbnail Prompts (Midjourney / DALL-E) ──
-        try:
-            top5 = json.loads(titles_json_match.group())[:5] if titles_json_match else []
-            titles_for_thumb = "\n".join([f'{i+1}. {t.get("title","")}' for i, t in enumerate(top5)])
+        def _gen_thumbnails():
             thumb_prompt = f"""Crie prompts de thumbnail para Midjourney e DALL-E para estes 5 videos do canal "{niche_name}":
 {titles_for_thumb}
 
@@ -802,17 +808,9 @@ Para CADA video gere:
 - Paleta de cores sugerida (hex)
 - Texto overlay sugerido (1-2 palavras max)
 - Composicao (descricao do layout){lang_instruction}"""
-            thumb_content = chat(thumb_prompt, system="Especialista em thumbnails virais do YouTube.", max_tokens=4000, temperature=0.7)
-            if thumb_content and len(thumb_content) > 100:
-                save_file(project_id, "outros", "Thumbnail Prompts - Midjourney DALL-E", f"thumbnail_prompts_{project_id}.md", thumb_content)
-                log_activity(project_id, "thumbnail_prompts", "Thumbnail Prompts gerados")
-        except Exception as e:
-            logger.error(f"Thumbnail prompts failed: {e}")
+            return chat(thumb_prompt, system="Especialista em thumbnails virais do YouTube.", max_tokens=4000, temperature=0.7)
 
-        _step(7, 'Gerando Music Prompts', 'Suno + Udio + MusicGPT')
-
-        # ── Step 8: Music Prompts (Suno / Udio / MusicGPT) ──
-        try:
+        def _gen_music():
             music_prompt = f"""Crie prompts de musica de fundo para videos do canal "{niche_name}" para plataformas Suno AI, Udio e MusicGPT.
 
 SOP resumido: {sop_content[:1500]}
@@ -823,17 +821,9 @@ Gere:
 - Tags de estilo: genero, mood, instrumentos, BPM
 - Quando usar cada tipo de musica no video (hook, tensao, climax, reflexao)
 - Efeitos sonoros sugeridos (SFX) para momentos-chave{lang_instruction}"""
-            music_content = chat(music_prompt, system="Compositor de trilha sonora para YouTube.", max_tokens=3000, temperature=0.7)
-            if music_content and len(music_content) > 100:
-                save_file(project_id, "outros", "Music Prompts - Suno Udio MusicGPT", f"music_prompts_{project_id}.md", music_content)
-                log_activity(project_id, "music_prompts", "Music Prompts gerados")
-        except Exception as e:
-            logger.error(f"Music prompts failed: {e}")
+            return chat(music_prompt, system="Compositor de trilha sonora para YouTube.", max_tokens=3000, temperature=0.7)
 
-        _step(8, 'Gerando Teaser Prompts', 'Shorts + Reels + TikTok')
-
-        # ── Step 9: Teaser Prompts (Shorts / Reels / TikTok) ──
-        try:
+        def _gen_teasers():
             teaser_prompt = f"""Crie scripts de Teaser/Shorts para YouTube Shorts, Instagram Reels e TikTok para o canal "{niche_name}".
 
 SOP resumido: {sop_content[:1500]}
@@ -846,12 +836,54 @@ Para CADA um dos 5 videos:
 - Hashtags sugeridas (10)
 - Melhor horario para postar
 - Formato: vertical 9:16{lang_instruction}"""
-            teaser_content = chat(teaser_prompt, system="Especialista em conteudo short-form viral.", max_tokens=4000, temperature=0.7)
-            if teaser_content and len(teaser_content) > 100:
-                save_file(project_id, "outros", "Teaser Prompts - Shorts Reels TikTok", f"teaser_prompts_{project_id}.md", teaser_content)
-                log_activity(project_id, "teaser_prompts", "Teaser Prompts gerados")
-        except Exception as e:
-            logger.error(f"Teaser prompts failed: {e}")
+            return chat(teaser_prompt, system="Especialista em conteudo short-form viral.", max_tokens=4000, temperature=0.7)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            future_seo = executor.submit(_gen_seo)
+            future_thumb = executor.submit(_gen_thumbnails)
+            future_music = executor.submit(_gen_music)
+            future_teaser = executor.submit(_gen_teasers)
+
+            # Collect SEO result
+            try:
+                seo_content = future_seo.result(timeout=240)
+                if seo_content and len(seo_content) > 100:
+                    save_file(project_id, "seo", "SEO Pack", f"seo_pack_{project_id}.md", seo_content)
+                    seo_generated = 10
+                    log_activity(project_id, "seo_generated", f"SEO Pack para {seo_generated} videos")
+                _step(5, 'SEO Pack concluido', f'{seo_generated} videos')
+            except Exception as e:
+                logger.error(f"SEO generation failed: {e}")
+
+            # Collect Thumbnail result
+            try:
+                thumb_content = future_thumb.result(timeout=240)
+                if thumb_content and len(thumb_content) > 100:
+                    save_file(project_id, "outros", "Thumbnail Prompts - Midjourney DALL-E", f"thumbnail_prompts_{project_id}.md", thumb_content)
+                    log_activity(project_id, "thumbnail_prompts", "Thumbnail Prompts gerados")
+                _step(6, 'Thumbnail Prompts concluidos', 'Midjourney + DALL-E')
+            except Exception as e:
+                logger.error(f"Thumbnail prompts failed: {e}")
+
+            # Collect Music result
+            try:
+                music_content = future_music.result(timeout=240)
+                if music_content and len(music_content) > 100:
+                    save_file(project_id, "outros", "Music Prompts - Suno Udio MusicGPT", f"music_prompts_{project_id}.md", music_content)
+                    log_activity(project_id, "music_prompts", "Music Prompts gerados")
+                _step(7, 'Music Prompts concluidos', 'Suno + Udio + MusicGPT')
+            except Exception as e:
+                logger.error(f"Music prompts failed: {e}")
+
+            # Collect Teaser result
+            try:
+                teaser_content = future_teaser.result(timeout=240)
+                if teaser_content and len(teaser_content) > 100:
+                    save_file(project_id, "outros", "Teaser Prompts - Shorts Reels TikTok", f"teaser_prompts_{project_id}.md", teaser_content)
+                    log_activity(project_id, "teaser_prompts", "Teaser Prompts gerados")
+                _step(8, 'Teaser Prompts concluidos', 'Shorts + Reels + TikTok')
+            except Exception as e:
+                logger.error(f"Teaser prompts failed: {e}")
 
         # ── Disclaimer / Aviso Legal ──
         LANG_DISCLAIMERS = {
@@ -862,16 +894,15 @@ Para CADA um dos 5 videos:
         disclaimer_text = LANG_DISCLAIMERS.get(language, LANG_DISCLAIMERS.get(language[:2], LANG_DISCLAIMERS["en"]))
         save_file(project_id, "outros", "Disclaimer - Aviso Legal (IA)", f"disclaimer_{project_id}.md", disclaimer_text)
 
-        _step(9, 'Gerando 3 roteiros completos', 'Isso demora ~3-5 min...')
+        _step(9, 'Gerando 3 roteiros completos', 'Executando 3 roteiros em paralelo...')
 
-        # ── Step 10: Generate 3 Roteiros for top titles ──
+        # ── Step 10: Generate 3 Roteiros for top titles (PARALLEL) ──
         roteiros_count = 0
         try:
             top3 = json.loads(titles_json_match.group())[:3] if titles_json_match else []
-            for i, title_data in enumerate(top3):
-                t = title_data.get("title", "")
-                if not t:
-                    continue
+            valid_titles = [(i, title_data.get("title", "")) for i, title_data in enumerate(top3) if title_data.get("title", "")]
+
+            def _gen_roteiro(idx, t):
                 roteiro_prompt = f"""Escreva um roteiro COMPLETO para o video "{t}" do canal "{niche_name}".
 
 SOP DO CANAL:
@@ -888,18 +919,30 @@ INSTRUCOES:
 - Fechamento fatalista e ciclico
 - OBRIGATORIO: Inclua no FINAL do roteiro (depois do fechamento) um disclaimer lido pelo narrador:
   "Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas sao reconstituicoes ficcionais baseadas em fatos reais e pesquisas, com fins de entretenimento e educacao."{lang_instruction}"""
-                roteiro = chat(roteiro_prompt, system="Roteirista de elite para YouTube faceless.", max_tokens=MAX_TOKENS_LARGE, temperature=0.8)
-                if roteiro and len(roteiro) > 500:
-                    save_file(project_id, "roteiro", f"Roteiro - {t[:50]}", f"roteiro_{project_id}_{i+1}.md", roteiro)
+                return chat(roteiro_prompt, system="Roteirista de elite para YouTube faceless.", max_tokens=MAX_TOKENS_LARGE, temperature=0.8)
 
-                    # Also generate narration version (clean, no markers)
-                    narracao = re.sub(r'\[.*?\]', '', roteiro)  # Remove [MUSICA:], [SFX:], [B-ROLL:] markers
-                    narracao = re.sub(r'\n{3,}', '\n\n', narracao).strip()
-                    if narracao:
-                        save_file(project_id, "narracao", f"Narracao - {t[:50]}", f"narracao_{project_id}_{i+1}.md", narracao)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                future_to_title = {
+                    executor.submit(_gen_roteiro, i, t): (i, t)
+                    for i, t in valid_titles
+                }
+                for future in concurrent.futures.as_completed(future_to_title):
+                    i, t = future_to_title[future]
+                    try:
+                        roteiro = future.result(timeout=240)
+                        if roteiro and len(roteiro) > 500:
+                            save_file(project_id, "roteiro", f"Roteiro - {t[:50]}", f"roteiro_{project_id}_{i+1}.md", roteiro)
 
-                    roteiros_count += 1
-                    log_activity(project_id, "roteiro_generated", f"Roteiro {i+1}: {t[:40]}")
+                            # Also generate narration version (clean, no markers)
+                            narracao = re.sub(r'\[.*?\]', '', roteiro)  # Remove [MUSICA:], [SFX:], [B-ROLL:] markers
+                            narracao = re.sub(r'\n{3,}', '\n\n', narracao).strip()
+                            if narracao:
+                                save_file(project_id, "narracao", f"Narracao - {t[:50]}", f"narracao_{project_id}_{i+1}.md", narracao)
+
+                            roteiros_count += 1
+                            log_activity(project_id, "roteiro_generated", f"Roteiro {i+1}: {t[:40]}")
+                    except Exception as e:
+                        logger.error(f"Roteiro {i+1} generation failed: {e}")
         except Exception as e:
             logger.error(f"Roteiros generation failed: {e}")
 
@@ -1071,7 +1114,7 @@ INSTRUCOES:
         logger.error(f"analyze-channel error: {e}")
         from progress_store import clear_progress as _cp
         _cp(f"pipeline_{niche_name}")
-        return JSONResponse({"error": f"Falha na analise: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha na analise. Tente novamente ou contate o administrador."}, status_code=500)
 
 
 @app.get("/admin/projects", response_class=HTMLResponse)
@@ -1080,13 +1123,23 @@ async def admin_projects(request: Request, user=Depends(require_admin)):
 
     projects = db_projects()
 
-    # Enrich with counts
+    # Enrich with counts — single GROUP BY query instead of N+1
     with get_db() as conn:
+        counts = {row["id"]: row for row in conn.execute("""
+            SELECT p.id,
+                   COALESCE(i.cnt, 0) as idea_count,
+                   COALESCE(n.cnt, 0) as niche_count,
+                   COALESCE(s.cnt, 0) as script_count
+            FROM projects p
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM ideas GROUP BY project_id) i ON i.project_id = p.id
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM niches GROUP BY project_id) n ON n.project_id = p.id
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM scripts GROUP BY project_id) s ON s.project_id = p.id
+        """).fetchall()}
         for p in projects:
-            pid = p["id"]
-            p["idea_count"] = conn.execute("SELECT COUNT(*) FROM ideas WHERE project_id=?", (pid,)).fetchone()[0]
-            p["niche_count"] = conn.execute("SELECT COUNT(*) FROM niches WHERE project_id=?", (pid,)).fetchone()[0]
-            p["script_count"] = conn.execute("SELECT COUNT(*) FROM scripts WHERE project_id=?", (pid,)).fetchone()[0]
+            c = counts.get(p["id"])
+            p["idea_count"] = c["idea_count"] if c else 0
+            p["niche_count"] = c["niche_count"] if c else 0
+            p["script_count"] = c["script_count"] if c else 0
 
     return render(request, "admin_projects.html", {"user": user, "projects": projects})
 
@@ -1097,24 +1150,46 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
     from database import get_db, get_projects as db_projects
 
     with get_db() as conn:
+        # Stats — single query instead of 5 separate COUNTs
+        stat_row = conn.execute("""
+            SELECT
+                (SELECT COUNT(*) FROM projects) as projects,
+                (SELECT COUNT(*) FROM users) as users,
+                (SELECT COUNT(*) FROM files) as files,
+                (SELECT COUNT(*) FROM ideas) as ideas,
+                (SELECT COUNT(*) FROM scripts) as scripts
+        """).fetchone()
         stats = {
-            "projects": conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0],
-            "users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-            "files": conn.execute("SELECT COUNT(*) FROM files").fetchone()[0],
-            "ideas": conn.execute("SELECT COUNT(*) FROM ideas").fetchone()[0],
-            "scripts": conn.execute("SELECT COUNT(*) FROM scripts").fetchone()[0],
+            "projects": stat_row["projects"],
+            "users": stat_row["users"],
+            "files": stat_row["files"],
+            "ideas": stat_row["ideas"],
+            "scripts": stat_row["scripts"],
             "db_size_mb": round(os.path.getsize(OUTPUT_DIR / "ytcloner.db") / 1024 / 1024, 1) if (OUTPUT_DIR / "ytcloner.db").exists() else 0,
         }
 
         users = [dict(r) for r in conn.execute("SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC").fetchall()]
 
+        # Project counts — single GROUP BY query instead of N+1
         projects = db_projects()
+        pcounts = {row["id"]: row for row in conn.execute("""
+            SELECT p.id,
+                   COALESCE(n.cnt, 0) as niches_count,
+                   COALESCE(i.cnt, 0) as ideas_count,
+                   COALESCE(s.cnt, 0) as scripts_count,
+                   COALESCE(f.cnt, 0) as files_count
+            FROM projects p
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM niches GROUP BY project_id) n ON n.project_id = p.id
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM ideas GROUP BY project_id) i ON i.project_id = p.id
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM scripts GROUP BY project_id) s ON s.project_id = p.id
+            LEFT JOIN (SELECT project_id, COUNT(*) as cnt FROM files GROUP BY project_id) f ON f.project_id = p.id
+        """).fetchall()}
         for p in projects:
-            pid = p["id"]
-            p["niches_count"] = conn.execute("SELECT COUNT(*) FROM niches WHERE project_id=?", (pid,)).fetchone()[0]
-            p["ideas_count"] = conn.execute("SELECT COUNT(*) FROM ideas WHERE project_id=?", (pid,)).fetchone()[0]
-            p["scripts_count"] = conn.execute("SELECT COUNT(*) FROM scripts WHERE project_id=?", (pid,)).fetchone()[0]
-            p["files_count"] = conn.execute("SELECT COUNT(*) FROM files WHERE project_id=?", (pid,)).fetchone()[0]
+            c = pcounts.get(p["id"])
+            p["niches_count"] = c["niches_count"] if c else 0
+            p["ideas_count"] = c["ideas_count"] if c else 0
+            p["scripts_count"] = c["scripts_count"] if c else 0
+            p["files_count"] = c["files_count"] if c else 0
 
         activity = [dict(r) for r in conn.execute(
             "SELECT action, details, created_at FROM activity_log ORDER BY created_at DESC LIMIT 30"
@@ -1196,7 +1271,7 @@ async def api_delete_project(request: Request, user=Depends(require_admin)):
         return JSONResponse({"ok": True})
     except Exception as e:
         logger.error(f"Delete project error: {e}")
-        return JSONResponse({"error": f"Erro ao excluir: {str(e)[:100]}"}, status_code=500)
+        return JSONResponse({"error": "Erro ao excluir projeto."}, status_code=500)
 
 
 @app.post("/api/admin/delete-file")
@@ -1216,8 +1291,8 @@ async def api_admin_delete_file(request: Request, user=Depends(require_admin)):
                 fpath.unlink()
         return JSONResponse({"ok": True})
     except Exception as e:
-        logger.error(f"delete-file error: {e}")
-        return JSONResponse({"error": f"Falha ao excluir: {str(e)[:200]}"}, status_code=500)
+        logger.error(f"delete-file error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao excluir arquivo."}, status_code=500)
 
 
 @app.post("/api/admin/connect-drive")
@@ -1339,7 +1414,7 @@ async def api_connect_drive(request: Request, user=Depends(require_admin)):
         })
     except Exception as e:
         logger.error(f"connect-drive error: {e}")
-        return JSONResponse({"error": f"Falha ao conectar Drive: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao conectar Google Drive."}, status_code=500)
 
 
 @app.post("/api/admin/sync-drive")
@@ -1504,7 +1579,7 @@ async def api_sync_drive(request: Request, user=Depends(require_admin)):
         return JSONResponse(result)
     except Exception as e:
         logger.error(f"sync-drive error: {e}")
-        return JSONResponse({"error": f"Falha ao sincronizar: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao sincronizar com Google Drive."}, status_code=500)
 
 
 @app.post("/api/admin/remove-title")
@@ -1598,8 +1673,8 @@ async def api_delete_student(request: Request, user=Depends(require_admin)):
         delete_user(int(student_id))
         return JSONResponse({"ok": True})
     except Exception as e:
-        logger.error(f"delete-student error: {e}")
-        return JSONResponse({"error": f"Falha ao excluir: {str(e)[:200]}"}, status_code=500)
+        logger.error(f"delete-student error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao excluir aluno."}, status_code=500)
 
 
 @app.post("/api/admin/add-student-channel")
@@ -1622,7 +1697,7 @@ async def api_admin_add_student_channel(request: Request, user=Depends(require_a
         cid = create_student_channel(int(student_id), name, url, niche, language, project_id=project_id)
         return JSONResponse({"ok": True, "channel_id": cid})
     except ValueError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+        return JSONResponse({"error": "Falha ao cadastrar canal."}, status_code=400)
 
 
 @app.post("/api/admin/remove-student-channel")

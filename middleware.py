@@ -21,12 +21,19 @@ logger = logging.getLogger("ytcloner.middleware")
 CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 CSRF_EXEMPT_PATHS = {"/login", "/api/health"}
 
+# SECURITY: Module-level fallback so tokens generated in one request can be verified in the next.
+# This is only used when CSRF_SECRET env var is missing (dev mode).
+_CSRF_SECRET_FALLBACK = secrets.token_hex(32)
+
+
+def _get_csrf_secret() -> str:
+    """Get CSRF secret — env var or stable fallback (never per-call random)."""
+    return os.environ.get("CSRF_SECRET", "") or _CSRF_SECRET_FALLBACK
+
 
 def generate_csrf_token(session_token: str) -> str:
     """Generate CSRF token tied to a session."""
-    secret = os.environ.get("CSRF_SECRET", "")
-    if not secret:
-        secret = secrets.token_hex(32)
+    secret = _get_csrf_secret()
     timestamp = str(int(time.time()))
     payload = f"{session_token}:{timestamp}"
     signature = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
@@ -45,7 +52,7 @@ def verify_csrf_token(token: str, session_token: str) -> bool:
         # Token valid for 24 hours
         if abs(time.time() - int(timestamp)) > 86400:
             return False
-        secret = os.environ.get("CSRF_SECRET", "")
+        secret = _get_csrf_secret()
         payload = f"{session_token}:{timestamp}"
         expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
         return hmac.compare_digest(signature, expected)
@@ -80,7 +87,9 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 except Exception:
                     pass
 
-        if session_token and not verify_csrf_token(csrf_token, session_token):
+        # SECURITY: Always enforce CSRF for state-changing requests, even without session.
+        # Without session_token, verify_csrf_token will fail (as expected — no valid token possible).
+        if not verify_csrf_token(csrf_token, session_token):
             if path.startswith("/api/"):
                 return JSONResponse({"error": "CSRF token invalido"}, status_code=403)
             return HTMLResponse("<h1>Erro 403</h1><p>Token de seguranca invalido. Recarregue a pagina.</p>", status_code=403)
@@ -122,6 +131,33 @@ class SafeErrorMiddleware(BaseHTTPMiddleware):
                 f"<h1>Erro interno</h1><p>{safe_msg}</p><p>Entre em contato com o administrador.</p>",
                 status_code=500,
             )
+
+
+# ── Security Headers ────────────────────────────────────
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # HSTS only when running behind HTTPS (COOKIE_SECURE=true)
+        if os.environ.get("COOKIE_SECURE", "true").lower() == "true":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # CSP: allow inline scripts/styles (needed for Jinja2 templates) but block everything else
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self'; "
+            "frame-ancestors 'none'"
+        )
+        return response
 
 
 # ── Request Logging ──────────────────────────────────────

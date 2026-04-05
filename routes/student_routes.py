@@ -264,51 +264,8 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
                                 schedule_info[k] = cached_data[k]
                     except Exception:
                         pass
-                else:
-                    # Use AI to determine best times based on language/niche + confirm duration
-                    sop_row = conn.execute(
-                        "SELECT content FROM files WHERE project_id=? AND category='analise' ORDER BY created_at LIMIT 1",
-                        (pid,),
-                    ).fetchone()
-                    sop_excerpt = sop_row["content"][:3000] if sop_row and sop_row["content"] else ""
-                    if sop_excerpt:
-                        try:
-                            from protocols.ai_client import chat
-                            import json as _json, re as _re
-
-                            lang = schedule_info["language"]
-                            LANG_COUNTRIES = {"pt-BR": "Brasil", "en": "USA/UK", "es": "Espana/Latam", "fr": "Franca", "de": "Alemanha", "it": "Italia", "ja": "Japao", "ko": "Coreia"}
-                            country = LANG_COUNTRIES.get(lang, "Global")
-
-                            extract = chat(
-                                f"""Baseado neste SOP de canal YouTube no nicho "{proj_niche}" para o mercado {country} ({lang}):
-
-{sop_excerpt[:2000]}
-
-Retorne SOMENTE JSON:
-{{"best_times":"horario ideal para postar neste nicho/pais (ex: 17:00-19:00)","video_duration":"duracao ideal em minutos para este nicho (ex: 12-19 minutos)"}}
-
-Pesquise mentalmente:
-- Qual horario de pico do YouTube no mercado {country}?
-- Qual duracao media performa melhor neste nicho?
-- Se o SOP menciona duracao especifica, use essa.
-- Valores curtos (max 30 chars).""",
-                                system="Especialista YouTube. Retorne APENAS JSON valido.",
-                                max_tokens=150, temperature=0.2
-                            )
-                            json_match = _re.search(r'\{.*\}', extract, _re.DOTALL)
-                            if json_match:
-                                extracted = _json.loads(json_match.group())
-                                if "best_times" in extracted and len(str(extracted["best_times"])) > 3:
-                                    schedule_info["best_times"] = str(extracted["best_times"])[:40]
-                                if "video_duration" in extracted and len(str(extracted["video_duration"])) > 3:
-                                    schedule_info["video_duration"] = str(extracted["video_duration"])[:40]
-                                conn.execute(
-                                    "INSERT OR REPLACE INTO admin_settings (key, value) VALUES (?, ?)",
-                                    (cache_key, _json.dumps(schedule_info, ensure_ascii=False))
-                                )
-                        except Exception:
-                            pass
+                # PERFORMANCE: Don't call AI on GET — use defaults.
+                # Schedule info is populated lazily via /api/student/update-calendar endpoint.
         except Exception:
             pass
 
@@ -383,7 +340,17 @@ async def api_student_update_progress(request: Request, user=Depends(require_aut
     if status not in allowed_statuses:
         return JSONResponse({"error": f"Status invalido. Use: {', '.join(allowed_statuses)}"}, status_code=400)
 
-    from database import update_progress
+    # SECURITY: Verify ownership — prevent IDOR (any student updating any other student's progress)
+    from database import get_db, update_progress
+    if user.get("role") != "admin":
+        with get_db() as conn:
+            owned = conn.execute(
+                "SELECT id FROM progress WHERE id = ? AND student_id = ?",
+                (int(progress_id), user["id"]),
+            ).fetchone()
+            if not owned:
+                return JSONResponse({"error": "Sem permissao"}, status_code=403)
+
     update_progress(int(progress_id), status, video_url, notes)
     return JSONResponse({"ok": True})
 
@@ -646,8 +613,8 @@ async def api_student_add_channel(request: Request, user=Depends(require_auth)):
     try:
         cid = create_student_channel(user["id"], name, url, niche, language)
         return JSONResponse({"ok": True, "channel_id": cid})
-    except ValueError as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
+    except ValueError:
+        return JSONResponse({"error": "Maximo de 5 canais atingido."}, status_code=400)
 
 
 @router.post("/api/student/remove-channel")
@@ -715,7 +682,7 @@ async def api_student_sync_to_drive(request: Request, user=Depends(require_auth)
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").error(f"student sync-to-drive error: {e}")
-        return JSONResponse({"error": f"Falha ao sincronizar: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao sincronizar com Google Drive."}, status_code=500)
 
 
 # ── Notifications ────────────────────────────────────────
@@ -903,7 +870,7 @@ REGRAS:
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").error(f"score-script error: {e}")
-        return JSONResponse({"error": f"Falha ao avaliar: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao avaliar roteiro."}, status_code=500)
 
 
 # ── YouTube Analytics Feedback Loop ──────────────────────
@@ -1062,7 +1029,7 @@ async def api_fetch_channel_stats(request: Request, user=Depends(require_auth)):
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").error(f"fetch-channel-stats error: {e}")
-        return JSONResponse({"error": f"Falha ao buscar dados: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao buscar dados do canal."}, status_code=500)
 
 
 @router.get("/api/student/performance-summary")
@@ -1203,7 +1170,7 @@ TOP 5 VIDEOS (mais views):
                 perf_report += f"\nMedia por video: {avg_views:,} views"
 
             except Exception as e:
-                return {"error": f"Falha ao buscar dados do canal modelo: {str(e)[:200]}"}
+                return {"error": "Falha ao buscar dados do canal modelo."}
 
         # ── MODE: ALUNOS (por canal especifico) ──
         elif mode == "alunos":
@@ -1302,7 +1269,7 @@ Seja especifico e acionavel. Baseie-se APENAS nos dados fornecidos."""
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").error(f"evolve-sop error: {e}")
-        return JSONResponse({"error": f"Falha ao evoluir SOP: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao evoluir SOP."}, status_code=500)
 
 # ── Generate Companion Content (SEO, Thumbnail, Music, Teaser) ──
 
@@ -1445,8 +1412,8 @@ Idioma: {lang}""",
 
     except Exception as e:
         import logging
-        logging.getLogger("ytcloner").error(f"generate-companion error: {e}")
-        return JSONResponse({"error": f"Falha: {str(e)[:200]}"}, status_code=500)
+        logging.getLogger("ytcloner").error(f"generate-companion error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao gerar conteudo complementar."}, status_code=500)
 
 
 # ── Save YouTube API Key (to admin_settings) ─────────────
@@ -1467,7 +1434,7 @@ async def api_save_youtube_key(request: Request, user=Depends(require_auth)):
                         ("youtube_api_key", api_key))
         return JSONResponse({"ok": True})
     except Exception as e:
-        return JSONResponse({"error": f"Falha: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao salvar chave da API."}, status_code=500)
 
 
 # ── Update Calendar from Analytics Data ──────────────────
@@ -1640,5 +1607,5 @@ Valores curtos (max 35 chars).""",
 
     except Exception as e:
         import logging
-        logging.getLogger("ytcloner").error(f"update-calendar error: {e}")
-        return JSONResponse({"error": f"Falha: {str(e)[:200]}"}, status_code=500)
+        logging.getLogger("ytcloner").error(f"update-calendar error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao atualizar calendario."}, status_code=500)

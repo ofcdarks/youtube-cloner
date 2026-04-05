@@ -98,7 +98,7 @@ async def api_score_all(
                 })
             except Exception as e:
                 logger.warning(f"Score failed for '{idea['title'][:30]}': {e}")
-                results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": str(e)[:100]})
+                results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": "Falha ao pontuar"})
         return results
 
     try:
@@ -106,7 +106,7 @@ async def api_score_all(
         return JSONResponse({"ok": True, "scored": len(results), "results": results})
     except Exception as e:
         logger.error(f"score-all error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Falha ao pontuar titulos."}, status_code=500)
 
 
 @router.post("/api/score-title")
@@ -422,7 +422,7 @@ Seja especifico e acionavel. Cada titulo deve ser algo que pode ser produzido HO
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").error(f"trend-radar error: {e}")
-        return JSONResponse({"error": f"Falha no radar: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha no radar de tendencias."}, status_code=500)
 
 
 def _get_date_days_ago(days: int) -> str:
@@ -577,4 +577,4 @@ Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").error(f"clone-language error: {e}")
-        return JSONResponse({"error": f"Falha ao clonar: {str(e)[:200]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao clonar projeto."}, status_code=500)
