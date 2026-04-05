@@ -441,27 +441,37 @@ HOOK SUGERIDO: {hook}
 {sop}
 ===== FIM DO SOP =====
 
-INSTRUCAO: Usando o SOP acima como REFERENCIA DE EXCELENCIA, escreva um roteiro COMPLETO para o video "{title}" que SUPERE o canal original.
+INSTRUCAO CRITICA: Leia o SOP acima com ATENCAO TOTAL. O SOP define:
+- O NICHO do canal (Secao 1 — identidade profunda)
+- O TOM e VOCABULARIO (Secao 15 — system prompt)
+- A ESTRUTURA exata do roteiro (Secao 16 — template)
+- As REGRAS inegociaveis (Secao 6 — regras de ouro)
 
-FILOSOFIA: Voce NAO esta copiando — voce esta ELEVANDO. O SOP mostra o que funciona. Seu trabalho e pegar cada tecnica e executar MELHOR:
-- Hooks mais impactantes que os exemplos do SOP
-- Open loops mais intrigantes
-- Storytelling mais envolvente
-- Specific spikes mais intensos
-- Transicoes mais fluidas
-- Fechamento mais memoravel
+Seu roteiro DEVE estar 100% alinhado com o nicho e estilo do SOP. Se o SOP e sobre poker, o roteiro e sobre poker. Se e sobre crime, e sobre crime. Se e sobre ciencia, e sobre ciencia. NAO invente outro nicho.
 
-REGRAS:
-1. USE a estrutura e tecnicas da secao 3 e 5 do SOP como BASE, mas MELHORE a execucao
-2. APLIQUE as Regras de Ouro da secao 6 — essas sao inegociaveis
-3. USE o vocabulario e tom do nicho (secao 15) mas com VOZ PROPRIA — nao seja um clone, seja a EVOLUCAO
-4. SIGA o Template da secao 16 como esqueleto, adaptando os tempos ao conteudo
-5. Cada hook, open loop e spike deve ser ORIGINAL e mais poderoso que os exemplos do SOP
-6. Inclua marcacoes: [MUSICA: tipo], [SFX: descricao], [B-ROLL: descricao]
-7. O roteiro deve passar no Checklist da secao 17 com NOTA MAXIMA
-8. DIFERENCIAL: adicione insights, dados ou angulos que o canal original NAO explorou
-9. OBRIGATORIO: Inclua no FINAL do roteiro (apos o fechamento) um disclaimer lido pelo narrador:
-   "Este conteudo foi produzido com auxilio de inteligencia artificial. As narrativas apresentadas sao reconstituicoes ficcionais baseadas em fatos reais e pesquisas, com fins de entretenimento e educacao."
+FILOSOFIA: Voce NAO esta copiando — voce esta ELEVANDO. Pega o que funciona no SOP e executa MELHOR.
+
+FORMATO DO ROTEIRO (OBRIGATORIO):
+Escreva APENAS a narracao — o texto que sera lido em voz alta (voice-over).
+NAO inclua:
+- Analise tecnica, scores, ou meta-comentarios
+- Listas de tags, keywords, SEO
+- Secoes de "Analise de Elevacao", "Frameworks", "Retencao Esperada"
+- Headers como "## HOOK DEVASTADOR" (use transicoes naturais)
+- Descricoes de estilo visual ou formato
+
+INCLUA:
+- Marcacoes inline entre colchetes: [MUSICA: tipo], [SFX: descricao], [B-ROLL: descricao], [PAUSA DRAMATICA]
+- Disclaimer de IA no final (lido pelo narrador)
+- Transicoes naturais entre atos (sem headers markdown)
+
+REGRAS DO SOP:
+1. SIGA a estrutura da Secao 16 (template com timestamps)
+2. APLIQUE as Regras de Ouro da Secao 6 — todas sem excecao
+3. USE o vocabulario da Secao 15 — tom, ritmo, formalidade
+4. APLIQUE hooks da Secao 4 — escolha um dos frameworks
+5. USE open loops da Secao 5 — setup explicito + resolucao tardia
+6. TAMANHO: 1500-2100 palavras de voice-over (10-14 minutos)
 
 LIMITES DO YOUTUBE:
 - Titulo: MAXIMO 100 caracteres
@@ -1028,22 +1038,27 @@ async def api_improve_script(request: Request, user=Depends(require_auth)):
     if not api_key:
         return JSONResponse({"error": "Configure sua API key"}, status_code=400)
 
-    prompt = f"""VOCE E UM EDITOR PROFISSIONAL DE ROTEIROS. Recebeu um roteiro com avaliacao detalhada de um Judge AI.
-Sua UNICA missao: reescrever o roteiro para que o Score suba de {score_data.get('score', '?')} para 85+.
+    prompt = f"""VOCE E UM EDITOR QUE TRANSFORMA ROTEIROS DE SCORE 30-70 EM SCORE 85+.
 
-===== DIAGNOSTICO DO JUDGE =====
-{diagnosis}
-===== FIM DO DIAGNOSTICO =====
+REGRA #0 (MAIS IMPORTANTE): Leia o SOP PRIMEIRO. O SOP define o NICHO do canal.
+Se o SOP e sobre poker, o roteiro TEM QUE SER sobre poker.
+Se o SOP e sobre crime, o roteiro TEM QUE SER sobre crime.
+Se o roteiro atual esta no NICHO ERRADO (ex: SOP de poker mas roteiro de crypto),
+voce DEVE reescrever o roteiro INTEIRO no nicho correto do SOP, mantendo o titulo.
 
-===== ROTEIRO PARA REESCREVER =====
-{roteiro}
-===== FIM DO ROTEIRO =====
-
-===== SOP COMPLETO DO CANAL (SEU MANUAL DE REFERENCIA) =====
+===== SOP COMPLETO DO CANAL (LEIA PRIMEIRO) =====
 {sop}
 ===== FIM DO SOP =====
 
-O SOP acima e o DNA do canal. O Judge avalia o roteiro CONTRA este SOP. Cada criterio do Score reflete uma secao do SOP:
+===== DIAGNOSTICO DO JUDGE (Score: {score_data.get('score', '?')}/100) =====
+{diagnosis}
+===== FIM DO DIAGNOSTICO =====
+
+===== ROTEIRO ATUAL (PARA REESCREVER) =====
+{roteiro}
+===== FIM DO ROTEIRO =====
+
+O Judge avalia o roteiro CONTRA o SOP. Cada criterio reflete uma secao do SOP:
 - Hook → SOP Secao 4 (Playbook de Hooks — 8 tipos com exemplos)
 - Open Loops → SOP Secao 5 (Tecnicas de Storytelling)
 - Storytelling → SOP Secao 5 (Pattern interrupts, cliffhangers, spikes)
@@ -1079,9 +1094,16 @@ INSTRUCOES CIRURGICAS:
 
 6. ESCREVA O ROTEIRO COMPLETO — nao resuma, nao pule secoes.
 
-7. A narracao (voice-over puro) deve ter entre 1500-2100 palavras."""
+7. A narracao (voice-over puro) deve ter entre 1500-2100 palavras.
 
-    system_msg = "Voce e um EDITOR SENIOR de roteiros YouTube. Sua especialidade: pegar roteiros com Score 70-80 e transformar em 85+. Voce NAO reescreve do zero — voce faz cirurgia precisa nos pontos fracos mantendo os pontos fortes intactos. Cada mudanca deve ser justificavel pelo feedback do Judge. Voce escreve roteiros COMPLETOS, nunca resumos."
+FORMATO DE SAIDA (OBRIGATORIO):
+Escreva APENAS a narracao que sera lida em voz alta.
+NAO inclua analise tecnica, scores, meta-comentarios, listas de tags/keywords,
+secoes de "Analise de Elevacao", "Frameworks", "Retencao Esperada" etc.
+Inclua marcacoes inline [MUSICA:], [SFX:], [B-ROLL:] nos momentos certos.
+Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
+
+    system_msg = "Voce e um EDITOR SENIOR de roteiros YouTube. Quando o roteiro esta no nicho ERRADO comparado ao SOP, voce REESCREVE no nicho correto. Quando esta no nicho certo mas com problemas, voce faz cirurgia precisa. Voce NUNCA inclui analise, scores, tags ou meta-comentarios no roteiro — apenas narracao pura com marcacoes [MUSICA/SFX/B-ROLL]."
 
     try:
         import httpx
