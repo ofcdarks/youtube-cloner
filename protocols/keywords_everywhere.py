@@ -165,12 +165,13 @@ def enrich_titles_with_volume(titles: list[dict], country: str = "us") -> list[d
     for i, t in enumerate(titles):
         if i < len(phrases) and phrases[i] and phrases[i] in vol_map:
             info = vol_map[phrases[i]]
-            t["vol"] = info.get("vol", 0) or 0
+            raw_vol = info.get("vol", 0) or 0
+            t["vol"] = raw_vol if raw_vol > 0 else -1  # 0 → -1 (checked, no volume)
             t["cpc"] = info.get("cpc", 0)
             t["competition"] = info.get("competition", 0)
-            t["volume_score"] = _volume_to_score(t["vol"])
+            t["volume_score"] = _volume_to_score(raw_vol)
         else:
-            # Checked but no match / no volume → mark as -1
+            # Checked but no match → mark as -1
             t.setdefault("vol", -1)
 
     return titles
