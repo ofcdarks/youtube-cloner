@@ -179,6 +179,46 @@ def _extract_sop_keywords(sop_text: str) -> list[str]:
     return keywords[:60]
 
 
+def _extract_competitor_keywords(niches: list[str], language: str = "es") -> list[str]:
+    """
+    Extract keywords from competitor YouTube channels by searching for niche terms.
+    Uses yt-dlp (no API key needed) to find top videos and extract recurring keywords.
+    """
+    try:
+        import subprocess
+        import json as _json
+    except ImportError:
+        return []
+
+    all_titles = []
+    for niche in niches[:2]:  # Max 2 niches to keep it fast
+        try:
+            cmd = [
+                "yt-dlp", "--flat-playlist", "--dump-json",
+                "--playlist-end", "15", "--no-warnings", "--quiet",
+                f"ytsearch15:{niche}"
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            if result.returncode == 0:
+                for line in result.stdout.strip().split("\n"):
+                    if line:
+                        try:
+                            data = _json.loads(line)
+                            title = data.get("title", "")
+                            if title:
+                                all_titles.append(title)
+                        except _json.JSONDecodeError:
+                            pass
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+
+    if not all_titles:
+        return []
+
+    # Extract recurring keywords from competitor titles
+    return _extract_title_keywords(all_titles)
+
+
 def _extract_title_keywords(titles: list[str]) -> list[str]:
     """Extract recurring keywords from existing channel titles."""
     if not titles:
@@ -265,6 +305,16 @@ def research_niche_keywords(
         clean = _strip_accents(kw.lower().strip())
         if clean and len(clean) >= 3:
             seeds.add(clean)
+
+    # Source 5: Competitor title keywords (from YouTube search for similar channels)
+    try:
+        competitor_kws = _extract_competitor_keywords(niches or [], language)
+        for kw in competitor_kws:
+            seeds.add(kw)
+        if competitor_kws:
+            logger.info(f"Competitor analysis: {len(competitor_kws)} keywords extracted")
+    except Exception as e:
+        logger.warning(f"Competitor analysis failed (non-blocking): {e}")
 
     if not seeds:
         return []

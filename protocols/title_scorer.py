@@ -213,8 +213,8 @@ def search_trends_by_region(keywords: list[str]) -> dict:
         return {}
 
 
-def score_title(title: str, target_countries: list[str] = None) -> dict:
-    """Pontua um titulo combinando YouTube + Google Trends, global e por pais."""
+def score_title(title: str, target_countries: list[str] = None, search_volume: int = 0) -> dict:
+    """Pontua um titulo combinando YouTube + Google Trends + Volume, global e por pais."""
 
     if target_countries is None:
         target_countries = ["global", "BR", "US"]
@@ -263,13 +263,28 @@ def score_title(title: str, target_countries: list[str] = None) -> dict:
     # This saves DataForSEO credits (1 call vs 15+ calls)
     volume_data = {}
 
+    # Volume bonus: titles with proven search volume get a boost
+    # 0 or -1 = no bonus, 1-100 = +3, 100-1000 = +5, 1000-10000 = +8, 10000+ = +12
+    import math
+    vol = max(search_volume, 0)
+    if vol >= 10000:
+        volume_bonus = 12
+    elif vol >= 1000:
+        volume_bonus = 8
+    elif vol >= 100:
+        volume_bonus = 5
+    elif vol > 0:
+        volume_bonus = 3
+    else:
+        volume_bonus = 0
+
     # Score global
     all_trend_scores = [r["trends_score"] for r in regional_scores.values()]
     avg_trends = sum(all_trend_scores) / len(all_trend_scores) if all_trend_scores else 50
 
-    # Formula: YouTube 60% + Trends 40% (volume is in pre-research, not per-title)
-    final_score = int((yt["score"] * 0.6) + (avg_trends * 0.4))
-    final_score = max(0, min(100, final_score))
+    # Formula: YouTube 50% + Trends 35% + Volume 15%
+    base_score = int((yt["score"] * 0.50) + (avg_trends * 0.35) + (volume_bonus * 1.25))
+    final_score = max(0, min(100, base_score))
 
     if final_score >= 80:
         rating = "EXCELENTE"
@@ -295,6 +310,8 @@ def score_title(title: str, target_countries: list[str] = None) -> dict:
         "rating": rating,
         "youtube": yt,
         "volume": volume_data,
+        "volume_bonus": volume_bonus,
+        "search_volume": vol,
         "regional_scores": regional_scores,
         "top_countries": top_countries,
         "best_opportunity": best_country,

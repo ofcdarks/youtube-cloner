@@ -133,7 +133,7 @@ async def api_score_all(
         results = []
         for idea in to_score:
             try:
-                score_result = score_title(idea["title"], country_list)
+                score_result = score_title(idea["title"], country_list, search_volume=idea.get("search_volume", 0))
                 update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
                 results.append({
                     "id": idea["id"],
@@ -267,11 +267,20 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
             for rs in demand_data.get("rising_searches", []):
                 trending_seeds.append(rs.get("query", ""))
 
-            niche_keywords = research_niche_keywords(
-                niche_names, language=lang, country=country,
-                sop_text=sop or "", existing_titles=existing_titles,
-                trending_keywords=trending_seeds,
-            )
+            # Check cache first (valid 7 days)
+            from database import get_keyword_cache, save_keyword_cache
+            cached = get_keyword_cache(pid)
+            if cached:
+                niche_keywords = cached
+                logger.info(f"Using cached keywords ({len(cached)} keywords)")
+            else:
+                niche_keywords = research_niche_keywords(
+                    niche_names, language=lang, country=country,
+                    sop_text=sop or "", existing_titles=existing_titles,
+                    trending_keywords=trending_seeds,
+                )
+                if niche_keywords:
+                    save_keyword_cache(pid, niche_keywords)
             if niche_keywords:
                 kw_lines = [f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes' for kw in niche_keywords[:20]]
                 keywords_block = (

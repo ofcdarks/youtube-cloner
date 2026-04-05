@@ -13,7 +13,7 @@ import base64
 import os
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from contextlib import contextmanager
 
 import bcrypt
@@ -315,6 +315,17 @@ def _run_migrations():
         # Allow admin to share their API key with students
         ("users_use_admin_api", "ALTER TABLE users ADD COLUMN use_admin_api INTEGER DEFAULT 0"),
         ("ideas_search_volume", "ALTER TABLE ideas ADD COLUMN search_volume INTEGER DEFAULT 0"),
+        ("ideas_search_competition", "ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1"),
+        ("ideas_title_b", "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''"),
+        # Keyword cache per project (avoid re-researching every time)
+        ("create_keyword_cache", """CREATE TABLE IF NOT EXISTS keyword_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id TEXT NOT NULL,
+            keywords_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        )"""),
+        ("idx_keyword_cache_project", "CREATE INDEX IF NOT EXISTS idx_kw_cache_proj ON keyword_cache(project_id)"),
         # Admin resources — files shared with students for download
         ("create_admin_resources", """CREATE TABLE IF NOT EXISTS admin_resources (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -524,12 +535,14 @@ def save_idea(
     pillar: str = "",
     priority: str = "MEDIA",
     search_volume: int = 0,
+    search_competition: float = -1,
+    title_b: str = "",
 ) -> int:
     now = datetime.now().isoformat()
     with get_db() as conn:
         cur = conn.execute(
-            "INSERT INTO ideas (project_id, num, title, hook, summary, pillar, priority, search_volume, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
-            (project_id, num, title, hook, summary, pillar, priority, search_volume, now),
+            "INSERT INTO ideas (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, now),
         )
         return cur.lastrowid
 
@@ -573,6 +586,36 @@ def update_idea_score(idea_id: int, score: int, rating: str = "", details: dict 
         conn.execute(
             "UPDATE ideas SET score=?, rating=?, score_details=? WHERE id=?",
             (score, rating, json.dumps(details or {}), idea_id),
+        )
+
+
+def get_keyword_cache(project_id: str) -> list[dict] | None:
+    """Get cached keywords for a project if still valid (< 7 days old)."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT keywords_json, expires_at FROM keyword_cache WHERE project_id=? ORDER BY created_at DESC LIMIT 1",
+            (project_id,),
+        ).fetchone()
+    if not row:
+        return None
+    if row["expires_at"] < datetime.now().isoformat():
+        return None  # Expired
+    try:
+        return json.loads(row["keywords_json"])
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def save_keyword_cache(project_id: str, keywords: list[dict]):
+    """Cache keywords for a project (valid for 7 days)."""
+    now = datetime.now()
+    expires = (now + timedelta(days=7)).isoformat()
+    with get_db() as conn:
+        # Remove old cache for this project
+        conn.execute("DELETE FROM keyword_cache WHERE project_id=?", (project_id,))
+        conn.execute(
+            "INSERT INTO keyword_cache (project_id, keywords_json, created_at, expires_at) VALUES (?,?,?,?)",
+            (project_id, json.dumps(keywords), now.isoformat(), expires),
         )
 
 

@@ -2007,11 +2007,20 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             for rs in demand_data.get("rising_searches", []):
                 trending_seeds.append(rs.get("query", ""))
 
-            niche_keywords = research_niche_keywords(
-                niche_names, language=lang, country=country,
-                sop_text=sop, existing_titles=existing_titles,
-                trending_keywords=trending_seeds,
-            )
+            # Check cache first (valid 7 days, saves DataForSEO credits)
+            from database import get_keyword_cache, save_keyword_cache
+            cached = get_keyword_cache(project_id)
+            if cached:
+                niche_keywords = cached
+                logger.info(f"Using cached keywords ({len(cached)} keywords)")
+            else:
+                niche_keywords = research_niche_keywords(
+                    niche_names, language=lang, country=country,
+                    sop_text=sop, existing_titles=existing_titles,
+                    trending_keywords=trending_seeds,
+                )
+                if niche_keywords:
+                    save_keyword_cache(project_id, niche_keywords)
             if niche_keywords:
                 kw_lines = []
                 for kw in niche_keywords[:25]:
@@ -2034,7 +2043,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             """, (project_id,))
             deleted = conn.total_changes
 
-        # Generate new titles based on chosen niches + SOP + REAL DEMAND + KEYWORDS
+        # Generate new titles — keywords-first, A/B variants, SOP-driven
         prompt = f"""Gere 30 ideias de videos para o canal "{project.get('name', '')}".
 
 SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser EXCLUSIVAMENTE sobre estes):
@@ -2045,9 +2054,14 @@ SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser EXCLUSIVAMENTE sobre estes):
 
 IMPORTANTE:
 - Distribua igualmente entre os sub-nichos
-- Use as KEYWORDS de alta frequencia da pre-pesquisa
+- CADA titulo DEVE conter pelo menos 1 keyword com volume da lista acima
 - Siga os PADROES de titulo que funcionam (numeros, CAPS, perguntas)
 - O campo "pillar" DEVE ser o nome do sub-nicho
+
+VARIANTES A/B:
+- Para as 10 melhores ideias (ALTA prioridade), gere 2 opcoes de titulo no campo "title_b"
+- A variante B deve usar uma keyword diferente ou angulo diferente para o mesmo tema
+- Exemplo: title="Las PIRAMIDES Aztecas que NADIE conoce", title_b="PIRAMIDES AZTECAS: El SECRETO que Mexico Oculto"
 
 SOP DO CANAL (referencia de tom e estilo — NAO modificar):
 {sop[:4000]}
@@ -2058,7 +2072,7 @@ REGRAS:
 - Hooks dos primeiros 30 segundos
 - Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
 
-Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
+Retorne JSON: [{{"title":"...","title_b":"...(opcional)","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
 Retorne APENAS o JSON.{lang_instruction}"""
 
         response = await asyncio.to_thread(
@@ -2102,26 +2116,46 @@ Retorne APENAS o JSON.{lang_instruction}"""
             except Exception as e:
                 logger.warning(f"Volume enrichment failed (non-blocking): {e}")
 
+        # POST-GENERATION VALIDATION: count how many titles contain high-volume keywords
+        kw_hit_count = 0
+        kw_miss_titles = []
+        for idea in new_ideas[:30]:
+            if idea.get("vol", 0) and idea.get("vol", 0) > 0:
+                kw_hit_count += 1
+            else:
+                kw_miss_titles.append(idea.get("title", ""))
+
         generated = 0
         for i, idea in enumerate(new_ideas[:30]):
             title = idea.get("title", f"Titulo {i+1}")
             if len(title) > 100:
                 title = title[:97] + "..."
             vol = idea.get("vol", 0) or 0
+            comp = idea.get("competition", -1)
+            title_b = idea.get("title_b", "")
+            if title_b and len(title_b) > 100:
+                title_b = title_b[:97] + "..."
             save_idea(project_id, i + 1, title,
                      idea.get("hook", ""), idea.get("summary", ""),
                      idea.get("pillar", ""), idea.get("priority", "MEDIA"),
-                     search_volume=vol)
+                     search_volume=vol, search_competition=comp, title_b=title_b)
             generated += 1
 
+        total = len(new_ideas[:30])
+        kw_coverage = (kw_hit_count / total * 100) if total > 0 else 0
         log_activity(project_id, "titles_regenerated",
-                     f"{generated} titulos re-gerados baseados em {len(chosen)} nicho(s)")
+                     f"{generated} titulos re-gerados baseados em {len(chosen)} nicho(s) | "
+                     f"Keywords: {kw_hit_count}/{total} ({kw_coverage:.0f}%) com volume")
 
         return JSONResponse({
             "ok": True,
             "generated": generated,
             "deleted": deleted,
             "niches_used": len(chosen),
+            "keyword_coverage": f"{kw_coverage:.0f}%",
+            "keywords_matched": kw_hit_count,
+            "keywords_total": total,
+            "cached_keywords": bool(cached) if 'cached' in dir() else False,
         })
     except Exception as e:
         logger.error(f"regenerate-titles error: {e}", exc_info=True)
