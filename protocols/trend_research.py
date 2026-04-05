@@ -116,11 +116,8 @@ def research_niche_demand(niche: str, language: str = "pt-BR", youtube_api_key: 
                 "pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de",
                 "it": "it", "ja": "jp", "ko": "kr",
             }
-            # Search in BOTH: channel country + US (global/english)
-            countries_to_search = list(dict.fromkeys([
-                lang_to_country.get(language[:2], "us"),
-                "us",  # Always include US/English (where most SOPs originate)
-            ]))
+            # Search ONLY in channel's country/language (saves credits)
+            countries_to_search = [lang_to_country.get(language[:2], "us")]
             all_kw_data = []
             for country in countries_to_search:
                 try:
