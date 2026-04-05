@@ -2021,18 +2021,35 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                 )
                 if niche_keywords:
                     save_keyword_cache(project_id, niche_keywords)
-            if niche_keywords:
-                kw_lines = []
-                for kw in niche_keywords[:25]:
-                    kw_lines.append(f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes')
-                keywords_block = (
-                    "\nKEYWORDS COM VOLUME REAL (DataForSEO — use obrigatoriamente nos titulos):\n"
-                    + "\n".join(kw_lines)
-                    + "\n\nREGRA CRITICA: Cada titulo DEVE conter pelo menos 1 keyword desta lista.\n"
-                    "Combine a keyword de volume com o estilo do SOP para criar titulos que rankam E engajam.\n"
-                )
         except Exception as e:
             logger.warning(f"Niche keyword research failed (non-blocking): {e}")
+
+        # YouTube Autocomplete — what people ACTUALLY search for
+        autocomplete_suggestions = []
+        try:
+            from protocols.viral_engine import research_autocomplete_keywords
+            seed_kws = [n["name"] for n in chosen]
+            if niche_keywords:
+                seed_kws.extend([kw["keyword"] for kw in niche_keywords[:5]])
+            autocomplete_suggestions = research_autocomplete_keywords(seed_kws, lang[:2])
+            # Also add autocomplete suggestions to niche_keywords volume lookup
+            if autocomplete_suggestions and not cached:
+                from protocols.keywords_everywhere import get_keyword_data
+                auto_vol = get_keyword_data(
+                    autocomplete_suggestions[:50],
+                    country=country,
+                    language=lang[:2],
+                )
+                for av in auto_vol:
+                    if av.get("vol", 0) > 0:
+                        niche_keywords.append(av)
+                # Re-sort by volume
+                niche_keywords.sort(key=lambda x: x.get("vol", 0), reverse=True)
+                # Update cache with expanded keywords
+                if niche_keywords:
+                    save_keyword_cache(project_id, niche_keywords)
+        except Exception as e:
+            logger.warning(f"YouTube autocomplete failed (non-blocking): {e}")
 
         # Delete existing ideas (not assigned to students)
         with get_db() as conn:
@@ -2043,44 +2060,25 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             """, (project_id,))
             deleted = conn.total_changes
 
-        # Generate new titles — keywords-first, A/B variants, SOP-driven
-        prompt = f"""Gere 30 ideias de videos para o canal "{project.get('name', '')}".
-
-SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser EXCLUSIVAMENTE sobre estes):
-{niches_text}
-
-{demand_summary}
-{keywords_block}
-
-IMPORTANTE:
-- Distribua igualmente entre os sub-nichos
-- CADA titulo DEVE conter pelo menos 1 keyword com volume da lista acima
-- Siga os PADROES de titulo que funcionam (numeros, CAPS, perguntas)
-- O campo "pillar" DEVE ser o nome do sub-nicho
-
-VARIANTES A/B:
-- Para as 10 melhores ideias (ALTA prioridade), gere 2 opcoes de titulo no campo "title_b"
-- A variante B deve usar uma keyword diferente ou angulo diferente para o mesmo tema
-- Exemplo: title="Las PIRAMIDES Aztecas que NADIE conoce", title_b="PIRAMIDES AZTECAS: El SECRETO que Mexico Oculto"
-
-SOP DO CANAL (referencia de tom e estilo — NAO modificar):
-{sop[:4000]}
-
-REGRAS:
-- CADA titulo MAXIMO 100 caracteres
-- Titulos que combinam DEMANDA REAL + estilo do SOP
-- Hooks dos primeiros 30 segundos
-- Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
-
-Retorne JSON: [{{"title":"...","title_b":"...(opcional)","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
-Retorne APENAS o JSON.{lang_instruction}"""
+        # Build viral prompt using the Viral Engine
+        from protocols.viral_engine import build_viral_prompt
+        system_prompt, user_prompt = build_viral_prompt(
+            channel_name=project.get('name', ''),
+            niches=chosen,
+            sop_text=sop,
+            keywords_with_volume=niche_keywords,
+            autocomplete_suggestions=autocomplete_suggestions,
+            demand_summary=demand_summary,
+            lang=lang,
+            count=30,
+        )
 
         response = await asyncio.to_thread(
-            chat, prompt,
-            "Especialista em titulos virais YouTube.",
+            chat, user_prompt,
+            system_prompt,
             None,  # model (use default)
             MAX_TOKENS_LARGE,  # max_tokens
-            0.8,  # temperature
+            0.85,  # temperature — slightly higher for creativity
         )
 
         json_match = re.search(r'\[.*\]', response, re.DOTALL)
@@ -2089,10 +2087,12 @@ Retorne APENAS o JSON.{lang_instruction}"""
 
         new_ideas = json.loads(json_match.group())
 
-        # Map volume from pre-researched keywords to generated titles
-        # Exclude generic single words that match too broadly
+        # QUALITY GATE — score each title for viral potential and map volume
+        from protocols.viral_engine import filter_best_titles, score_viral_title
+        from protocols.keywords_everywhere import _strip_accents, _GENERIC_SINGLE_WORDS, match_keyword_in_title
+
+        # Map volume using keyword matching
         if niche_keywords:
-            from protocols.keywords_everywhere import _strip_accents, _GENERIC_SINGLE_WORDS, match_keyword_in_title
             kw_vol_map = {
                 _strip_accents(kw["keyword"].lower()): kw["vol"]
                 for kw in niche_keywords
@@ -2104,26 +2104,16 @@ Retorne APENAS o JSON.{lang_instruction}"""
                 for kw_text, kw_vol in kw_vol_map.items():
                     if match_keyword_in_title(kw_text, title_lower) and kw_vol > best_vol:
                         best_vol = kw_vol
-                idea["vol"] = best_vol if best_vol > 0 else -1  # -1 = checked but no match
-        else:
-            # Fallback: enrich via separate DataForSEO call
-            try:
-                from protocols.keywords_everywhere import enrich_titles_with_volume
-                lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
-                country = lang_to_country.get(lang[:2], "us")
-                new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
-                logger.info(f"Enriched {len(new_ideas)} titles with volume data")
-            except Exception as e:
-                logger.warning(f"Volume enrichment failed (non-blocking): {e}")
+                idea["vol"] = best_vol if best_vol > 0 else -1
 
-        # POST-GENERATION VALIDATION: count how many titles contain high-volume keywords
-        kw_hit_count = 0
-        kw_miss_titles = []
-        for idea in new_ideas[:30]:
-            if idea.get("vol", 0) and idea.get("vol", 0) > 0:
-                kw_hit_count += 1
-            else:
-                kw_miss_titles.append(idea.get("title", ""))
+        # Score and filter — only keep titles with viral potential
+        accepted, rejected = filter_best_titles(new_ideas[:30], niche_keywords, lang[:2])
+        logger.info(f"Quality gate: {len(accepted)} accepted, {len(rejected)} rejected")
+
+        # Use accepted titles (already sorted by viral score)
+        new_ideas = accepted
+
+        kw_hit_count = sum(1 for idea in new_ideas if idea.get("vol", 0) and idea.get("vol", 0) > 0)
 
         generated = 0
         for i, idea in enumerate(new_ideas[:30]):
