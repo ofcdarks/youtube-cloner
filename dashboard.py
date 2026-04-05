@@ -359,6 +359,7 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
         "mindmap_path": mindmap_path,
         "drive_links": drive_links,
         "sop_source": sop_source,
+        "nichos_escolhidos": [n for n in niches if n.get("chosen")],
     })
 
 
@@ -1328,6 +1329,46 @@ async def admin_projects(request: Request, user=Depends(require_admin)):
             p["script_count"] = c["script_count"] if c else 0
 
     return render(request, "admin_projects.html", {"user": user, "projects": projects})
+
+
+@app.get("/admin/radar", response_class=HTMLResponse)
+async def admin_radar(request: Request, project: str = "", user=Depends(require_admin)):
+    """Dedicated Radar page — trend analysis for a project."""
+    from database import get_project, get_files
+    proj = get_project(project)
+    if not proj:
+        return RedirectResponse("/")
+
+    # Get existing radar reports
+    existing = [dict(f) for f in get_files(project) if "radar" in f.get("filename", "").lower() or "tendencia" in f.get("label", "").lower()]
+
+    return render(request, "admin_radar.html", {
+        "user": user,
+        "project": proj,
+        "existing_reports": existing,
+    })
+
+
+@app.get("/admin/sop-analysis", response_class=HTMLResponse)
+async def admin_sop_analysis(request: Request, project: str = "", mode: str = "canal", user=Depends(require_admin)):
+    """Dedicated SOP Analysis page — canal or alunos mode."""
+    from database import get_project, get_files
+    proj = get_project(project)
+    if not proj:
+        return RedirectResponse("/")
+
+    if mode not in ("canal", "alunos"):
+        mode = "canal"
+
+    # Get existing SOP evolution reports
+    existing = [dict(f) for f in get_files(project) if "evolucao" in f.get("label", "").lower() or "evolve" in f.get("filename", "").lower()]
+
+    return render(request, "admin_sop_analysis.html", {
+        "user": user,
+        "project": proj,
+        "mode": mode,
+        "existing_reports": existing,
+    })
 
 
 @app.get("/admin/panel", response_class=HTMLResponse)

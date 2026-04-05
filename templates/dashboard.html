@@ -84,41 +84,14 @@
     </div>
     {% endif %}
 
-    <!-- MEU CANAL YOUTUBE -->
-    {% if user and user.role == 'admin' %}
-    <div class="section">
-        <div class="section-title">
-            <span class="sec-icon">&#128250;</span> Meu Canal YouTube
-            <div class="ideas-header-controls">
-                <button type="button" class="score-btn" onclick="refreshYoutubeStats()" id="yt-refresh-btn">&#8635; Atualizar</button>
-            </div>
-        </div>
-        <div id="yt-analytics">
-            <div id="yt-config" class="form-panel">
-                <p class="form-hint">Conecte sua conta YouTube para monitorar metricas em tempo real.</p>
-                <div class="form-row">
-                    <div class="form-group grow-2">
-                        <label for="yt-api-key">&#128273; YouTube Data API v3 Key
-                            <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="font-size:10px;color:#a78bfa;font-weight:400;margin-left:6px;">Obter chave &rarr;</a>
-                        </label>
-                        <input type="password" id="yt-api-key" class="form-input" placeholder="AIzaSy..." value="{{ yt_api_key_masked or '' }}">
-                        <span style="font-size:10px;color:var(--fg-dim);">Google Cloud Console → APIs & Services → Credentials → API Key</span>
-                    </div>
-                    <div class="form-group grow-1">
-                        <label for="yt-channel-id">&#127909; Channel ID ou @handle</label>
-                        <input type="text" id="yt-channel-id" class="form-input" placeholder="@ProfessorPOVs ou UCxxxxxxxx" value="{{ yt_channel_id or '' }}">
-                        <span style="font-size:10px;color:var(--fg-dim);">Aceita @handle, /channel/UCxx ou ID direto</span>
-                    </div>
-                    <div>
-                        <button type="button" class="btn-primary" onclick="saveYoutubeSettings()">&#128190; Salvar</button>
-                    </div>
-                </div>
-            </div>
-            <div id="yt-stats" style="display:none">
-                <div class="stats-row" id="yt-stats-cards"></div>
-                <div id="yt-recent-videos"></div>
-            </div>
-        </div>
+    <!-- NICHOS ESCOLHIDOS (resumo visivel) -->
+    {% if nichos_escolhidos %}
+    <div style="margin-bottom:16px;padding:10px 16px;background:#7c3aed10;border:1px solid #7c3aed30;border-radius:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#a78bfa;font-weight:600">Nichos escolhidos:</span>
+        {% for ne in nichos_escolhidos %}
+        <span style="background:#7c3aed;color:#fff;padding:4px 12px;border-radius:12px;font-size:12px;font-weight:500">{{ ne.name }}</span>
+        {% endfor %}
+        <span style="font-size:10px;color:#666;margin-left:auto">Titulos e roteiros baseados nestes nichos + SOP original</span>
     </div>
     {% endif %}
 
@@ -218,9 +191,9 @@
                     <span><span class="sec-icon">&#128193;</span> Arquivos do Projeto</span>
                     {% if current_project and user and user.role == 'admin' %}
                     <div style="display:flex;gap:6px;">
-                        <button class="btn-primary" style="font-size:11px;padding:4px 12px;background:#f59e0b;border-color:#f59e0b;" onclick="trendRadar()" id="trend-radar-btn" title="Detectar tendencias quentes no nicho">&#128225; Radar</button>
-                        <button class="btn-primary" style="font-size:11px;padding:4px 12px;background:#3b82f6;border-color:#3b82f6;" onclick="evolveSOP('canal')" id="evolve-canal-btn" title="Evoluir SOP baseado no canal original modelado">&#128202; SOP Canal</button>
-                        <button class="btn-primary" style="font-size:11px;padding:4px 12px;background:#7c3aed;border-color:#7c3aed;" onclick="evolveSOP('alunos')" id="evolve-alunos-btn" title="Evoluir SOP baseado nos resultados dos alunos">&#129504; SOP Alunos</button>
+                        <a href="/admin/radar?project={{ current_project_id }}" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#f59e0b;border-color:#f59e0b;text-decoration:none" title="Pagina dedicada: tendencias quentes no nicho">&#128225; Radar</a>
+                        <a href="/admin/sop-analysis?project={{ current_project_id }}&mode=canal" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#3b82f6;border-color:#3b82f6;text-decoration:none" title="Pagina dedicada: analise SOP do canal original">&#128202; SOP Canal</a>
+                        <a href="/admin/sop-analysis?project={{ current_project_id }}&mode=alunos" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#7c3aed;border-color:#7c3aed;text-decoration:none" title="Pagina dedicada: analise SOP dos alunos">&#129504; SOP Alunos</a>
                     </div>
                     {% endif %}
                 </div>

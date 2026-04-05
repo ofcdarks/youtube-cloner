@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}YT Cloner - Analise SOP{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/students">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="page">
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span>
+                <span class="sec-icon">{% if mode == 'canal' %}&#128202;{% else %}&#129504;{% endif %}</span>
+                {% if mode == 'canal' %}Analise SOP — Canal Original{% else %}Analise SOP — Resultados dos Alunos{% endif %}
+                — {{ project.name }}
+            </span>
+            <button class="btn-primary" id="run-sop-btn" onclick="runSopAnalysis()" style="background:{% if mode == 'canal' %}#3b82f6{% else %}#7c3aed{% endif %}">
+                {% if mode == 'canal' %}&#128202; Analisar Canal{% else %}&#129504; Analisar Alunos{% endif %}
+            </button>
+        </div>
+
+        <div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:12px;margin-bottom:16px">
+            <p style="color:#888;font-size:12px;margin:0">
+                {% if mode == 'canal' %}
+                Analisa o canal ORIGINAL modelado pelo SOP. Identifica o que funciona melhor, padroes de sucesso, e sugere ajustes no conteudo (sem alterar o SOP original).
+                {% else %}
+                Compara Top 5 vs Bottom 5 videos dos alunos. Identifica padroes vencedores e sugere melhorias no conteudo baseado em dados reais de performance.
+                {% endif %}
+            </p>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-bottom:16px;padding:12px;background:#131a2e;border-radius:8px;border:1px solid #1e293b">
+            <div><span style="color:#888;font-size:11px">Projeto:</span> <strong style="color:#a78bfa">{{ project.name }}</strong></div>
+            <div><span style="color:#888;font-size:11px">Nicho:</span> <strong style="color:#06b6d4">{{ project.niche_chosen }}</strong></div>
+            <div><span style="color:#888;font-size:11px">Modo:</span> <strong style="color:{% if mode == 'canal' %}#3b82f6{% else %}#7c3aed{% endif %}">{{ 'Canal Original' if mode == 'canal' else 'Alunos' }}</strong></div>
+        </div>
+
+        <div style="background:#f59e0b10;border:1px solid #f59e0b30;border-radius:8px;padding:10px;margin-bottom:16px">
+            <span style="color:#f59e0b;font-size:12px;font-weight:600">&#9888; O SOP original NUNCA e alterado.</span>
+            <span style="color:#888;font-size:11px"> Esta analise gera um RELATORIO separado com sugestoes. O SOP permanece como referencia imutavel.</span>
+        </div>
+
+        <div id="sop-loading" style="display:none;text-align:center;padding:40px">
+            <div style="font-size:24px;margin-bottom:8px">{% if mode == 'canal' %}&#128202;{% else %}&#129504;{% endif %}</div>
+            <div style="color:#a78bfa;font-size:14px;font-weight:600">Analisando {% if mode == 'canal' %}canal original{% else %}resultados dos alunos{% endif %}...</div>
+            <div style="color:#888;font-size:12px;margin-top:4px">AI comparando com o SOP (~60s)</div>
+        </div>
+
+        <div id="sop-result" style="display:none"></div>
+
+        {% if existing_reports %}
+        <div style="margin-top:24px">
+            <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">Relatorios anteriores ({{ mode }}):</div>
+            {% for r in existing_reports %}
+            <div style="background:#131a2e;border:1px solid #1e293b;border-radius:8px;padding:14px;margin-bottom:8px;cursor:pointer" onclick="this.querySelector('.report-content').style.display=this.querySelector('.report-content').style.display==='none'?'block':'none'">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="color:#a78bfa;font-size:12px;font-weight:600">{{ r.label }}</span>
+                    <span style="color:#666;font-size:11px">{{ r.created_at[:16] }}</span>
+                </div>
+                <div class="report-content" style="display:none;margin-top:10px;font-size:12px;color:#ccc;white-space:pre-wrap;max-height:400px;overflow-y:auto">{{ r.content }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script src="/static/js/app.js?v=20260405"></script>
+<script>
+function runSopAnalysis() {
+    var btn = document.getElementById('run-sop-btn');
+    btn.disabled = true;
+    btn.textContent = 'Analisando...';
+    document.getElementById('sop-loading').style.display = 'block';
+
+    apiPost('/api/admin/evolve-sop', {project_id: '{{ project.id }}', mode: '{{ mode }}'})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = '{{ "&#128202; Analisar Canal" if mode == "canal" else "&#129504; Analisar Alunos" }}';
+        document.getElementById('sop-loading').style.display = 'none';
+
+        if (data.ok || data.report) {
+            var color = '{{ "#3b82f6" if mode == "canal" else "#7c3aed" }}';
+            var html = '<div style="background:#131a2e;border:1px solid ' + color + '40;border-radius:8px;padding:16px;">';
+            html += '<div style="font-size:14px;font-weight:600;color:' + color + ';margin-bottom:10px">Resultado da Analise</div>';
+            html += '<div style="font-size:12px;color:#ccc;white-space:pre-wrap;line-height:1.6">' + (data.report || JSON.stringify(data, null, 2)) + '</div>';
+            html += '</div>';
+            document.getElementById('sop-result').innerHTML = html;
+            document.getElementById('sop-result').style.display = 'block';
+            showToast('Analise concluida!', 'success', 3000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    })
+    .catch(function(e) {
+        btn.disabled = false;
+        btn.innerHTML = '{{ "&#128202; Analisar Canal" if mode == "canal" else "&#129504; Analisar Alunos" }}';
+        document.getElementById('sop-loading').style.display = 'none';
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+</script>
+{% endblock %}
