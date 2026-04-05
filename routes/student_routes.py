@@ -582,10 +582,21 @@ async def api_student_delete_file(request: Request, user=Depends(require_auth)):
         if not f:
             return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
 
-        # Shared project files cannot be deleted by students
-        if f["category"] in ("analise", "seo", "outros", "visual"):
-            if user.get("role") != "admin":
-                return JSONResponse({"error": "Apenas admin pode excluir arquivos compartilhados"}, status_code=403)
+        # Students can only delete files they generated (student-specific filenames)
+        # Admin pipeline files (SOP, mindmap) are protected
+        if user.get("role") != "admin":
+            fname = f.get("filename", "")
+            is_student_file = (
+                "student_" in fname or              # roteiro_student_X, narracao_student_X
+                fname.startswith("seo_") or         # seo_123.md (companion)
+                fname.startswith("thumbnail_") or   # thumbnail_123.md (companion)
+                fname.startswith("music_") or       # music_123.md (companion)
+                fname.startswith("teaser_") or      # teaser_123.md (companion)
+                f.get("visible_to_students", 0)     # any file marked visible
+            )
+            # Block deletion of admin-only files (SOP, mindmap, pipeline files)
+            if f["category"] == "analise" or (f["category"] == "visual" and not is_student_file):
+                return JSONResponse({"error": "Este arquivo so pode ser excluido pelo admin"}, status_code=403)
 
         if user.get("role") != "admin":
             # Student must have an assignment for this project
