@@ -1990,16 +1990,15 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             logger.warning(f"Pre-research failed (non-blocking): {e}")
 
         # KEYWORD RESEARCH: SOP + niches + titles + trending keywords + Google Trends
-        # All sources feed into one DataForSEO volume lookup
         keywords_block = ""
         niche_keywords = []
+        existing_titles = [i["title"] for i in get_ideas(project_id)]
+        lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+        country = lang_to_country.get(lang[:2], "us")
+        niche_names = [n["name"] for n in chosen]
+        cached = None
         try:
             from protocols.keywords_everywhere import research_niche_keywords
-            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
-            country = lang_to_country.get(lang[:2], "us")
-            niche_names = [n["name"] for n in chosen]
-            existing = get_ideas(project_id)
-            existing_titles = [i["title"] for i in existing]
 
             # Collect trending keywords from YouTube + Google Trends
             trending_seeds = []
