@@ -1988,6 +1988,28 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         except Exception as e:
             logger.warning(f"Pre-research failed (non-blocking): {e}")
 
+        # KEYWORD RESEARCH: get high-volume keywords for chosen niches
+        keywords_block = ""
+        niche_keywords = []
+        try:
+            from protocols.keywords_everywhere import research_niche_keywords
+            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+            country = lang_to_country.get(lang[:2], "us")
+            niche_names = [n["name"] for n in chosen]
+            niche_keywords = research_niche_keywords(niche_names, language=lang, country=country)
+            if niche_keywords:
+                kw_lines = []
+                for kw in niche_keywords[:20]:
+                    kw_lines.append(f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes')
+                keywords_block = (
+                    "\nKEYWORDS COM VOLUME REAL (DataForSEO — use obrigatoriamente nos titulos):\n"
+                    + "\n".join(kw_lines)
+                    + "\n\nREGRA CRITICA: Cada titulo DEVE conter pelo menos 1 keyword desta lista.\n"
+                    "Combine a keyword de volume com o estilo do SOP para criar titulos que rankam E engajam.\n"
+                )
+        except Exception as e:
+            logger.warning(f"Niche keyword research failed (non-blocking): {e}")
+
         # Delete existing ideas (not assigned to students)
         with get_db() as conn:
             conn.execute("""
@@ -1997,13 +2019,14 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             """, (project_id,))
             deleted = conn.total_changes
 
-        # Generate new titles based on chosen niches + SOP + REAL DEMAND
+        # Generate new titles based on chosen niches + SOP + REAL DEMAND + KEYWORDS
         prompt = f"""Gere 30 ideias de videos para o canal "{project.get('name', '')}".
 
 SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser EXCLUSIVAMENTE sobre estes):
 {niches_text}
 
 {demand_summary}
+{keywords_block}
 
 IMPORTANTE:
 - Distribua igualmente entre os sub-nichos
@@ -2037,15 +2060,31 @@ Retorne APENAS o JSON.{lang_instruction}"""
 
         new_ideas = json.loads(json_match.group())
 
-        # Enrich titles with search volume (1 batch DataForSEO call)
-        try:
-            from protocols.keywords_everywhere import enrich_titles_with_volume
-            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
-            country = lang_to_country.get(lang[:2], "us")
-            new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
-            logger.info(f"Enriched {len(new_ideas)} titles with volume data")
-        except Exception as e:
-            logger.warning(f"Volume enrichment failed (non-blocking): {e}")
+        # Map volume from pre-researched keywords to generated titles
+        # Only match 2+ word keywords (single words are too generic for accurate volume)
+        if niche_keywords:
+            from protocols.keywords_everywhere import _strip_accents
+            kw_vol_map = {
+                _strip_accents(kw["keyword"].lower()): kw["vol"]
+                for kw in niche_keywords if " " in kw["keyword"]
+            }
+            for idea in new_ideas[:30]:
+                title_lower = _strip_accents(idea.get("title", "").lower())
+                best_vol = 0
+                for kw_text, kw_vol in kw_vol_map.items():
+                    if kw_text in title_lower and kw_vol > best_vol:
+                        best_vol = kw_vol
+                idea["vol"] = best_vol if best_vol > 0 else -1  # -1 = checked but no match
+        else:
+            # Fallback: enrich via separate DataForSEO call
+            try:
+                from protocols.keywords_everywhere import enrich_titles_with_volume
+                lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+                country = lang_to_country.get(lang[:2], "us")
+                new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
+                logger.info(f"Enriched {len(new_ideas)} titles with volume data")
+            except Exception as e:
+                logger.warning(f"Volume enrichment failed (non-blocking): {e}")
 
         generated = 0
         for i, idea in enumerate(new_ideas[:30]):

@@ -130,10 +130,104 @@ def get_youtube_keyword_data(keywords: list[str], country: str = "us") -> list[d
     return get_keyword_data(keywords, country=country, language=country_lang.get(country.lower(), "en"))
 
 
+def research_niche_keywords(niches: list[str], language: str = "es", country: str = "es") -> list[dict]:
+    """
+    Research high-volume keywords for given niches.
+    Generates seed variations from niche names and looks up volume via DataForSEO.
+
+    Returns sorted list: [{"keyword": "...", "vol": 12400, "cpc": 0.45, ...}]
+    Only returns keywords with vol > 0, sorted by volume descending.
+    """
+    if not niches:
+        return []
+
+    # Generate seed keywords: the niche name + common modifiers per language
+    seeds = []
+    modifiers_by_lang = {
+        "es": ["", "historia", "misterios", "secretos", "antiguos", "documental",
+               "curiosidades", "top", "increibles", "desconocidos", "explicacion"],
+        "pt": ["", "historia", "misterios", "segredos", "antigos", "documentario",
+               "curiosidades", "top", "incriveis", "desconhecidos", "explicacao"],
+        "en": ["", "history", "mysteries", "secrets", "ancient", "documentary",
+               "facts", "top", "incredible", "unknown", "explained"],
+    }
+    lang_code = language[:2]
+    modifiers = modifiers_by_lang.get(lang_code, modifiers_by_lang["en"])
+
+    for niche in niches:
+        niche_clean = _strip_accents(niche.lower().strip())
+        # Add the niche itself
+        seeds.append(niche_clean)
+        # Add niche + each modifier
+        for mod in modifiers:
+            if mod:
+                seeds.append(f"{niche_clean} {mod}")
+        # Also add each word of the niche if multi-word (e.g. "civilizaciones antiguas" → "civilizaciones")
+        words = [w for w in niche_clean.split() if len(w) > 4]
+        for w in words:
+            seeds.append(w)
+
+    # Deduplicate
+    seen = set()
+    unique_seeds = []
+    for s in seeds:
+        if s and s not in seen:
+            seen.add(s)
+            unique_seeds.append(s)
+
+    if not unique_seeds:
+        return []
+
+    # Batch lookup (DataForSEO supports up to 700 per call)
+    country_lang = {
+        "br": "pt", "us": "en", "es": "es", "mx": "es", "gb": "en",
+        "fr": "fr", "de": "de", "it": "it", "jp": "ja", "kr": "ko",
+    }
+    results = get_keyword_data(
+        unique_seeds[:200],
+        country=country,
+        language=country_lang.get(country.lower(), lang_code),
+    )
+
+    # Filter to only keywords with volume and sort
+    with_volume = [r for r in results if r.get("vol", 0) > 0]
+    with_volume.sort(key=lambda x: x.get("vol", 0), reverse=True)
+
+    logger.info(f"Niche research: {len(unique_seeds)} seeds → {len(with_volume)} with volume ({country})")
+    return with_volume
+
+
 def _strip_accents(text: str) -> str:
     """Remove accents/diacritics for keyword matching (e.g. tecnología → tecnologia)."""
     nfkd = unicodedata.normalize("NFKD", text)
     return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
+_STOP_WORDS = {
+    # English
+    "the", "and", "for", "that", "this", "with", "from", "have", "will", "what",
+    "how", "why", "when", "where", "which", "your", "about", "they", "been", "more",
+    "most", "than", "into", "over", "just", "like", "make", "know", "some", "made",
+    "were", "ever", "never", "really", "world", "people", "could", "after", "before",
+    "changed", "revealed", "discovered", "shocking", "incredible", "amazing",
+    # Spanish
+    "como", "para", "pero", "cada", "esta", "este", "todo", "todos", "todas", "tiene",
+    "hace", "puede", "solo", "tambien", "entre", "sobre", "desde", "hasta", "donde",
+    "quien", "cual", "fueron", "siendo", "hecho", "mejor", "peor", "mucho", "poco",
+    "otro", "otra", "otros", "nada", "algo", "mismo", "porque", "siempre", "nunca",
+    "mundo", "vida", "forma", "parte", "veces",
+    "cambiaron", "cambio", "descubrieron", "desaparecieron", "revelaron",
+    "brutal", "oscuros", "oscuro", "increible", "impactante", "poderoso",
+    "sangrienta", "ocultos", "oculto", "verdadera", "verdadero",
+    # Portuguese
+    "como", "para", "mais", "qual", "quais", "isso", "esse", "essa", "este", "esta",
+    "foram", "pode", "onde", "muito", "tambem", "sobre", "desde", "porque", "outro",
+    "outra", "outros", "nada", "algo", "mesmo", "sempre", "nunca", "tudo", "toda",
+    "mundo", "vida", "ainda", "depois", "antes", "cada", "pela", "pelo",
+    "mudaram", "mudou", "descobriram", "desapareceram", "revelaram",
+    "brutal", "escuros", "escuro", "incrivel", "impactante", "poderoso",
+    "sangrenta", "ocultos", "oculto", "verdadeira", "verdadeiro",
+}
 
 
 def enrich_titles_with_volume(titles: list[dict], country: str = "us") -> list[dict]:
@@ -149,8 +243,9 @@ def enrich_titles_with_volume(titles: list[dict], country: str = "us") -> list[d
     for t in titles:
         clean = re.sub(r'[^\w\s]', ' ', t.get("title", "").lower()).strip()
         clean = _strip_accents(clean)
-        words = [w for w in clean.split() if len(w) > 3]
-        phrases.append(" ".join(words[:5]) if len(words) >= 2 else (words[0] if words else ""))
+        words = [w for w in clean.split() if len(w) > 3 and w not in _STOP_WORDS]
+        # Use 2 core words — shorter phrases match real search queries better
+        phrases.append(" ".join(words[:2]) if len(words) >= 2 else (words[0] if words else ""))
 
     if not any(phrases):
         # Mark all as checked even if no phrases could be extracted

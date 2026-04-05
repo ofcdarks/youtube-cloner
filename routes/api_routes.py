@@ -251,9 +251,29 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         else:
             niches_instruction = ""
 
+        # KEYWORD RESEARCH: get high-volume keywords for the niches
+        keywords_block = ""
+        niche_keywords = []
+        try:
+            from protocols.keywords_everywhere import research_niche_keywords
+            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+            country = lang_to_country.get(lang[:2], "us")
+            niche_names = [n["name"] for n in chosen_niches] if chosen_niches else [niche]
+            niche_keywords = research_niche_keywords(niche_names, language=lang, country=country)
+            if niche_keywords:
+                kw_lines = [f'  - "{kw["keyword"]}": {kw["vol"]:,} buscas/mes' for kw in niche_keywords[:20]]
+                keywords_block = (
+                    "\nKEYWORDS COM VOLUME REAL (use obrigatoriamente nos titulos):\n"
+                    + "\n".join(kw_lines)
+                    + "\nREGRA: Cada titulo DEVE conter pelo menos 1 keyword desta lista.\n"
+                )
+        except Exception as e:
+            logger.warning(f"Niche keyword research failed (non-blocking): {e}")
+
         prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
 {niches_instruction}
 {demand_summary}
+{keywords_block}
 
 REGRAS:
 - Cada ideia deve ser UNICA e diferente das existentes
@@ -279,16 +299,30 @@ Retorne APENAS o JSON.{lang_instruction}"""
 
         new_ideas = json.loads(json_match.group())
 
-        # Enrich titles with search volume (1 batch DataForSEO call)
-        try:
-            from protocols.keywords_everywhere import enrich_titles_with_volume
-            lang = proj.get("language", "pt-BR") if proj else "pt-BR"
-            lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
-            country = lang_to_country.get(lang[:2], "us")
-            new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
-            logger.info(f"Enriched {len(new_ideas)} titles with volume data")
-        except Exception as e:
-            logger.warning(f"Volume enrichment failed (non-blocking): {e}")
+        # Map volume from pre-researched keywords (no extra API call)
+        # Only match 2+ word keywords (single words are too generic)
+        if niche_keywords:
+            from protocols.keywords_everywhere import _strip_accents
+            kw_vol_map = {
+                _strip_accents(kw["keyword"].lower()): kw["vol"]
+                for kw in niche_keywords if " " in kw["keyword"]
+            }
+            for idea in new_ideas[:30]:
+                title_lower = _strip_accents(idea.get("title", "").lower())
+                best_vol = 0
+                for kw_text, kw_vol in kw_vol_map.items():
+                    if kw_text in title_lower and kw_vol > best_vol:
+                        best_vol = kw_vol
+                idea["vol"] = best_vol if best_vol > 0 else -1
+        else:
+            # Fallback: enrich via separate DataForSEO call
+            try:
+                from protocols.keywords_everywhere import enrich_titles_with_volume
+                lang_to_country = {"pt": "br", "en": "us", "es": "es", "fr": "fr", "de": "de"}
+                country = lang_to_country.get(lang[:2], "us")
+                new_ideas = enrich_titles_with_volume(new_ideas[:30], country=country)
+            except Exception as e:
+                logger.warning(f"Volume enrichment failed (non-blocking): {e}")
 
         saved = []
         for idea in new_ideas:
