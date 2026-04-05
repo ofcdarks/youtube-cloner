@@ -80,14 +80,25 @@ async def api_score_all(
 
     ideas = get_ideas(pid)
 
-    def _score_all():
+    # Limit to max 15 titles per batch to avoid timeout
+    to_score = []
+    skipped = []
+    for idea in ideas:
+        if idea.get("score", 0) > 0 and not force_rescore:
+            skipped.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea.get("rating", "N/A"), "skipped": True})
+        else:
+            to_score.append(idea)
+
+    # Cap at 15 to stay under timeout
+    if len(to_score) > 15:
+        logger.info(f"Score-all: limiting batch from {len(to_score)} to 15 titles")
+        to_score = to_score[:15]
+
+    def _score_batch():
         """Run scoring in thread so health checks keep responding."""
         from protocols.title_scorer import score_title
         results = []
-        for idea in ideas:
-            if idea.get("score", 0) > 0 and not force_rescore:
-                results.append({"id": idea["id"], "title": idea["title"], "score": idea["score"], "rating": idea["rating"], "skipped": True})
-                continue
+        for idea in to_score:
             try:
                 score_result = score_title(idea["title"], country_list)
                 update_idea_score(idea["id"], score_result["final_score"], score_result["rating"], score_result)
@@ -97,16 +108,24 @@ async def api_score_all(
                     "score": score_result["final_score"],
                     "rating": score_result["rating"],
                 })
+                logger.info(f"Scored: '{idea['title'][:30]}' → {score_result['final_score']}")
             except Exception as e:
                 logger.warning(f"Score failed for '{idea['title'][:30]}': {e}")
-                results.append({"id": idea["id"], "title": idea["title"], "score": 0, "rating": "N/A", "error": "Falha ao pontuar"})
+                # Give a base score instead of 0 so it's not useless
+                update_idea_score(idea["id"], 50, "N/A", {"error": str(e)[:100]})
+                results.append({"id": idea["id"], "title": idea["title"], "score": 50, "rating": "N/A", "error": "Falha ao pontuar"})
         return results
 
     try:
-        results = await asyncio.to_thread(_score_all)
-        return JSONResponse({"ok": True, "scored": len(results), "results": results})
+        results = await asyncio.to_thread(_score_batch)
+        all_results = skipped + results
+        remaining = len(ideas) - len(skipped) - len(to_score)
+        msg = ""
+        if remaining > 0:
+            msg = f" ({remaining} titulos restantes — clique novamente para pontuar mais)"
+        return JSONResponse({"ok": True, "scored": len(results), "skipped": len(skipped), "remaining": remaining, "results": all_results, "message": msg})
     except Exception as e:
-        logger.error(f"score-all error: {e}")
+        logger.error(f"score-all error: {e}", exc_info=True)
         return JSONResponse({"error": "Falha ao pontuar titulos."}, status_code=500)
 
 
