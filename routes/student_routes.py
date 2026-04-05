@@ -793,28 +793,29 @@ async def api_score_script(request: Request, user=Depends(require_auth)):
         return JSONResponse({"error": "Configure sua API key primeiro"}, status_code=400)
 
     try:
-        judge_prompt = f"""Voce e um JUIZ DE QUALIDADE de roteiros para YouTube. Avalie o roteiro abaixo contra o SOP do canal.
+        judge_prompt = f"""Voce e um JUIZ IMPLACAVEL de roteiros YouTube. Seu trabalho: avaliar o roteiro CONTRA o SOP do canal.
+O SOP e o DNA do canal — cada secao define uma regra. Seu Score DEVE refletir o quanto o roteiro segue o SOP.
 
-===== SOP DO CANAL (REFERENCIA DE EXCELENCIA) =====
-{sop_content[:8000]}
+===== SOP COMPLETO DO CANAL =====
+{sop_content}
 ===== FIM DO SOP =====
 
 ===== ROTEIRO A AVALIAR =====
-{script_content[:10000]}
+{script_content}
 ===== FIM DO ROTEIRO =====
 
-AVALIE o roteiro em CADA criterio abaixo com nota 0-10 e feedback ESPECIFICO:
+AVALIE o roteiro em CADA criterio. Para CADA um, CITE a secao especifica do SOP que embasa sua nota:
 
-1. HOOK (0-10): O hook prende nos primeiros 5 segundos? Segue o playbook do SOP?
-2. OPEN LOOPS (0-10): Tem 3+ open loops bem construidos? Sao resolvidos no momento certo?
-3. STORYTELLING (0-10): Usa pattern interrupts, cliffhangers, specific spikes como o SOP define?
-4. TOM DE VOZ (0-10): Vocabulario, ritmo e formalidade batem com a secao 15 do SOP?
-5. ESTRUTURA (0-10): Segue o template da secao 16? Atos bem definidos? Transicoes fluidas?
-6. REGRAS DE OURO (0-10): Respeita todas as regras da secao 6? Alguma foi quebrada?
-7. DURACAO (0-10): Tamanho adequado ao padrao do canal? Nem curto nem longo demais?
-8. ENGAGEMENT (0-10): Mantem atencao do inicio ao fim? Tem spikes a cada 2-3 min?
-9. ORIGINALIDADE (0-10): Traz insights/angulos novos ou so copia o padrao?
-10. FECHAMENTO (0-10): Encerra no estilo do SOP? CTA natural? Gancho pro proximo video?
+1. HOOK (0-10): Segue o Playbook de Hooks da Secao 4 do SOP? Qual dos 8 frameworks usa? O hook prende em 5s?
+2. OPEN LOOPS (0-10): Segue as tecnicas da Secao 5? Tem 3+ open loops? Resolucao tardia como o SOP define?
+3. STORYTELLING (0-10): Aplica pattern interrupts e specific spikes da Secao 5? Cliffhangers nos pontos certos?
+4. TOM DE VOZ (0-10): Bate com o system prompt da Secao 15? Vocabulario, ritmo, formalidade corretos?
+5. ESTRUTURA (0-10): Segue o template da Secao 16 com timestamps? Atos claros? Transicoes do SOP?
+6. REGRAS DE OURO (0-10): Respeita CADA uma das 15 regras da Secao 6? Liste quais foram quebradas.
+7. DURACAO (0-10): Bate com a duracao ideal definida na Secao 2? Conte as palavras de voice-over.
+8. ENGAGEMENT (0-10): Tem spikes de retencao como a Secao 12 define? A cada quantos minutos?
+9. ORIGINALIDADE (0-10): Traz algo que o canal original NAO explorou? Ou e um clone sem valor adicional?
+10. FECHAMENTO (0-10): Segue o modelo de fechamento da Secao 3? CTA natural? Gancho pro proximo?
 
 Responda EXATAMENTE neste formato JSON (sem texto antes ou depois):
 {{
@@ -984,32 +985,47 @@ Sua UNICA missao: reescrever o roteiro para que o Score suba de {score_data.get(
 {roteiro}
 ===== FIM DO ROTEIRO =====
 
-SOP DO CANAL (referencia de estilo):
-{sop[:4000]}
+===== SOP COMPLETO DO CANAL (SEU MANUAL DE REFERENCIA) =====
+{sop}
+===== FIM DO SOP =====
+
+O SOP acima e o DNA do canal. O Judge avalia o roteiro CONTRA este SOP. Cada criterio do Score reflete uma secao do SOP:
+- Hook → SOP Secao 4 (Playbook de Hooks — 8 tipos com exemplos)
+- Open Loops → SOP Secao 5 (Tecnicas de Storytelling)
+- Storytelling → SOP Secao 5 (Pattern interrupts, cliffhangers, spikes)
+- Tom de Voz → SOP Secao 15 (System prompt com vocabulario e tom especificos)
+- Estrutura → SOP Secao 16 (Template de roteiro com timestamps)
+- Regras de Ouro → SOP Secao 6 (15 regras inegociaveis com exemplos)
+- Duracao → SOP Secao 2 (Formato e producao — duracao ideal)
+- Engagement → SOP Secao 12 (Retencao — spikes a cada 2 min)
+- Originalidade → SOP Secao 14 (Evolucao — diferenciais)
+- Fechamento → SOP Secao 3 (Anatomia do roteiro — climax e CTA)
 
 INSTRUCOES CIRURGICAS:
 
-1. PARA CADA CRITERIO COM NOTA < 8, voce DEVE fazer mudancas CONCRETAS:
-   - Se Open Loops esta baixo: adicione 3+ open loops claros, cada um com setup explicito e resolucao tardia
-   - Se Hook esta baixo: reescreva os primeiros 30 segundos com uma pergunta impossivel de ignorar
-   - Se Tom de Voz esta baixo: ajuste vocabulario para ser mais coloquial e urgente, menos formal
-   - Se Regras de Ouro esta baixo: revise cada regra do SOP secao 6 e aplique explicitamente
-   - Se Engagement esta baixo: adicione spikes a cada 2 minutos (dados chocantes, revelacoes, plot twists)
-   - Se Fechamento esta baixo: reescreva com moral clara + CTA natural + gancho para proximo video
-   - Se Duracao esta baixo: ajuste para 10-14 minutos de narracao (1500-2100 palavras voice-over)
-   - Se Estrutura esta baixo: siga rigorosamente HOOK > CONTEXTO > ATO1 > ATO2 > ATO3 > CLIMAX > RESOLUCAO > CTA
-   - Se Originalidade esta baixo: adicione dados, perspectivas ou angulos que ninguem explorou
-   - Se Storytelling esta baixo: use pattern interrupts, cliffhangers, analogias viscerais
+1. PARA CADA CRITERIO COM NOTA < 8, RELEIA a secao correspondente do SOP acima e aplique EXATAMENTE o que ela diz:
+   - Se Open Loops esta baixo: releia SOP Secao 5, use os MESMOS tipos de open loops listados, com setup explicito e resolucao tardia
+   - Se Hook esta baixo: releia SOP Secao 4, escolha UM dos 8 frameworks de hook e aplique com exemplo real
+   - Se Tom de Voz esta baixo: releia SOP Secao 15, copie o vocabulario e ritmo descritos, substitua palavras formais
+   - Se Regras de Ouro esta baixo: releia SOP Secao 6, verifique CADA uma das 15 regras e corrija violacoes
+   - Se Engagement esta baixo: releia SOP Secao 12, adicione spikes nos intervalos que o SOP define
+   - Se Fechamento esta baixo: releia SOP Secao 3, aplique o modelo de fechamento descrito
+   - Se Duracao esta baixo: releia SOP Secao 2, ajuste para a duracao que o SOP recomenda
+   - Se Estrutura esta baixo: releia SOP Secao 16, siga o template EXATO com timestamps
+   - Se Originalidade esta baixo: adicione dados, perspectivas ou angulos que o canal original NAO explorou
+   - Se Storytelling esta baixo: releia SOP Secao 5, use os pattern interrupts e cliffhangers ESPECIFICOS listados
 
-2. APLIQUE CADA ACAO ESPECIFICA do Judge (listadas acima) — sem excecao.
+2. APLIQUE CADA ACAO ESPECIFICA do Judge (listadas no diagnostico) — sem excecao.
 
-3. NAO PIORAR os criterios com nota >= 8.
+3. NAO PIORAR os criterios com nota >= 8 — mantenha essas secoes intactas.
 
-4. O roteiro deve ter marcacoes [MUSICA:], [SFX:], [B-ROLL:] nos momentos certos.
+4. Inclua marcacoes [MUSICA:], [SFX:], [B-ROLL:] nos momentos certos.
 
 5. Inclua disclaimer de IA no final.
 
-6. ESCREVA O ROTEIRO COMPLETO — nao resuma, nao pule secoes."""
+6. ESCREVA O ROTEIRO COMPLETO — nao resuma, nao pule secoes.
+
+7. A narracao (voice-over puro) deve ter entre 1500-2100 palavras."""
 
     system_msg = "Voce e um EDITOR SENIOR de roteiros YouTube. Sua especialidade: pegar roteiros com Score 70-80 e transformar em 85+. Voce NAO reescreve do zero — voce faz cirurgia precisa nos pontos fracos mantendo os pontos fortes intactos. Cada mudanca deve ser justificavel pelo feedback do Judge. Voce escreve roteiros COMPLETOS, nunca resumos."
 
