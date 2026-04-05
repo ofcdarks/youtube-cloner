@@ -27,7 +27,10 @@ def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
     if user.get("use_admin_api"):
         from config import LAOZHANG_API_KEY
         if LAOZHANG_API_KEY:
-            return LAOZHANG_API_KEY, "laozhang", "claude-sonnet-4-6"
+            # Get admin-configured model from settings
+            from database import get_setting
+            admin_model = get_setting("admin_ai_model") or "claude-3-7-sonnet-latest"
+            return LAOZHANG_API_KEY, "laozhang", admin_model
 
     # Fall back to student's own key with default models per provider
     api_key = _decrypt_api_key(user.get("api_key_encrypted", ""))
@@ -943,38 +946,53 @@ REGRAS:
 
         import httpx, json
 
+        result_text = ""
+
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=180) as client:
                 resp = await client.post(api_url, json={
                     "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": judge_prompt}],
-                    "max_tokens": 3000,
+                    "max_tokens": 4000,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
                 data = resp.json()
-                result_text = data["choices"][0]["message"]["content"]
+                if "error" in data:
+                    logger.error(f"Score API error: {data['error']}")
+                    return JSONResponse({"error": "Erro na API ao avaliar. Verifique sua chave."}, status_code=400)
+                result_text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=180) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
                     "model": ai_model,
-                    "max_tokens": 3000,
+                    "max_tokens": 4000,
                     "system": system_msg,
                     "messages": [{"role": "user", "content": judge_prompt}],
                 }, headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"})
                 data = resp.json()
-                result_text = data["content"][0]["text"]
+                if "error" in data:
+                    logger.error(f"Score Anthropic error: {data['error']}")
+                    return JSONResponse({"error": "Erro na API Anthropic ao avaliar."}, status_code=400)
+                content_blocks = data.get("content", [])
+                result_text = content_blocks[0].get("text", "") if content_blocks else ""
 
         elif provider == "google":
             api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=180) as client:
                 resp = await client.post(f"{api_url}?key={api_key}", json={
                     "contents": [{"parts": [{"text": system_msg + "\n\n" + judge_prompt}]}],
                 })
                 data = resp.json()
-                result_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                if "error" in data:
+                    return JSONResponse({"error": "Erro na API Google ao avaliar."}, status_code=400)
+                candidates = data.get("candidates", [])
+                result_text = candidates[0]["content"]["parts"][0]["text"] if candidates else ""
         else:
             return JSONResponse({"error": f"Provider '{provider}' nao suportado"}, status_code=400)
+
+        if not result_text:
+            return JSONResponse({"error": "IA retornou resposta vazia ao avaliar."}, status_code=500)
 
         # Parse JSON from response
         import re

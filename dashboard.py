@@ -1402,6 +1402,9 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
     except Exception:
         pass
 
+    from database import get_setting
+    admin_ai_model = get_setting("admin_ai_model") or "claude-3-7-sonnet-latest"
+
     return render(request, "admin_panel.html", {
         "user": user,
         "stats": stats,
@@ -1410,6 +1413,7 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
         "activity": activity,
         "api_keys": api_keys,
         "ai_usage": ai_usage,
+        "admin_ai_model": admin_ai_model,
     })
 
 
@@ -1820,6 +1824,19 @@ async def api_toggle_student(request: Request, user=Depends(require_admin)):
     student = get_user(int(student_id))
     if student:
         update_user(int(student_id), active=0 if student["active"] else 1)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/admin/set-ai-model")
+@limiter.limit("10/minute")
+async def api_set_ai_model(request: Request, user=Depends(require_admin)):
+    """Set the AI model used when admin shares API with students."""
+    body = await request.json()
+    model = body.get("model", "").strip()
+    if not model:
+        return JSONResponse({"error": "model obrigatorio"}, status_code=400)
+    from database import set_setting
+    set_setting("admin_ai_model", model)
     return JSONResponse({"ok": True})
 
 

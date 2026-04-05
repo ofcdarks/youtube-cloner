@@ -82,6 +82,23 @@
                 </div>
             </div>
         </div>
+
+        <!-- AI Model Selection -->
+        <div class="form-group" style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b">
+            <label style="font-weight:600">Modelo IA para Alunos (quando usa API do Admin)</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+                <select id="admin-ai-model" class="form-input" style="flex:1;max-width:400px" title="Modelo de IA">
+                    <option value="claude-3-7-sonnet-latest" {{ 'selected' if admin_ai_model == 'claude-3-7-sonnet-latest' else '' }}>Claude 3.7 Sonnet (recomendado — melhor custo-beneficio)</option>
+                    <option value="claude-sonnet-4-6" {{ 'selected' if admin_ai_model == 'claude-sonnet-4-6' else '' }}>Claude Sonnet 4.6 (mais recente)</option>
+                    <option value="claude-3-5-sonnet-latest" {{ 'selected' if admin_ai_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet (economico)</option>
+                    <option value="gpt-4o" {{ 'selected' if admin_ai_model == 'gpt-4o' else '' }}>GPT-4o (OpenAI)</option>
+                    <option value="gpt-4o-mini" {{ 'selected' if admin_ai_model == 'gpt-4o-mini' else '' }}>GPT-4o Mini (mais barato)</option>
+                    <option value="deepseek-v3.2" {{ 'selected' if admin_ai_model == 'deepseek-v3.2' else '' }}>DeepSeek V3.2 (ultra barato)</option>
+                </select>
+                <button type="button" class="btn-primary" style="padding:6px 16px;font-size:12px" onclick="saveAdminModel()">Salvar</button>
+                <span id="model-status" style="font-size:11px;color:#888">{{ admin_ai_model or 'claude-3-7-sonnet-latest' }}</span>
+            </div>
+        </div>
     </div>
 
     <!-- AI Analytics -->
@@ -218,6 +235,21 @@
         history.replaceState(null, '', '/admin/panel');
     }
 })();
+
+function saveAdminModel() {
+    var model = document.getElementById('admin-ai-model').value;
+    apiPost('/api/admin/set-ai-model', {model: model})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            document.getElementById('model-status').textContent = model;
+            document.getElementById('model-status').style.color = '#22c55e';
+            showToast('Modelo salvo: ' + model, 'success', 3000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    });
+}
 
 function disconnectGDrive() {
     if (!confirm('Desconectar Google Drive? Os arquivos no Drive nao serao apagados.')) return;
