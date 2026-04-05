@@ -416,6 +416,36 @@ function generateMoreIdeas() {
     });
 }
 
+function regenerateFromNiches() {
+    showConfirm(
+        'Refazer Titulos pelos Nichos',
+        'Isso vai <strong>APAGAR todos os titulos atuais</strong> e gerar 30 novos baseados nos nichos escolhidos (marcados como ESCOLHIDO).<br><br>O SOP original sera usado como referencia de tom e estilo.<br><br>Continuar?',
+        function() {
+            showProgressModal('Refazendo Titulos');
+            updateProgress(10, 'Apagando titulos antigos...');
+
+            apiPost('/api/admin/regenerate-titles', {
+                project_id: window.__CURRENT_PROJECT_ID || '',
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    updateProgress(100, data.generated + ' titulos gerados baseados em ' + data.niches_used + ' nicho(s)!');
+                    showToast(data.generated + ' titulos gerados!', 'success');
+                    setTimeout(function() { closeProgressModal(); reloadWithProject(); }, 2000);
+                } else {
+                    closeProgressModal();
+                    showToast('Erro: ' + (data.error || ''), 'error');
+                }
+            })
+            .catch(function(e) {
+                closeProgressModal();
+                showToast('Erro: ' + e.message, 'error');
+            });
+        }
+    );
+}
+
 
 /* ── Generate Script ─────────────────────────────────── */
 

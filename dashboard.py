@@ -1851,6 +1851,104 @@ async def api_toggle_student(request: Request, user=Depends(require_admin)):
     return JSONResponse({"ok": True})
 
 
+@app.post("/api/admin/regenerate-titles")
+@limiter.limit("3/minute")
+async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
+    """Delete all existing titles and regenerate 30 based on chosen niches + SOP."""
+    body = await request.json()
+    project_id = body.get("project_id", "").strip()
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    from database import get_db, get_niches, get_project, save_idea, log_activity
+    from services import get_project_sop
+    from protocols.ai_client import chat
+    from config import MAX_TOKENS_LARGE, LANG_LABELS
+    import asyncio
+
+    project = get_project(project_id)
+    if not project:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    sop = get_project_sop(project_id)
+    if not sop:
+        return JSONResponse({"error": "SOP nao encontrado para este projeto"}, status_code=400)
+
+    # Get chosen niches
+    all_niches = get_niches(project_id)
+    chosen = [n for n in all_niches if n.get("chosen")]
+    if not chosen:
+        chosen = all_niches[:2] if all_niches else [{"name": project.get("niche_chosen", ""), "description": ""}]
+
+    niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in chosen])
+    lang = project.get("language", "pt-BR")
+    lang_label = LANG_LABELS.get(lang, lang)
+    lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {lang_label}."
+
+    try:
+        # Delete existing ideas (not assigned to students)
+        with get_db() as conn:
+            # Only delete ideas NOT linked to active progress
+            conn.execute("""
+                DELETE FROM ideas WHERE project_id=? AND id NOT IN (
+                    SELECT DISTINCT idea_id FROM progress WHERE idea_id IS NOT NULL
+                )
+            """, (project_id,))
+            deleted = conn.total_changes
+
+        # Generate new titles based on chosen niches + SOP
+        prompt = f"""Gere 30 ideias de videos para o canal "{project.get('name', '')}".
+
+SUB-NICHOS ESCOLHIDOS (os titulos DEVEM ser EXCLUSIVAMENTE sobre estes):
+{niches_text}
+
+IMPORTANTE: Distribua igualmente entre os sub-nichos. O campo "pillar" DEVE ser o nome do sub-nicho.
+
+SOP DO CANAL (referencia de tom, estilo e tecnicas — NAO modificar o SOP, apenas usar como guia):
+{sop[:4000]}
+
+REGRAS:
+- CADA titulo MAXIMO 100 caracteres
+- Titulos impactantes, virais, com numeros ou perguntas quando possivel
+- Hooks dos primeiros 30 segundos
+- Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
+
+Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
+Retorne APENAS o JSON.{lang_instruction}"""
+
+        response = await asyncio.to_thread(
+            chat, prompt, "Especialista em titulos virais YouTube.", MAX_TOKENS_LARGE, 0.8
+        )
+
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if not json_match:
+            return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
+
+        new_ideas = json.loads(json_match.group())
+        generated = 0
+        for i, idea in enumerate(new_ideas[:30]):
+            title = idea.get("title", f"Titulo {i+1}")
+            if len(title) > 100:
+                title = title[:97] + "..."
+            save_idea(project_id, i + 1, title,
+                     idea.get("hook", ""), idea.get("summary", ""),
+                     idea.get("pillar", ""), idea.get("priority", "MEDIA"))
+            generated += 1
+
+        log_activity(project_id, "titles_regenerated",
+                     f"{generated} titulos re-gerados baseados em {len(chosen)} nicho(s)")
+
+        return JSONResponse({
+            "ok": True,
+            "generated": generated,
+            "deleted": deleted,
+            "niches_used": len(chosen),
+        })
+    except Exception as e:
+        logger.error(f"regenerate-titles error: {e}", exc_info=True)
+        return JSONResponse({"error": "Falha ao re-gerar titulos."}, status_code=500)
+
+
 @app.post("/api/admin/set-ai-model")
 @limiter.limit("10/minute")
 async def api_set_ai_model(request: Request, user=Depends(require_admin)):
