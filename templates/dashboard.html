@@ -303,21 +303,21 @@
                         <div class="idea-score" style="color:{{ sc }}" title="{{ rating }}">{{ score if score > 0 else '-' }}</div>
                         {% if idea.search_volume and idea.search_volume != 0 %}
                         {% if idea.search_volume >= 10000 %}
-                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#22c55e18;color:#22c55e;white-space:nowrap;font-weight:600" title="Volume ALTO — keyword muito buscada">&#128293; {{ "{:,}".format(idea.search_volume) }}/mes</div>
+                        <div style="font-size:13px;padding:4px 10px;border-radius:4px;background:#22c55e18;color:#22c55e;white-space:nowrap;font-weight:600" title="Volume ALTO — keyword muito buscada">&#128293; {{ "{:,}".format(idea.search_volume) }}/mes</div>
                         {% elif idea.search_volume >= 1000 %}
-                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#06b6d418;color:#06b6d4;white-space:nowrap" title="Volume bom — keyword com demanda">&#128270; {{ "{:,}".format(idea.search_volume) }}/mes</div>
+                        <div style="font-size:13px;padding:4px 10px;border-radius:4px;background:#06b6d418;color:#06b6d4;white-space:nowrap" title="Volume bom — keyword com demanda">&#128270; {{ "{:,}".format(idea.search_volume) }}/mes</div>
                         {% elif idea.search_volume > 0 %}
-                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#eab30818;color:#eab308;white-space:nowrap" title="Volume baixo — nicho especifico">&#128270; {{ "{:,}".format(idea.search_volume) }}/mes</div>
+                        <div style="font-size:13px;padding:4px 10px;border-radius:4px;background:#eab30818;color:#eab308;white-space:nowrap" title="Volume baixo — nicho especifico">&#128270; {{ "{:,}".format(idea.search_volume) }}/mes</div>
                         {% else %}
-                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#71717a18;color:#a1a1aa;white-space:nowrap" title="Volume verificado — nicho muito especifico">&#128270; &lt;10/mes</div>
+                        <div style="font-size:13px;padding:4px 10px;border-radius:4px;background:#71717a18;color:#a1a1aa;white-space:nowrap" title="Volume verificado — nicho muito especifico">&#128270; &lt;10/mes</div>
                         {% endif %}
                         {% endif %}
                         {% if idea.trending %}
-                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#f59e0b18;color:#f59e0b;white-space:nowrap;font-weight:600" title="Em ALTA — keyword em crescimento no YouTube/Google Trends">&#128200; trending</div>
+                        <div style="font-size:13px;padding:4px 10px;border-radius:4px;background:#f59e0b18;color:#f59e0b;white-space:nowrap;font-weight:600" title="Em ALTA — keyword em crescimento no YouTube/Google Trends">&#128200; trending</div>
                         {% endif %}
                         <div class="idea-priority" style="color:{{ pri_color }}">{{ pri }}</div>
                         {% if idea.title_b %}
-                        <div style="font-size:9px;padding:1px 5px;border-radius:3px;background:#7c3aed18;color:#7c3aed;cursor:pointer;white-space:nowrap" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" title="Ver variante B do titulo">A/B</div>
+                        <div style="font-size:12px;padding:3px 8px;border-radius:4px;background:#7c3aed18;color:#7c3aed;cursor:pointer;white-space:nowrap;font-weight:600" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" title="Ver variante B do titulo">A/B</div>
                         <div style="display:none;position:absolute;right:40px;top:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:8px 12px;font-size:11px;z-index:10;max-width:350px;box-shadow:0 4px 12px rgba(0,0,0,.5)">
                             <div style="color:#a1a1aa;font-size:9px;margin-bottom:4px">VARIANTE B:</div>
                             <div style="color:#e2e8f0">{{ idea.title_b }}</div>
