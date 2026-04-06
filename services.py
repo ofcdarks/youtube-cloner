@@ -340,7 +340,7 @@ def generate_mindmap_html(
     # Channel info — extract REAL data from SOP (structured extraction)
     import re as _re
 
-    def _extract_sop_field(lines, keywords, max_len=80):
+    def _extract_sop_field(lines, keywords, max_len=200):
         """Extract first line matching any keyword, clean it up."""
         for line in lines:
             lo = line.lower()
@@ -369,10 +369,10 @@ def generate_mindmap_html(
     if canal_formato:
         canal_info.append(f"Formato: {canal_formato}")
     if canal_hook:
-        canal_info.append(f"Hook Playbook: {canal_hook[:60]}")
+        canal_info.append(f"Hook Playbook: {canal_hook[:120]}")
     if canal_storytelling:
-        canal_info.append(f"Storytelling: {canal_storytelling[:60]}")
-    canal_info = canal_info[:6]
+        canal_info.append(f"Storytelling: {canal_storytelling[:120]}")
+    canal_info = canal_info[:8]
 
     # Production info — extract from SOP or use defaults
     prod_nicho = _extract_sop_field(sop_lines, ['nicho principal', 'genero:', 'categoria:']) or f"Nicho Principal: {niche_name}"
@@ -394,10 +394,12 @@ def generate_mindmap_html(
 
     # Roteiros info
     roteiros_html = ""
-    for i, idea in enumerate(top_ideas[:3]):
-        t = esc(idea.get("title", f"Titulo {i+1}"))[:45]
+    for i, idea in enumerate(top_ideas[:5]):
+        t = esc(idea.get("title", f"Titulo {i+1}"))
         dur = f"{8 + i*2}-{10 + i*2} min"
-        roteiros_html += f'<div class="roteiro-item"><span class="r-num">{i+1}.</span> {t} <span class="r-dur">{dur}</span></div>'
+        vol = idea.get("search_volume", 0) or idea.get("score", 0)
+        vol_badge = f' <span style="font-size:9px;color:#06b6d4;background:#06b6d418;padding:1px 4px;border-radius:3px">{vol:,}/mes</span>' if vol and vol > 0 else ""
+        roteiros_html += f'<div class="roteiro-item"><span class="r-num">{i+1}.</span> {t}{vol_badge} <span class="r-dur">{dur}</span></div>'
     if not roteiros_html:
         roteiros_html = '<div class="roteiro-item">Nenhum roteiro gerado ainda</div>'
     roteiros_html += '<div class="roteiro-meta">Estrutura: Hook → Contexto → 3 Atos → Climax → CTA</div>'
@@ -415,7 +417,7 @@ def generate_mindmap_html(
     comp_colors = {"Baixa": "#22c55e", "Media": "#eab308", "Alta": "#ef4444", "Muito Alta": "#dc2626"}
     for n in alt_niches:
         nm = esc(n.get("name", ""))
-        desc = esc(n.get("description", ""))[:50]
+        desc = esc(n.get("description", ""))[:120]
         rpm = esc(n.get("rpm_range", ""))
         comp = n.get("competition", "Media")
         cc = comp_colors.get(comp, "#eab308")
@@ -423,20 +425,25 @@ def generate_mindmap_html(
 
     # Canal info HTML — with clickable link like Loaded Dice format
     channel_name = channel_url.split("/@")[-1].split("/")[0] if "/@" in channel_url else channel_url.split("/channel/")[-1].split("/")[0] if "/channel/" in channel_url else niche_name
-    canal_html = f'<div class="info-item" style="border-left:2px solid #22c55e;padding-left:8px"><a href="{esc(channel_url)}" target="_blank" rel="noopener" style="color:#22c55e;text-decoration:none;font-size:11px">{esc(channel_url[:50])}</a></div>'
+    canal_html = f'<div class="info-item" style="border-left:2px solid #22c55e;padding-left:8px"><a href="{esc(channel_url)}" target="_blank" rel="noopener" style="color:#22c55e;text-decoration:none;font-size:11px">{esc(channel_url[:80])}</a></div>'
     canal_html += "".join(f'<div class="info-item">{esc(c)}</div>' for c in canal_info)
     prod_html = "".join(f'<div class="info-item">{esc(p)}</div>' for p in prod_info)
 
-    # Top ideas (up to 15)
+    # Top ideas (up to 30)
     ideas_html = ""
-    for i, idea in enumerate(top_ideas[:15]):
-        t = esc(idea.get("title", ""))[:60]
-        desc = esc(idea.get("description", ""))[:80]
+    for i, idea in enumerate(top_ideas[:30]):
+        t = esc(idea.get("title", ""))
+        pillar = esc(idea.get("pillar", ""))
         pri = idea.get("priority", "MEDIA")
         pri_c = {"ALTA": "#ef4444", "MEDIA": "#eab308", "BAIXA": "#22c55e"}.get(pri, "#eab308")
-        ideas_html += f'''<div class="idea-card"><div class="idea-num">{i+1}</div><div class="idea-body"><b>{t}</b><p>{desc}</p><span class="pri-badge" style="background:{pri_c}">{pri}</span></div></div>'''
+        vol = idea.get("search_volume", 0)
+        vol_html = f'<span style="font-size:9px;color:#06b6d4;background:#06b6d418;padding:1px 5px;border-radius:3px;margin-left:4px">{vol:,}/mes</span>' if vol and vol > 0 else ""
+        trending = idea.get("trending", 0)
+        trend_html = '<span style="font-size:9px;color:#f59e0b;margin-left:4px">trending</span>' if trending else ""
+        pillar_html = f'<span style="font-size:9px;color:#a1a1aa;display:block;margin-top:2px">{pillar}</span>' if pillar else ""
+        ideas_html += f'''<div class="idea-card"><div class="idea-num">{i+1}</div><div class="idea-body"><b>{t}</b>{pillar_html}<div style="margin-top:4px"><span class="pri-badge" style="background:{pri_c}">{pri}</span>{vol_html}{trend_html}</div></div></div>'''
 
-    num_ideas = min(15, len(top_ideas))
+    num_ideas = min(30, len(top_ideas))
     sc = scripts_count or min(3, len(top_ideas))
 
     return f'''<!DOCTYPE html>
@@ -447,7 +454,7 @@ def generate_mindmap_html(
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{background:#0f0f14;color:#e4e4e7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;min-height:100vh}}
-.container{{max-width:1200px;margin:0 auto}}
+.container{{max-width:1600px;margin:0 auto}}
 h1{{font-size:28px;text-align:center;text-transform:uppercase;letter-spacing:3px;margin-bottom:4px}}
 .subtitle{{text-align:center;color:#a1a1aa;font-size:13px;margin-bottom:28px}}
 .stats{{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}}
@@ -486,10 +493,10 @@ h1{{font-size:28px;text-align:center;text-transform:uppercase;letter-spacing:3px
 .rpm-badge{{font-size:9px;padding:2px 6px;border-radius:3px;color:#000;font-weight:600;margin-left:4px}}
 .ideas-section{{margin-top:8px}}
 .ideas-section h2{{font-size:16px;margin-bottom:14px;text-align:center}}
-.ideas-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
+.ideas-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}}
 .idea-card{{background:#1a1a24;border-radius:8px;padding:12px;display:flex;gap:10px;align-items:flex-start}}
 .idea-num{{background:#7c3aed;color:#fff;font-size:11px;font-weight:700;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
-.idea-body b{{font-size:12px;display:block;margin-bottom:4px}}
+.idea-body b{{font-size:13px;display:block;margin-bottom:4px;line-height:1.3}}
 .idea-body p{{font-size:10px;color:#a1a1aa;margin-bottom:4px}}
 .pri-badge{{font-size:9px;padding:2px 8px;border-radius:3px;color:#fff;font-weight:600}}
 .footer{{text-align:center;color:#3f3f46;font-size:11px;margin-top:24px;padding-top:12px;border-top:1px solid #1a1a24}}
@@ -500,7 +507,7 @@ h1{{font-size:28px;text-align:center;text-transform:uppercase;letter-spacing:3px
 <body>
 <div class="container">
   <h1>{esc(niche_name)}</h1>
-  <p class="subtitle">YouTube Channel Blueprint - Clonado de {esc(channel_url[:50])} via AI Protocols</p>
+  <p class="subtitle">YouTube Channel Blueprint - Clonado via AI Protocols | {esc(channel_url[:80])}</p>
 
   <div class="stats">
     <div class="stat"><div class="stat-val">{chosen_rpm}</div><div class="stat-label">RPM Estimado</div></div>
