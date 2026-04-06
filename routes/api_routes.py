@@ -19,6 +19,78 @@ logger = logging.getLogger("ytcloner.routes.api")
 router = APIRouter(tags=["api"])
 
 
+@router.get("/api/seed-biblico")
+async def seed_biblico(request: Request):
+    """One-time seed: BIBLICO project."""
+    from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
+    existing = [p for p in get_projects() if "BIBLICO" == p.get("name", "")]
+    if existing:
+        return JSONResponse({"ok": True, "msg": "BIBLICO already exists", "id": existing[0]["id"]})
+    with get_db() as conn:
+        for sql in ["ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
+                     "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
+                     "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"]:
+            try: conn.execute(sql)
+            except: pass
+    pid = create_project(name="BIBLICO", channel_original="", niche_chosen="Historia Biblica Documental", language="es")
+    sop = """# BIBLICO SOP — Historia Biblica Documental
+DNA: Biblical archaeological documentary (Archivo Santo style). Faith + evidence. Reconstructions of biblical events with historical rigor.
+FORMAT: 12-25 min. Photorealistic biblical reconstructions, archaeological sites, artifacts, maps, scripture overlays.
+TITLE FORMULAS: "X Pruebas de que [evento biblico] SI Ocurrio", "Asi Era [evento] en Tiempos de la Biblia | 33 d.C.", "X Lugares Biblicos que Todavia Existen", "Lo que la Ciencia Descubrio sobre [personaje biblico]"
+HOOK: Mystery + evidence. "Existe un objeto que estuvo en contacto directo con Jesus. Y la ciencia confirmo que es real..."
+STRUCTURE: Mystery/question -> Historical context -> Evidence presentation -> Biblical narrative -> Archaeological proof -> Spiritual reflection
+TONE: Reverent yet investigative. Wonder-filled. Dramatic reconstructions. Never preachy — let evidence speak.
+GOLDEN RULES: 1.Faith+Evidence balance 2.Sensory immersion in biblical times 3.Archaeological proof always 4.Scripture woven naturally 5.Roman/Jewish context 6.Mystery before revelation 7.Respect all denominations 8.Numbers in titles 9.Present tense for reconstructions 10.Wonder over preaching 11.Specific dates/locations 12.Artifacts as proof 13.Modern relevance 14.Emotional climax at crucifixion/resurrection 15.End with reflection not sermon
+VISUAL: Photorealistic biblical reconstructions, ancient Jerusalem, Roman soldiers, temples, archaeological digs, artifacts in museums, maps of Holy Land, scripture text overlays
+RPM: $6-12. Audience: Spanish-speaking Christians 25-55, faith-curious seekers, history enthusiasts."""
+    save_file(pid, "analise", "SOP - BIBLICO (NotebookLM)", f"sop_{pid}.md", sop)
+    niches = [
+        ("Vida de Jesus - Reconstruccion Historica", "Eventos de la vida de Jesus reconstruidos: Semana Santa, milagros, sermon del monte, ultima cena", "$6-12", "Alta", "#DAA520", True),
+        ("Pruebas Arqueologicas de la Biblia", "Objetos, lugares y descubrimientos que confirman eventos biblicos. Evidencia cientifica.", "$8-14", "Baja", "#8B4513", True),
+        ("Lugares Biblicos que Aun Existen", "Jerusalen, Nazaret, Mar de Galilea, Jerico, Belen — como estan hoy vs tiempos biblicos", "$6-10", "Media", "#2E8B57", False),
+        ("Misterios y Profecias Biblicas", "Profecias cumplidas, misterios sin resolver, codigos ocultos, apocalipsis, reliquias perdidas", "$8-15", "Media", "#4B0082", False),
+        ("Personajes Biblicos Desconocidos", "Historias poco conocidas: Maria Magdalena, Judas, Barrabas, Poncio Pilato, los apostoles", "$6-12", "Baja", "#CD853F", False),
+    ]
+    for name, desc, rpm, comp, color, chosen in niches:
+        save_niche(pid, name, desc, rpm, comp, color, chosen)
+    titles = [
+        ("9 PRUEBAS de que Jesus SI Existio | La #7 es INCREIBLE", "Pruebas Arqueologicas de la Biblia", "ALTA", 74000),
+        ("Asi Era el VIERNES SANTO en Tiempos de la Biblia | 33 d.C.", "Vida de Jesus - Reconstruccion Historica", "ALTA", 49500),
+        ("12 Lugares BIBLICOS que Todavia Existen Hoy", "Lugares Biblicos que Aun Existen", "ALTA", 40500),
+        ("10 OBJETOS que Tuvieron Contacto Directo con JESUS", "Pruebas Arqueologicas de la Biblia", "ALTA", 33100),
+        ("7 Ciudades Biblicas que DIOS DESTRUYO | Y Como Estan Hoy", "Lugares Biblicos que Aun Existen", "ALTA", 27100),
+        ("Asi Era el DOMINGO DE RAMOS en Tiempos de la Biblia", "Vida de Jesus - Reconstruccion Historica", "ALTA", 22200),
+        ("7 Lugares REALES que Demuestran que Jesus Estuvo Aqui", "Pruebas Arqueologicas de la Biblia", "ALTA", 18100),
+        ("Asi Era el JUEVES SANTO en la Biblia | La Ultima Cena", "Vida de Jesus - Reconstruccion Historica", "ALTA", 14800),
+        ("Asi Era el SABADO SANTO en Tiempos de la Biblia | 33 d.C.", "Vida de Jesus - Reconstruccion Historica", "ALTA", 12100),
+        ("La TUMBA de Jesus: Lo que la Ciencia DESCUBRIO al Abrirla", "Pruebas Arqueologicas de la Biblia", "ALTA", 40500),
+        ("Las ULTIMAS 24 HORAS de Jesus | Reconstruccion Completa", "Vida de Jesus - Reconstruccion Historica", "ALTA", 33100),
+        ("El VERDADERO Rostro de Jesus Segun la Ciencia", "Pruebas Arqueologicas de la Biblia", "ALTA", 49500),
+        ("5 MILAGROS de Jesus que la Ciencia NO Puede Explicar", "Pruebas Arqueologicas de la Biblia", "MEDIA", 22200),
+        ("Asi Vivia MARIA MAGDALENA | La Verdad que la Iglesia Oculto", "Personajes Biblicos Desconocidos", "MEDIA", 18100),
+        ("La VERDADERA Historia de JUDAS | No es lo que te Contaron", "Personajes Biblicos Desconocidos", "MEDIA", 14800),
+        ("Que Paso con PONCIO PILATO Despues de Crucificar a Jesus", "Personajes Biblicos Desconocidos", "MEDIA", 12100),
+        ("El ARCA de la Alianza: Donde Esta REALMENTE", "Misterios y Profecias Biblicas", "ALTA", 27100),
+        ("7 PROFECIAS Biblicas que se Cumplieron con Precision EXACTA", "Misterios y Profecias Biblicas", "ALTA", 22200),
+        ("Los MANUSCRITOS del Mar Muerto: Lo que REVELAN sobre Jesus", "Pruebas Arqueologicas de la Biblia", "MEDIA", 18100),
+        ("Asi Era JERUSALEN en el Ano 33 d.C. | Reconstruccion Total", "Lugares Biblicos que Aun Existen", "MEDIA", 14800),
+        ("El TEMPLO de Salomon: Como Era REALMENTE", "Lugares Biblicos que Aun Existen", "MEDIA", 12100),
+        ("Las 7 PLAGAS de Egipto: Evidencia Cientifica REAL", "Pruebas Arqueologicas de la Biblia", "MEDIA", 33100),
+        ("Que Paso REALMENTE en Sodoma y Gomorra | Evidencia Arqueologica", "Misterios y Profecias Biblicas", "MEDIA", 18100),
+        ("El SANTO GRIAL: La Busqueda del Caliz de Cristo", "Misterios y Profecias Biblicas", "MEDIA", 14800),
+        ("Asi Era Ser APOSTOL de Jesus | La Vida que Nadie te Conto", "Personajes Biblicos Desconocidos", "MEDIA", 9900),
+        ("La SABANA SANTA: Lo que el ADN Revelo Sobre Jesus", "Pruebas Arqueologicas de la Biblia", "ALTA", 22200),
+        ("El DILUVIO Universal: La Ciencia Encontro PRUEBAS", "Misterios y Profecias Biblicas", "MEDIA", 27100),
+        ("Los ROMANOS y Jesus: Lo que los Documentos Oficiales Dicen", "Vida de Jesus - Reconstruccion Historica", "MEDIA", 8100),
+        ("5 RELIQUIAS Sagradas que Aun Existen y Puedes VER Hoy", "Pruebas Arqueologicas de la Biblia", "MEDIA", 9900),
+        ("La RESURRECCION de Jesus: Lo que Dicen los Historiadores NO Cristianos", "Pruebas Arqueologicas de la Biblia", "ALTA", 33100),
+    ]
+    for i, (title, pillar, pri, vol) in enumerate(titles):
+        save_idea(pid, i+1, title, "", "", pillar, pri, search_volume=vol, trending=1)
+    log_activity(pid, "project_seeded", f"BIBLICO seeded: 5 niches, {len(titles)} titles")
+    return JSONResponse({"ok": True, "project_id": pid, "niches": 5, "titles": len(titles)})
+
+
 
 
 @router.get("/api/ideas")
