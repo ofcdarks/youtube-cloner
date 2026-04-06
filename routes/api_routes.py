@@ -22,29 +22,22 @@ router = APIRouter(tags=["api"])
 @router.get("/api/seed-robos-encantados")
 async def seed_robos_encantados(request: Request):
     """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
-    import traceback as tb
-    try:
-        return await _do_seed_robos(request)
-    except Exception as e:
-        return JSONResponse({"error": str(e), "trace": tb.format_exc()}, status_code=500)
-
-async def _do_seed_robos(request: Request):
     from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
-    from database import get_niches, get_ideas
     existing = [p for p in get_projects() if "ROBOS ENCANTADOS" == p.get("name", "")]
-    with get_db() as conn:
-        for sql in ["ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
-                     "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
-                     "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"]:
-            try: conn.execute(sql)
-            except: pass
     if existing:
         pid = existing[0]["id"]
-        has_niches = len(get_niches(pid)) > 0
-        has_ideas = len(get_ideas(pid)) > 0
-        if has_niches and has_ideas:
-            return JSONResponse({"ok": True, "msg": "ROBOS ENCANTADOS already fully seeded", "id": pid})
+        with get_db() as conn:
+            nc = conn.execute("SELECT COUNT(*) FROM niches WHERE project_id=?", (pid,)).fetchone()[0]
+            ic = conn.execute("SELECT COUNT(*) FROM ideas WHERE project_id=?", (pid,)).fetchone()[0]
+        if nc > 0 and ic > 0:
+            return JSONResponse({"ok": True, "msg": "already seeded", "id": pid, "niches": nc, "ideas": ic})
     else:
+        with get_db() as conn:
+            for sql in ["ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
+                         "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
+                         "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"]:
+                try: conn.execute(sql)
+                except: pass
         pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
     sop = "# SOP ROBOS ENCANTADOS DA FLORESTA\n\nBased on Forest Spirits (@ForestSpirits25) — 11.1K subs, 763K views top video.\n\n## IDENTITY\nEnchanted miniature robot village. Tiny artisan copper/bronze robots with green patina, LED eyes, mushroom cap hats. Living in macro-scale forest with giant mushrooms, moss, ancient trees.\n\n## FORMAT\n5-8 min. No narration, no dialogue, no text. Celtic music + forest ambience + mechanical ASMR. Macro tilt-shift photography, golden hour, ultra-shallow DOF.\n\n## TITLE FORMULAS\nFormula A: '[Activity] in the Tiny Robot Village [emoji] Relaxing [Music Type] & [Ambience]'\nFormula B: 'Tiny Robots [Verb] [Magic Object] [emoji] [Music] & [Ambience]'\n\n## STRUCTURE\nWake-up (5-8%) → Preparation (15-20%) → Main Activity (40-50%) → Community Moment (15-20%) → Contemplation (5-10%)\nNO conflict, NO obstacle. Pure peace and visual satisfaction.\n\n## CAMERA RULES\nMacro, low angle ground level, tilt-shift, slow dolly-ins. NEVER extreme close-up (must keep 30% environment visible for LCDF last-frame consistency). NEVER handheld, fast cuts, drone.\n\n## VISUAL STYLE\nWeathered copper/bronze robots with patina, exposed gears, 3-finger metal hands. Mushroom houses, glowing fungi, moss paths, lantern light. Palette: copper #B87333, gold #DAA520, moss #4A7C59, amber #FFB84D, earth #3E2723.\n\n## AUDIO\nCeltic music (harp, flute). ASMR: metallic clicks, gear whirring, steam hissing, liquid dripping, fire crackling. NO voice ever."
     try:
