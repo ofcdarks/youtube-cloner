@@ -23,16 +23,22 @@ router = APIRouter(tags=["api"])
 async def seed_robos_encantados(request: Request):
     """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
     from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
+    from database import get_niches, get_ideas
     existing = [p for p in get_projects() if "ROBOS ENCANTADOS" == p.get("name", "")]
-    if existing:
-        return JSONResponse({"ok": True, "msg": "ROBOS ENCANTADOS already exists", "id": existing[0]["id"]})
     with get_db() as conn:
         for sql in ["ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
                      "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
                      "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"]:
             try: conn.execute(sql)
             except: pass
-    pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
+    if existing:
+        pid = existing[0]["id"]
+        has_niches = len(get_niches(pid)) > 0
+        has_ideas = len(get_ideas(pid)) > 0
+        if has_niches and has_ideas:
+            return JSONResponse({"ok": True, "msg": "ROBOS ENCANTADOS already fully seeded", "id": pid})
+    else:
+        pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
     sop = open("output/sop_robos_encantados_floresta.md", "r", encoding="utf-8").read()
     save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
     niches = [
