@@ -45,17 +45,21 @@ async def seed_robos_encantados(request: Request):
             return JSONResponse({"ok": True, "msg": "already seeded", "id": pid, "niches": nc, "ideas": ic})
         delete_project(pid)
     pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
-    sop = """# ROBOS ENCANTADOS SOP - Enchanted Miniature Robot Village
-DNA: Cozy miniature fantasy world with artisan copper robots (Forest Spirits style). AI-generated macro tilt-shift photography. Pure visual storytelling with zero narration.
-FORMAT: 5-8 min. NO narration, NO dialogue, NO text on screen. Celtic music (harp, flute, violin) + forest ambience + mechanical ASMR (gear clicks, steam hissing). Macro tilt-shift photography, golden hour lighting, ultra-shallow depth of field. Crossfade transitions only.
-TITLE FORMULAS: "Tiny Robots [Activity] [emoji] Relaxing Celtic Music & [Ambience]", "A Cozy Day in the Tiny Robot [Location] [emoji] [Music] & Nature Sounds", "Tiny Robots [Verb] a [Magic Object] [emoji] [Music] & [Ambience]", "Little Robots [Activity] [emoji] Peaceful [Music] & Forest Sounds"
-HOOK: 100pct VISUAL hook (no voice). Frame 1 (0-3s): village establishing shot, golden light, chimney smoke. Frame 2 (3-8s): robot protagonist wakes up, LED eyes glow. Frame 3 (8-15s): medium close-up of activity starting (NEVER extreme close-up). Frame 4 (15-30s): main activity revealed.
-STRUCTURE: Wake-up (5-8pct) > Preparation (15-20pct) > Main Activity (40-50pct) > Community Moment (15-20pct) > Contemplation at sunset (5-10pct). NO conflict. NO obstacle. NO tension. Pure peace and visual satisfaction. Homeostasis storytelling.
-TONE: Cozy, warm, peaceful, magical, meditative. Zero drama. Viewers use as background for studying, relaxing, sleeping. Every frame must transmit safety and enchantment.
-GOLDEN RULES: 1.NEVER extreme close-up on robot (must keep 30pct environment visible for LCDF last-frame consistency) 2.Robots NEVER speak 3.No text/logos on screen 4.Celtic music continuous loop 5.ASMR mechanical sounds mandatory 6.Golden hour lighting default 7.Macro low angle ground level camera 8.Tilt-shift for diorama effect 9.Slow dolly-ins and gentle pans only 10.Crossfade transitions (NEVER hard cuts) 11.Same robot design across all scenes 12.Scale consistency: leaf=table, acorn=pot, dewdrop=bathtub 13.Clothing does NOT change within video 14.Lighting shifts gradually (morning>afternoon>sunset) 15.At least 70pct scenes show protagonist robot
-VISUAL: Tiny artisan robots (5-8cm) made of weathered copper/bronze with green patina, exposed gears on chest, glowing warm amber LED eyes, red-and-white Amanita mushroom cap hats, leaf aprons, moss capes, vine belts with miniature tools, 3-finger articulated metal hands. Environment: enchanted forest with giant glowing mushrooms, ancient mossy trees, hollow stump houses with round hobbit doors, stone pathways, firefly lanterns. Palette: copper #B87333, gold #DAA520, moss green #4A7C59, amber #FFB84D, earth brown #3E2723, mushroom red #CC3333.
-CONTENT PILLARS: 1.Miniature Cooking (berry jam, acorn bread, herbal tea, mushroom soup) 2.Village Crafts (weaving, painting, pottery, sewing) 3.Forest Harvest (morning dew, wild berries, mushrooms, fishing) 4.Tiny Engineering (bridges, houses, waterwheels, lanterns) 5.Enchanted Exploration (secret lakes, crystal caves, gentle giant animals) 6.Community (market day, festivals, collective laundry) 7.Seasons (rainy day, first snow, spring bloom)
-RPM: $3-7. Audience: All ages, relaxation seekers, ASMR lovers, study/sleep music users, cottagecore/fantasy fans, 18-45."""
+    sop = ""
+    for sop_path in [
+        "/app/seed_output/sop_robos_encantados_floresta.md",
+        "/app/output/sop_robos_encantados_floresta.md",
+        "output/sop_robos_encantados_floresta.md",
+    ]:
+        try:
+            with open(sop_path, "r", encoding="utf-8") as f:
+                sop = f.read()
+            logger.info(f"Loaded ROBOS SOP from {sop_path} ({len(sop)} chars)")
+            break
+        except FileNotFoundError:
+            continue
+    if not sop:
+        sop = "# ROBOS ENCANTADOS SOP\nFallback - SOP file not found in seed_output."
     try:
         save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
     except Exception as e:
