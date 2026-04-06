@@ -39,13 +39,16 @@ async def seed_robos_encantados(request: Request):
             return JSONResponse({"ok": True, "msg": "ROBOS ENCANTADOS already fully seeded", "id": pid})
     else:
         pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
-    import os
-    sop_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "sop_robos_encantados_floresta.md")
     try:
-        sop = open(sop_path, "r", encoding="utf-8").read()
-    except FileNotFoundError:
-        sop = "# SOP ROBOS ENCANTADOS DA FLORESTA\nBased on Forest Spirits (@ForestSpirits25) - Enchanted miniature robot village with copper/bronze artisan robots in macro tilt-shift photography."
-    save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
+        import os, traceback
+        sop_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "sop_robos_encantados_floresta.md")
+        try:
+            sop = open(sop_path, "r", encoding="utf-8").read()
+        except FileNotFoundError:
+            sop = "# SOP ROBOS ENCANTADOS DA FLORESTA\nBased on Forest Spirits (@ForestSpirits25) - Enchanted miniature robot village with copper/bronze artisan robots in macro tilt-shift photography."
+        save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
+    except Exception as e:
+        logger.warning(f"SOP save skipped: {e}")
     niches = [
         ("Miniature Robot Cooking", "Tiny robots making jam, baking bread in acorn ovens, brewing herbal tea, making honey with mechanical bees", "$3-6", "Baja", "#B87333", True),
         ("Robot Village Crafts", "Weaving on miniature looms, painting with petal pigments, pottery from river clay, sewing leaf clothes", "$3-5", "Baja", "#4A7C59", True),
@@ -54,7 +57,10 @@ async def seed_robos_encantados(request: Request):
         ("Enchanted Forest Exploration", "Discovering secret lakes, crystal caves, meeting gentle giant animals (cats, butterflies, ladybugs)", "$4-7", "Baja", "#CC3333", False),
     ]
     for name, desc, rpm, comp, color, chosen in niches:
-        save_niche(pid, name, desc, rpm, comp, color, chosen)
+        try:
+            save_niche(pid, name, desc, rpm, comp, color, chosen)
+        except Exception as e:
+            logger.warning(f"Niche save skipped ({name}): {e}")
     titles = [
         ("Tiny Robots Making Wild Berry Jam in Acorn Pots | Relaxing Forest Ambience & Celtic Music", "Miniature Robot Cooking", "ALTA", 40500),
         ("A Cozy Day in the Tiny Robot Workshop | Calming Celtic Harp & Nature Sounds", "Tiny Robot Engineering", "ALTA", 33100),
@@ -87,10 +93,15 @@ async def seed_robos_encantados(request: Request):
         ("Tiny Robots Making Candles from Beeswax | ASMR Forest Sounds & Celtic Music", "Miniature Robot Cooking", "MEDIA", 14800),
         ("Tiny Robots Discover a Glowing Mushroom Garden | Magical Celtic Music & Ambience", "Enchanted Forest Exploration", "ALTA", 33100),
     ]
+    saved_titles = 0
     for i, (title, pillar, pri, vol) in enumerate(titles):
-        save_idea(pid, i+1, title, "", "", pillar, pri, search_volume=vol, trending=1)
-    log_activity(pid, "project_seeded", f"ROBOS ENCANTADOS seeded: 5 niches, {len(titles)} titles")
-    return JSONResponse({"ok": True, "project_id": pid, "niches": 5, "titles": len(titles)})
+        try:
+            save_idea(pid, i+1, title, "", "", pillar, pri, search_volume=vol, trending=1)
+            saved_titles += 1
+        except Exception as e:
+            logger.warning(f"Idea save skipped ({i+1}): {e}")
+    log_activity(pid, "project_seeded", f"ROBOS ENCANTADOS seeded: 5 niches, {saved_titles} titles")
+    return JSONResponse({"ok": True, "project_id": pid, "niches": 5, "titles": saved_titles})
 
 
 
