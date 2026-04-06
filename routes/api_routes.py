@@ -19,6 +19,67 @@ logger = logging.getLogger("ytcloner.routes.api")
 router = APIRouter(tags=["api"])
 
 
+@router.get("/api/seed-robos-encantados")
+async def seed_robos_encantados(request: Request):
+    """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
+    from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
+    existing = [p for p in get_projects() if "ROBOS ENCANTADOS" == p.get("name", "")]
+    if existing:
+        return JSONResponse({"ok": True, "msg": "ROBOS ENCANTADOS already exists", "id": existing[0]["id"]})
+    with get_db() as conn:
+        for sql in ["ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
+                     "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
+                     "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"]:
+            try: conn.execute(sql)
+            except: pass
+    pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
+    sop = open("output/sop_robos_encantados_floresta.md", "r", encoding="utf-8").read()
+    save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
+    niches = [
+        ("Miniature Robot Cooking", "Tiny robots making jam, baking bread in acorn ovens, brewing herbal tea, making honey with mechanical bees", "$3-6", "Baja", "#B87333", True),
+        ("Robot Village Crafts", "Weaving on miniature looms, painting with petal pigments, pottery from river clay, sewing leaf clothes", "$3-5", "Baja", "#4A7C59", True),
+        ("Forest Harvest & Foraging", "Collecting morning dew, picking wild berries, gathering mushrooms, fishing in tiny streams", "$3-5", "Baja", "#DAA520", False),
+        ("Tiny Robot Engineering", "Building bridges, constructing new mushroom houses, installing waterwheels, crafting lanterns", "$3-6", "Baja", "#CD7F32", False),
+        ("Enchanted Forest Exploration", "Discovering secret lakes, crystal caves, meeting gentle giant animals (cats, butterflies, ladybugs)", "$4-7", "Baja", "#CC3333", False),
+    ]
+    for name, desc, rpm, comp, color, chosen in niches:
+        save_niche(pid, name, desc, rpm, comp, color, chosen)
+    titles = [
+        ("Tiny Robots Making Wild Berry Jam in Acorn Pots | Relaxing Forest Ambience & Celtic Music", "Miniature Robot Cooking", "ALTA", 40500),
+        ("A Cozy Day in the Tiny Robot Workshop | Calming Celtic Harp & Nature Sounds", "Tiny Robot Engineering", "ALTA", 33100),
+        ("Tiny Robots Baking Acorn Bread by the Fireplace | Peaceful Celtic Music & ASMR", "Miniature Robot Cooking", "ALTA", 49500),
+        ("Little Robots Harvesting Morning Dew Drops | Enchanted Forest Ambience & Gentle Music", "Forest Harvest & Foraging", "ALTA", 27100),
+        ("Tiny Robot Village Market Day | Relaxing Celtic Music & Cozy Fantasy Ambience", "Robot Village Crafts", "ALTA", 40500),
+        ("Tiny Robots Find a Secret Crystal Cave | Calming Celtic Music & Forest Ambience", "Enchanted Forest Exploration", "ALTA", 33100),
+        ("Tiny Robots Meet a Gentle Giant Butterfly | Relaxing Harp Music & Nature Sounds", "Enchanted Forest Exploration", "ALTA", 74000),
+        ("Tiny Robots Build a Bridge Over the Stream | Cozy Celtic Music & Rain Ambience", "Tiny Robot Engineering", "ALTA", 22200),
+        ("Tiny Robots Open a Flower Paint Studio | Enchanted Village Music & Forest Sounds", "Robot Village Crafts", "MEDIA", 18100),
+        ("Tiny Robots Discover a Hidden Waterfall | Peaceful Celtic Music & Water Sounds", "Enchanted Forest Exploration", "ALTA", 27100),
+        ("Tiny Robots Brewing Herbal Tea in Nutshell Cups | ASMR Forest Ambience & Celtic Harp", "Miniature Robot Cooking", "ALTA", 33100),
+        ("Tiny Robots Weaving on a Miniature Loom | Calming Celtic Music & Rain Sounds", "Robot Village Crafts", "MEDIA", 14800),
+        ("A Rainy Day in the Enchanted Robot Village | Relaxing Rain & Celtic Music", "Robot Village Crafts", "ALTA", 49500),
+        ("Tiny Robots Picking Wild Strawberries | Peaceful Forest Ambience & Gentle Music", "Forest Harvest & Foraging", "ALTA", 40500),
+        ("Tiny Robots Making Honey with Mechanical Bees | Relaxing Celtic Harp & ASMR", "Miniature Robot Cooking", "MEDIA", 22200),
+        ("Tiny Robots Building a New Mushroom House | Cozy Celtic Music & Forest Ambience", "Tiny Robot Engineering", "ALTA", 33100),
+        ("Tiny Robots Painting Magic Flowers | Enchanted Village Ambience & Celtic Music", "Robot Village Crafts", "MEDIA", 18100),
+        ("Tiny Robots Fishing in a Crystal Stream | Relaxing Water Sounds & Celtic Harp", "Forest Harvest & Foraging", "MEDIA", 14800),
+        ("Tiny Robots Meet a Gentle Giant Cat | Calming Celtic Music & Cottagecore Ambience", "Enchanted Forest Exploration", "ALTA", 74000),
+        ("Tiny Robots Installing Firefly Lanterns | Peaceful Evening Ambience & Celtic Music", "Tiny Robot Engineering", "ALTA", 27100),
+        ("Tiny Robots Making Pottery from River Clay | ASMR Forest Sounds & Gentle Music", "Robot Village Crafts", "MEDIA", 18100),
+        ("First Snow in the Tiny Robot Village | Relaxing Celtic Music & Winter Ambience", "Robot Village Crafts", "ALTA", 49500),
+        ("Tiny Robots Cooking Mushroom Soup by the Fire | Cozy ASMR & Celtic Harp Music", "Miniature Robot Cooking", "ALTA", 33100),
+        ("Tiny Robots Explore Ancient Moss-Covered Ruins | Enchanted Forest Ambience & Music", "Enchanted Forest Exploration", "MEDIA", 22200),
+        ("Tiny Robots Gathering Mushrooms at Dawn | Peaceful Celtic Music & Nature Sounds", "Forest Harvest & Foraging", "MEDIA", 14800),
+        ("Tiny Robots Sewing Leaf Clothes for Winter | Calming Celtic Music & Rain Ambience", "Robot Village Crafts", "MEDIA", 12100),
+        ("Tiny Robots Building a Waterwheel | Relaxing Water Sounds & Celtic Harp", "Tiny Robot Engineering", "MEDIA", 18100),
+        ("Spring Festival in the Tiny Robot Village | Enchanted Music & Flower Ambience", "Robot Village Crafts", "ALTA", 40500),
+        ("Tiny Robots Making Candles from Beeswax | ASMR Forest Sounds & Celtic Music", "Miniature Robot Cooking", "MEDIA", 14800),
+        ("Tiny Robots Discover a Glowing Mushroom Garden | Magical Celtic Music & Ambience", "Enchanted Forest Exploration", "ALTA", 33100),
+    ]
+    for i, (title, pillar, pri, vol) in enumerate(titles):
+        save_idea(pid, i+1, title, "", "", pillar, pri, search_volume=vol, trending=1)
+    log_activity(pid, "project_seeded", f"ROBOS ENCANTADOS seeded: 5 niches, {len(titles)} titles")
+    return JSONResponse({"ok": True, "project_id": pid, "niches": 5, "titles": len(titles)})
 
 
 
