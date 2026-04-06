@@ -1527,6 +1527,21 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
     })
 
 
+@app.post("/api/admin/rename-project")
+@limiter.limit("30/minute")
+async def api_rename_project(request: Request, user=Depends(require_admin)):
+    body = await request.json()
+    project_id = body.get("project_id", "")
+    new_name = (body.get("name") or "").strip()
+    if not project_id or not new_name:
+        return JSONResponse({"error": "project_id e name obrigatorios"}, status_code=400)
+    if len(new_name) > 100:
+        return JSONResponse({"error": "Nome muito longo (max 100)"}, status_code=400)
+    from database import update_project
+    update_project(project_id, name=new_name)
+    return JSONResponse({"ok": True, "name": new_name})
+
+
 @app.post("/api/admin/delete-project")
 @limiter.limit("10/minute")
 async def api_delete_project(request: Request, user=Depends(require_admin)):

@@ -37,7 +37,7 @@
             <tbody>
                 {% for p in projects %}
                 <tr>
-                    <td style="font-weight:bold;color:#e0e0e0">{{ p.name }}</td>
+                    <td style="font-weight:bold;color:#e0e0e0;cursor:pointer" ondblclick="renameProject(this, '{{ p.id }}')" title="Duplo clique para renomear">{{ p.name }}</td>
                     <td style="font-size:.78em;color:#888;max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ p.channel_original or '-' }}</td>
                     <td style="text-align:center">{{ p.niche_count or 0 }}</td>
                     <td style="text-align:center">{{ p.idea_count or 0 }}</td>
@@ -82,6 +82,44 @@
 <script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
 <script src="/static/js/app.js?v=20260406"></script>
 <script>
+function renameProject(td, projectId) {
+    var currentName = td.textContent.trim();
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.style.cssText = 'background:#1a1a2e;color:#fff;border:1px solid #7c3aed;padding:4px 8px;border-radius:4px;font-size:14px;font-weight:bold;width:100%';
+    td.textContent = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+
+    function save() {
+        var newName = input.value.trim();
+        if (!newName || newName === currentName) {
+            td.textContent = currentName;
+            return;
+        }
+        apiPost('/api/admin/rename-project', {project_id: projectId, name: newName})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                td.textContent = newName;
+                showToast('Projeto renomeado para "' + newName + '"', 'success', 2000);
+            } else {
+                td.textContent = currentName;
+                showToast(data.error || 'Erro ao renomear', 'error');
+            }
+        })
+        .catch(function() { td.textContent = currentName; });
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        if (e.key === 'Escape') { td.textContent = currentName; }
+    });
+}
+
 function deleteProject(projectId, name) {
     showConfirm('Excluir Projeto', 'Tem certeza que deseja EXCLUIR o projeto "' + name + '"?<br><br>Todos os titulos, roteiros e nichos serao apagados. Esta acao nao pode ser desfeita.', function() {
         const loading = showToast('Excluindo projeto...', 'loading');
