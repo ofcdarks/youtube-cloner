@@ -39,7 +39,12 @@ async def seed_robos_encantados(request: Request):
             return JSONResponse({"ok": True, "msg": "ROBOS ENCANTADOS already fully seeded", "id": pid})
     else:
         pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
-    sop = open("output/sop_robos_encantados_floresta.md", "r", encoding="utf-8").read()
+    import os
+    sop_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "sop_robos_encantados_floresta.md")
+    try:
+        sop = open(sop_path, "r", encoding="utf-8").read()
+    except FileNotFoundError:
+        sop = "# SOP ROBOS ENCANTADOS DA FLORESTA\nBased on Forest Spirits (@ForestSpirits25) - Enchanted miniature robot village with copper/bronze artisan robots in macro tilt-shift photography."
     save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
     niches = [
         ("Miniature Robot Cooking", "Tiny robots making jam, baking bread in acorn ovens, brewing herbal tea, making honey with mechanical bees", "$3-6", "Baja", "#B87333", True),
