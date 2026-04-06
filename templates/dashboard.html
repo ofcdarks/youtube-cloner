@@ -312,6 +312,9 @@
                         <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#71717a18;color:#a1a1aa;white-space:nowrap" title="Volume verificado — nicho muito especifico">&#128270; &lt;10/mes</div>
                         {% endif %}
                         {% endif %}
+                        {% if idea.trending %}
+                        <div style="font-size:10px;padding:2px 6px;border-radius:3px;background:#f59e0b18;color:#f59e0b;white-space:nowrap;font-weight:600" title="Em ALTA — keyword em crescimento no YouTube/Google Trends">&#128200; trending</div>
+                        {% endif %}
                         <div class="idea-priority" style="color:{{ pri_color }}">{{ pri }}</div>
                         {% if idea.title_b %}
                         <div style="font-size:9px;padding:1px 5px;border-radius:3px;background:#7c3aed18;color:#7c3aed;cursor:pointer;white-space:nowrap" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" title="Ver variante B do titulo">A/B</div>

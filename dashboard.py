@@ -2166,6 +2166,27 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
         # Use accepted titles (sorted by viral score, cap at 30)
         new_ideas = accepted[:30]
 
+        # Mark titles containing TRENDING keywords (YouTube trending + Google Trends)
+        trending_terms = set()
+        for kw in demand_data.get("trending_keywords", []):
+            trending_terms.add(_strip_accents(kw.lower()))
+        for rs in demand_data.get("rising_searches", []):
+            trending_terms.add(_strip_accents(rs.get("query", "").lower()))
+        # Also trending titles from YouTube (last 14 days)
+        for tt in demand_data.get("trending_titles", []):
+            # Extract significant words from viral titles
+            words = [w for w in _strip_accents(tt.lower()).split() if len(w) >= 5]
+            trending_terms.update(words)
+
+        for idea in new_ideas:
+            title_lower = _strip_accents(idea.get("title", "").lower())
+            is_trending = 0
+            for term in trending_terms:
+                if len(term) >= 4 and term in title_lower:
+                    is_trending = 1
+                    break
+            idea["_trending"] = is_trending
+
         kw_hit_count = sum(1 for idea in new_ideas if idea.get("vol", 0) and idea.get("vol", 0) > 0)
 
         generated = 0
@@ -2181,7 +2202,8 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
             save_idea(project_id, i + 1, title,
                      idea.get("hook", ""), idea.get("summary", ""),
                      idea.get("pillar", ""), idea.get("priority", "MEDIA"),
-                     search_volume=vol, search_competition=comp, title_b=title_b)
+                     search_volume=vol, search_competition=comp, title_b=title_b,
+                     trending=idea.get("_trending", 0))
             generated += 1
 
         total = len(new_ideas[:30])

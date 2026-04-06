@@ -317,6 +317,7 @@ def _run_migrations():
         ("ideas_search_volume", "ALTER TABLE ideas ADD COLUMN search_volume INTEGER DEFAULT 0"),
         ("ideas_search_competition", "ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1"),
         ("ideas_title_b", "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''"),
+        ("ideas_trending", "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"),
         # Keyword cache per project (avoid re-researching every time)
         ("create_keyword_cache", """CREATE TABLE IF NOT EXISTS keyword_cache (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -537,12 +538,13 @@ def save_idea(
     search_volume: int = 0,
     search_competition: float = -1,
     title_b: str = "",
+    trending: int = 0,
 ) -> int:
     now = datetime.now().isoformat()
     with get_db() as conn:
         cur = conn.execute(
-            "INSERT INTO ideas (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, now),
+            "INSERT INTO ideas (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, trending, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, trending, now),
         )
         return cur.lastrowid
 
