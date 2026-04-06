@@ -22,6 +22,13 @@ router = APIRouter(tags=["api"])
 @router.get("/api/seed-robos-encantados")
 async def seed_robos_encantados(request: Request):
     """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
+    import traceback as tb
+    try:
+        return await _do_seed_robos(request)
+    except Exception as e:
+        return JSONResponse({"error": str(e), "trace": tb.format_exc()}, status_code=500)
+
+async def _do_seed_robos(request: Request):
     from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
     from database import get_niches, get_ideas
     existing = [p for p in get_projects() if "ROBOS ENCANTADOS" == p.get("name", "")]
