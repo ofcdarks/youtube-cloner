@@ -19,6 +19,119 @@ logger = logging.getLogger("ytcloner.routes.api")
 router = APIRouter(tags=["api"])
 
 
+@router.get("/api/seed-anacron")
+async def seed_anacron(request: Request):
+    """One-time seed: creates ANACRON project with SOP + niches + 30 titles."""
+    from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
+
+    # Check if already exists
+    existing = [p for p in get_projects() if "ANACRON" in p.get("name", "")]
+    if existing:
+        return JSONResponse({"ok": True, "msg": "ANACRON already exists", "id": existing[0]["id"]})
+
+    # Run migrations for new columns
+    with get_db() as conn:
+        for sql in [
+            "ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
+            "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
+            "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0",
+        ]:
+            try:
+                conn.execute(sql)
+            except Exception:
+                pass
+
+    # Create project
+    pid = create_project(name="ANACRON", channel_original="", niche_chosen="Dark Investigative Documentary", language="es")
+
+    # SOP
+    sop = """# THE ELITE DOCUMENTARY SOP: CHANNEL DNA, STRATEGY, & REPLICATION
+
+## PART 1: CHANNEL DNA
+IDENTITY: High-end armchair documentary and investigative deep-dive niche (fern, Blackfiles, IMPERIAL style). Cinematic storytelling about systemic flaws, covert operations, and extreme outlier events.
+FORMAT: Long-form 15-30 min. Mixed media: 2D motion graphics, animated maps, archival footage, satellite imagery. Deliberate dramatic pacing.
+AUDIENCE: Highly engaged adults interested in history, true crime, global politics. High RPM ($8-15+).
+TONE: Serious, dramatic, atmospheric, investigative. Vocabulary: visceral verbs, sensory details, cynical about institutions.
+
+## PART 2: HOOK ENGINEERING
+FORMULA: Timestamp + Location + Cinematic Action/Stakes + Thesis Question
+Example: "may 23rd 1992 at 5:56 p.m a man crouches on a hillside above a Sicilian highway gripping a remote control wired to 500 kg of explosives..."
+TYPES: In Media Res, Impossible Paradox, Narrative Reversal, Visual/Aesthetic Hook
+
+## PART 3: STORYTELLING RULES
+4-ACT STRUCTURE: Cold Open (tension) -> Flashback/System (empathy) -> Climax (adrenaline) -> Tragic Twist (institutional betrayal)
+15 GOLDEN RULES: 1.Timestamp Hook 2.In Media Res 3.David vs Goliath 4.Absolute Stakes 5.Translate Data to Human 6.Thesis Question 7.Sensory Vocabulary 8.Bureaucratic Villain 9.Flawed Hero 10.Invisible Pivot 11.Value CTAs 12.Tragic Twist Act 13.Rule of Three 14.Unresolved Ending 15.Binge-Bait Outro
+
+## PART 4: STRATEGY
+PILLARS: True Crime, Espionage, Geopolitics, Historical Deep-Dives, Cybercrime, Design/Systems
+TITLE FORMULAS: "The ONLY [person] who EVER [impossible feat]", "The [ordinary person] Who [defeated massive system]", "How [entity] [did something shocking]"
+SEO: FBI, CIA, Mafia, Cartel, North Korea, Exposed, Escaped, ONLY, EVER, Biggest
+RPM: $8-15+. Sponsors: Brilliant, Odoo, Incogni, War Thunder
+
+## PART 5: SYSTEM PROMPT
+You are an elite armchair documentary scriptwriter. Tone: serious, dramatic, atmospheric. Hook: always Timestamp+Location+Action+Question in first 60s. Structure: 4 acts with institutional betrayal twist. Never happy endings. Sensory vocabulary always. Data translated to human scale. Unresolved ending with philosophical warning."""
+
+    save_file(pid, "analise", "SOP - ANACRON (NotebookLM)", f"sop_{pid}.md", sop)
+
+    # 5 Niches
+    niches_data = [
+        ("Espionaje y Agentes Encubiertos", "Infiltraciones FBI/CIA en carteles, mafia, KKK. Agentes dobles, identidades falsas, traiciones.", "$10-18", "Media", "#8B2500", True),
+        ("Crimen Organizado y Carteles", "Logistica de carteles, tuneles secretos, heists legendarios, mafia siciliana.", "$8-15", "Alta", "#FF0000", True),
+        ("Geopolitica y Regimenes Oscuros", "Corea del Norte, China secreta, prisiones clandestinas, infraestructura totalitaria.", "$12-20", "Baja", "#1A1A2E", False),
+        ("Asesinatos Politicos e Historia Sombria", "Julio Cesar, magnicidios modernos, conspiraciones, golpes de estado.", "$8-14", "Media", "#2D3A4A", False),
+        ("Cibercrimen y Hackers", "Robos digitales millonarios, hackers rusos, dark web, ransomware.", "$10-16", "Baja", "#003300", False),
+    ]
+    for name, desc, rpm, comp, color, chosen in niches_data:
+        save_niche(pid, name, desc, rpm, comp, color, chosen)
+
+    # 30 Titles
+    titles = [
+        ("El Agente del FBI que INFILTRO la Mafia por 700 Dias", "Espionaje y Agentes Encubiertos", "ALTA", 9900),
+        ("El UNICO Hombre al que la Mafia JAMAS Pudo Tocar", "Espionaje y Agentes Encubiertos", "ALTA", 22200),
+        ("El Espia que Opero DENTRO de Corea del Norte por 6 Anos", "Espionaje y Agentes Encubiertos", "ALTA", 14800),
+        ("Como un Agente del FBI DESTRUYO al Ku Klux Klan", "Espionaje y Agentes Encubiertos", "ALTA", 33100),
+        ("El Trabajador de Fast Food que REVELO las Prisiones SECRETAS de China", "Espionaje y Agentes Encubiertos", "ALTA", 8100),
+        ("La Agente DOBLE que Engano a la CIA Durante 20 Anos", "Espionaje y Agentes Encubiertos", "MEDIA", 5400),
+        ("El Policia que se Convirtio en el Miembro mas CONFIABLE de Hells Angels", "Espionaje y Agentes Encubiertos", "MEDIA", 6600),
+        ("El ABUELO que Destruyo un Cartel SOLO", "Crimen Organizado y Carteles", "ALTA", 18100),
+        ("El Agente Federal que INVENTO Todos los Carteles de Mexico", "Crimen Organizado y Carteles", "ALTA", 12100),
+        ("El Narco que ASESINO a un Agente de la DEA y la CIA lo PROTEGIO", "Crimen Organizado y Carteles", "ALTA", 27100),
+        ("El Mayor ROBO de la Historia: Los Abuelos de Hatton Garden", "Crimen Organizado y Carteles", "ALTA", 9900),
+        ("Los TUNELES Secretos de los Carteles que la DEA No Puede Destruir", "Crimen Organizado y Carteles", "MEDIA", 6600),
+        ("La Banda que ATERRORIZO Londres y Nadie Pudo Detener", "Crimen Organizado y Carteles", "MEDIA", 4400),
+        ("El Capo que Escapo de 3 Prisiones de MAXIMA Seguridad", "Crimen Organizado y Carteles", "MEDIA", 14800),
+        ("Campo 14: El Lugar mas HORRIBLE de Corea del Norte", "Geopolitica y Regimenes Oscuros", "ALTA", 40500),
+        ("La Autopista SECRETA de China que Nadie Debia Fotografiar", "Geopolitica y Regimenes Oscuros", "ALTA", 8100),
+        ("El UNICO Norcoreano que Sobrevivio Escapando de su Propio Equipo", "Geopolitica y Regimenes Oscuros", "MEDIA", 5400),
+        ("Las Ciudades SOVIETICAS Mas Deprimentes que Aun Existen", "Geopolitica y Regimenes Oscuros", "MEDIA", 6600),
+        ("Por Que Otto Warmbier NO Sobrevivio a Corea del Norte", "Geopolitica y Regimenes Oscuros", "MEDIA", 12100),
+        ("El ASESINATO Mas Famoso de la Historia Minuto a Minuto", "Asesinatos Politicos e Historia Sombria", "ALTA", 49500),
+        ("Reconstruccion COMPLETA del Disparo a Trump", "Asesinatos Politicos e Historia Sombria", "ALTA", 74000),
+        ("Los Animales MUTANTES de Chernobyl que la Ciencia No Explica", "Asesinatos Politicos e Historia Sombria", "MEDIA", 22200),
+        ("El Diplomatico Norcoreano que Escapo con TODA su Familia", "Asesinatos Politicos e Historia Sombria", "MEDIA", 3600),
+        ("Como un Estafador de MINECRAFT Robo 16 MILLONES de Dolares", "Cibercrimen y Hackers", "ALTA", 33100),
+        ("El Hombre que HACKEO el Sistema Mas Importante del Mundo", "Cibercrimen y Hackers", "ALTA", 18100),
+        ("Los HACKERS Mas Buscados de Rusia que EEUU No Puede Atrapar", "Cibercrimen y Hackers", "MEDIA", 9900),
+        ("El Problema de PLAGIO con IA que YouTube No Quiere que Veas", "Cibercrimen y Hackers", "MEDIA", 5400),
+        ("El DISENO Estupido de los Autos Modernos que Mata Gente", "Cibercrimen y Hackers", "BAIXA", 14800),
+        ("El GENIO del Diseno de los Kioscos Comunistas", "Cibercrimen y Hackers", "BAIXA", 4400),
+        ("Los Hackers RUSOS que Paralizaron Hospitales en TODO el Mundo", "Cibercrimen y Hackers", "MEDIA", 8100),
+    ]
+    for i, (title, pillar, pri, vol) in enumerate(titles):
+        save_idea(pid, i + 1, title, "", "", pillar, pri, search_volume=vol, trending=1)
+
+    log_activity(pid, "project_seeded", f"ANACRON seeded: 5 niches, {len(titles)} titles, SOP from NotebookLM")
+
+    return JSONResponse({
+        "ok": True,
+        "project_id": pid,
+        "niches": len(niches_data),
+        "titles": len(titles),
+        "sop_chars": len(sop),
+        "msg": "ANACRON created successfully! Refresh the dashboard.",
+    })
+
+
 @router.get("/api/ideas")
 async def api_ideas(request: Request, project: str = "", user=Depends(require_auth)):
     from database import get_ideas, get_projects as db_projects
