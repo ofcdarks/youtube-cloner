@@ -155,7 +155,7 @@
         <div class="section-title"><span class="sec-icon">&#128161;</span> Nichos Gerados</div>
         <div class="grid-5">
             {% for n in nichos %}
-            <div class="niche-card {% if n.chosen %}niche-selected{% endif %}" onclick="selectNiche(this, '{{ n.name }}')" data-niche="{{ n.name }}" role="button" tabindex="0" aria-label="Selecionar nicho: {{ n.name }}">
+            <div class="niche-card {% if n.chosen %}niche-selected{% endif %}" onclick="selectNiche(this, this.dataset.niche)" data-niche="{{ n.name|e }}" role="button" tabindex="0" aria-label="Selecionar nicho: {{ n.name }}">
                 <div class="niche-indicator" style="background:{{ n.color }}"></div>
                 <div class="niche-name">{{ n.name }}
                     {% if n.chosen %}<span class="chosen-badge">ESCOLHIDO</span>{% endif %}
