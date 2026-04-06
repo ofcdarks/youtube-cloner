@@ -19,6 +19,11 @@ logger = logging.getLogger("ytcloner.routes.api")
 router = APIRouter(tags=["api"])
 
 
+@router.get("/api/deploy-check-9ab")
+async def deploy_check(request: Request):
+    return JSONResponse({"deployed": "9ab9872", "ts": "2026-04-06"})
+
+
 @router.get("/api/seed-robos-encantados")
 async def seed_robos_encantados(request: Request):
     """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
