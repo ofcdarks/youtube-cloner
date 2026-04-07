@@ -66,15 +66,16 @@ REGRA CRÍTICA DE IDIOMA (LEIA COM ATENÇÃO):
 REGRAS DE QUALIDADE:
 - NOME DO CANAL É CRÍTICO: deve ser ESTRATÉGICO, ORIGINAL e DIFERENCIADO. Não use clichês como "Top 10", "Daily X", "X Channel", "Mr X", "X Tube", "X Hub", "X World", traduções literais ou nomes que já existam em canais grandes. Pense em nomes que: (1) tenham personalidade única (palavras inventadas, junções inesperadas, referências profundas ao tema); (2) soem premium/cinematográficos (estilo "Vestigium Sacrum", "Corpus Mysterium", "Echoes of Empire", "Veritas Lux"); (3) sejam memoráveis e fáceis de buscar; (4) carreguem o ÂNGULO ÚNICO do canal já no nome. EVITE nomes que poderiam pertencer a qualquer canal genérico do nicho. O nome deve ser uma DECLARAÇÃO de posicionamento.
 
-REGRA CRÍTICA DE ESTIMATIVAS (PÉ NO CHÃO — NÃO INFLE):
-- A maioria dos canais NOVOS não passa de 5K inscritos em 6 meses mesmo postando consistentemente.
-- Apenas TOP 5% dos canais chegam a 50K-100K em 12 meses.
-- Views por vídeo nos primeiros 3 meses raramente passam de 1K-5K. Só os virais (1 em cada 30-50 vídeos) chegam a 50K-100K. O canal LEVA TEMPO pra construir audiência.
-- Para os 4 vídeos iniciais do mockup, use views_estimate REALISTAS de canal NOVO: a maioria deve estar entre "1K" e "8K". Apenas 1 dos 4 pode ser uma estimativa otimista de "20K-50K" simulando o vídeo viral inicial.
-- NUNCA use 500K, 350K, 420K, 600K como views iniciais. Esses números são de canais grandes JÁ ESTABELECIDOS, não de vídeos iniciais de canal novo.
-- Inscritos em 6 meses: range típico 1K-15K. Seja conservador.
-- Inscritos em 12 meses: range típico 8K-60K. Apenas casos excepcionais passam disso.
-- RPM: use o range REAL do nicho no país alvo. Histórico/educacional ~$1.50-$4. Tech/finance ~$8-$20. Entretenimento ~$1-$3. Faceless de curiosidades ~$1-$3.
+REGRA CRÍTICA DE ESTIMATIVAS (REALISTA + MOTIVADORA — não invente, mas mostre potencial):
+- Estes números são SUPOSIÇÕES baseadas em médias de mercado de canais bem executados. Não são promessas.
+- Inscritos em 6 meses: range típico 5K-30K (canal bem executado postando consistentemente).
+- Inscritos em 12 meses: range típico 30K-150K. Apenas casos excepcionais passam disso — NUNCA use 500K+.
+- Views por vídeo de canal estabelecido: 3K-20K na maioria, com 1 viral de 50K-100K eventualmente.
+- Para os 4 vídeos iniciais do mockup, use views_estimate de "5K" a "25K" para a maioria. Apenas 1 dos 4 pode ser otimista "30K-80K" simulando um viral inicial.
+- NUNCA use 500K, 350K, 420K, 600K como views — isso é de canais MEGA já estabelecidos.
+- RPM: use o range REAL do nicho no país alvo. Histórico/educacional ~$1.50-$4. Tech/finance ~$8-$20. Entretenimento ~$1-$3. Faceless de curiosidades ~$1.50-$3.50.
+- Monthly views: calcule baseado nos inscritos × CTR típico × view rate. 15K inscritos = ~80K-150K views/mês. 50K = ~300K-600K/mês.
+- AdSense mensal: monthly_views × RPM × 0.55 (após corte do YouTube). Mostre como SUPOSIÇÃO clara.
 - Identifique fraquezas típicas do nicho e diga como você corrige cada uma.
 - Identifique forças e amplifique 10x.
 - Títulos com hooks fortes (curiosity gap, números específicos, urgência).
@@ -130,10 +131,12 @@ OUTPUT JSON exato (preencha TODOS os campos):
   "tagline": "Slogan no idioma {language}",
   "description": "Descrição completa NO IDIOMA {language} (~200 palavras)",
   "disclaimer": "Aviso curto NO IDIOMA {language}: este canal é faceless e usa IA para reconstituir cenas/narrações com fins educativos. (~30-50 palavras)",
-  "subscriber_estimate": "Estimativa CONSERVADORA e REALISTA de inscritos em 6 meses postando 2-3x por semana com qualidade consistente (ex: '2K', '5K', '12K'). NÃO infle. A maioria dos canais novos não passa de 5K-15K em 6 meses mesmo executando bem. Use números BAIXOS e crÍVEIS.",
-  "subscriber_estimate_12m": "Estimativa CONSERVADORA em 12 meses (ex: '15K', '40K', '80K'). Apenas canais de TOP performance chegam a 100K em 1 ano. Seja realista — a base não deve passar de 50K-80K na maior parte dos casos.",
+  "subscriber_estimate": "Estimativa REALISTA mas motivadora de inscritos em 6 meses postando 2-3x por semana com qualidade consistente (ex: '8K', '15K', '25K'). Pode mostrar potencial — mas não invente. Range típico de canal bem executado: 5K-30K em 6 meses.",
+  "subscriber_estimate_12m": "Estimativa em 12 meses (ex: '40K', '85K', '150K'). Mostre o potencial real de execução disciplinada. Range típico: 30K-150K em 1 ano. Apenas casos virais excepcionais passam disso — não use 500K+.",
   "rpm_estimate": "RPM médio realista do nicho no país {country} em USD (ex: '$2.50', '$8.00', '$15.00'). Considere: nichos finance/tech/business têm RPM alto (US$10-30), entretenimento/curiosidades médio (US$2-6), gaming/kids baixo (US$0.50-2). Use o range típico DO NICHO no PAÍS alvo.",
   "rpm_currency": "USD",
+  "monthly_views_estimate": "Estimativa de views MENSAIS quando o canal estiver maduro (depois de 6 meses postando 2-3x por semana). Calcule: ~10-12 vídeos por mês × média de views por vídeo. Para 15K inscritos: ~80K-150K views/mês. Para 50K inscritos: ~300K-600K views/mês. Use formato '120K', '450K', '1.2M'. Seja realista mas mostre o potencial.",
+  "adsense_monthly_estimate": "Estimativa de receita AdSense mensal em USD baseada em monthly_views × RPM × 0.55 (YouTube fica com 45%). Ex: 200K views × $3 RPM × 0.55 = ~$330/mês. Calcule e retorne formato '$330', '$1,200', '$4,500'. Esta é uma SUPOSIÇÃO baseada em médias de mercado.",
   "whats_better": "3 frases EM PT-BR explicando por que este canal é OBJETIVAMENTE superior aos concorrentes do nicho",
   "weaknesses_fixed": [
     "Fraqueza típica do nicho 1 — em PT-BR",
@@ -210,6 +213,8 @@ def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str,
         "subscriber_estimate_12m": str(raw.get("subscriber_estimate_12m") or raw.get("subscriberEstimate12m") or "")[:30],
         "rpm_estimate": str(raw.get("rpm_estimate") or raw.get("rpmEstimate") or "")[:20],
         "rpm_currency": str(raw.get("rpm_currency") or "USD")[:6],
+        "monthly_views_estimate": str(raw.get("monthly_views_estimate") or raw.get("monthlyViewsEstimate") or "")[:30],
+        "adsense_monthly_estimate": str(raw.get("adsense_monthly_estimate") or raw.get("adsenseMonthlyEstimate") or "")[:30],
         "whats_better": str(raw.get("whats_better") or raw.get("whatsBetter") or "")[:800],
         "weaknesses_fixed": [],
         "strategy_edge": str(raw.get("strategy_edge") or raw.get("strategyEdge") or "")[:600],

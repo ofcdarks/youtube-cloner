@@ -761,39 +761,79 @@ function generateAllMockupImages(projectId) {
     var btn = document.getElementById('btn-gen-all');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Gerando todas...'; }
 
+    // Always include all 6 slots — even if a thumbnail_prompt is missing we use a fallback
+    // built from the video title so the user gets all 4 thumbs no matter what
     var slots = [
-        ['logo', m.logo_prompt],
-        ['banner', m.banner_prompt],
+        ['logo', m.logo_prompt || 'circular YouTube channel logo, modern emblem, premium vector style, bold colors, fills frame edge to edge, no padding, no whitespace, 4k'],
+        ['banner', m.banner_prompt || 'cinematic YouTube channel banner 16:9, dramatic volumetric lighting, atmospheric, epic horizontal scale, 8k professional'],
     ];
     (m.videos || []).slice(0, 4).forEach(function(v, i) {
-        if (v.thumbnail_prompt) slots.push(['thumb' + i, v.thumbnail_prompt]);
+        var prompt = v.thumbnail_prompt;
+        if (!prompt || !prompt.trim()) {
+            // Build a fallback prompt from the title
+            prompt = 'cinematic movie poster style YouTube thumbnail 1280x720, dramatic volumetric lighting, hero subject, MASSIVE bold serif title text overlay related to "' + (v.title || 'video') + '", teal and orange color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, clean composition';
+        }
+        slots.push(['thumb' + i, prompt]);
     });
 
-    // Sequential to avoid rate limiting on ImageFX
+    var failed = [];
     var idx = 0;
+
+    function attempt(slot, prompt, retriesLeft) {
+        return apiPost('/api/admin/generate-mockup-image', {prompt: prompt, aspect: slot === 'logo' ? 'SQUARE' : 'LANDSCAPE'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                applyMockupImage(slot, data.url, prompt, true);
+                return {ok: true};
+            }
+            if (data.code === 'NO_COOKIE') {
+                return {ok: false, fatal: true, error: data.error};
+            }
+            if (retriesLeft > 0) {
+                return new Promise(function(res) {
+                    setTimeout(function() { res(attempt(slot, prompt, retriesLeft - 1)); }, 1500);
+                });
+            }
+            return {ok: false, error: data.error || 'erro desconhecido'};
+        })
+        .catch(function(e) {
+            if (retriesLeft > 0) {
+                return new Promise(function(res) {
+                    setTimeout(function() { res(attempt(slot, prompt, retriesLeft - 1)); }, 1500);
+                });
+            }
+            return {ok: false, error: (e && e.message) || 'erro de rede'};
+        });
+    }
+
     function next() {
         if (idx >= slots.length) {
             if (btn) { btn.disabled = false; btn.innerHTML = '🎨 Gerar TODAS as Imagens'; }
-            showToast('Todas as imagens geradas!', 'success');
+            if (failed.length === 0) {
+                showToast('Todas as ' + slots.length + ' imagens geradas!', 'success');
+            } else {
+                showToast(
+                    (slots.length - failed.length) + '/' + slots.length + ' imagens OK · falhas: ' + failed.join(', '),
+                    'warning',
+                    8000
+                );
+            }
             return;
         }
         var slot = slots[idx][0];
         var prompt = slots[idx][1];
         idx++;
         if (btn) btn.textContent = '⏳ ' + slot + ' (' + idx + '/' + slots.length + ')';
-        apiPost('/api/admin/generate-mockup-image', {prompt: prompt, aspect: slot === 'logo' ? 'SQUARE' : 'LANDSCAPE'})
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.ok) {
-                applyMockupImage(slot, data.url, prompt, true);
-            } else if (data.code === 'NO_COOKIE') {
-                showToast('Configure ImageFX cookie em Admin antes de gerar imagens', 'error', 8000);
+        attempt(slot, prompt, 2).then(function(result) {
+            if (result.fatal) {
+                showToast(result.error || 'Configure ImageFX cookie em Admin', 'error', 8000);
                 if (btn) { btn.disabled = false; btn.innerHTML = '🎨 Gerar TODAS as Imagens'; }
                 return;
             }
+            if (!result.ok) failed.push(slot);
             setTimeout(next, 800);
-        })
-        .catch(function() { setTimeout(next, 800); });
+        });
     }
     next();
 }

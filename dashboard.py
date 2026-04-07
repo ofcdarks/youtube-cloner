@@ -1926,6 +1926,8 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     sub_12_display = sub_12 or "—"
     rpm_display = esc(m.get("rpm_estimate") or "—")
     rpm_currency = esc(m.get("rpm_currency") or "USD")
+    monthly_views_display = esc(m.get("monthly_views_estimate") or "—")
+    adsense_display = esc(m.get("adsense_monthly_estimate") or "—")
 
     from datetime import datetime as _dt
     today_br = _dt.now().strftime("%d/%m/%Y")
@@ -1940,7 +1942,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
         hero_bg = f'background: linear-gradient(135deg, {primary}, #0a0a0f);'
 
     seo_page = (
-        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name} · LACASADARK</div></div>{seo_block}<div class="page-footer"><div>{channel_name}</div><div>Página 04</div></div></div>'
+        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name} · LACASADARK</div></div>{seo_block}<div class="page-footer"><div>{channel_name}</div><div>05</div></div></div>'
         if seo_block
         else ""
     )
@@ -2004,9 +2006,25 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   .identity-handle {{ font-size: 12px; color: #888; font-weight: 500; }}
   .identity-tag {{ font-size: 13px; color: #444; margin-top: 6px; font-style: italic; line-height: 1.5; }}
   .identity-cta {{ padding: 10px 22px; border-radius: 22px; background: #0f0f12; color: #fff; font-size: 12px; font-weight: 700; flex-shrink: 0; }}
+  .identity-tabs {{ display: flex; gap: 0; padding: 0 28px; border-top: 1px solid #ececef; background: #fff; }}
+  .identity-tab {{ padding: 14px 18px; font-size: 12px; font-weight: 500; color: #888; border-bottom: 2px solid transparent; }}
+  .identity-tab.active {{ color: #0f0f12; font-weight: 700; border-bottom-color: #0f0f12; }}
+  .identity-videos {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 18px 22px 24px; background: #fff; }}
+  .identity-videos .video-card {{ border: none; box-shadow: none; background: transparent; border-radius: 8px; }}
+  .identity-videos .video-thumb {{ border-radius: 8px; }}
+  .identity-videos .video-meta {{ padding: 8px 2px 0; }}
+  .identity-videos .video-num {{ font-size: 7px; margin-bottom: 3px; }}
+  .identity-videos .video-title {{ font-size: 11px; line-height: 1.35; -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }}
+  .identity-videos .video-views {{ font-size: 9px; }}
+  .identity-videos .duration-badge {{ font-size: 8px; padding: 2px 5px; }}
 
   /* KPI STATS */
   .stats-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 38px; }}
+  .stats-grid-5 {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 24px; }}
+  .stats-grid-5 .stat-card {{ padding: 18px 14px; }}
+  .stats-grid-5 .stat-value {{ font-size: 26px; }}
+  .stats-grid-5 .stat-label {{ font-size: 8px; }}
+  .stats-grid-5 .stat-sub {{ font-size: 9px; }}
   .stat-card {{ border: 1px solid #ececef; border-radius: 12px; padding: 22px 20px; background: linear-gradient(180deg, #fff, #fafafb); position: relative; }}
   .stat-card::before {{ content: ''; position: absolute; top: 0; left: 0; width: 38px; height: 3px; background: {primary}; border-radius: 0 0 3px 0; }}
   .stat-label {{ font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #888; font-weight: 700; margin-bottom: 10px; }}
@@ -2132,40 +2150,20 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
           <div class="identity-logo">{logo_html}</div>
           <div class="identity-name">
             <h3>{channel_name} ✓</h3>
-            <div class="identity-handle">@{handle} · {len(videos)} vídeos</div>
+            <div class="identity-handle">@{handle} · {len(videos)} vídeos · {sub_6_display} inscritos previstos</div>
             <div class="identity-tag">{tagline}</div>
           </div>
           <div class="identity-cta">Inscrever-se</div>
         </div>
+        <div class="identity-tabs">
+          <div class="identity-tab active">Início</div>
+          <div class="identity-tab">Vídeos</div>
+          <div class="identity-tab">Playlists</div>
+          <div class="identity-tab">Posts</div>
+        </div>
+        <div class="identity-videos">{videos_html}</div>
       </div>
-
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Inscritos · 6m</div>
-          <div class="stat-value">{sub_6_display}</div>
-          <div class="stat-sub">Estimativa conservadora</div>
-        </div>
-        <div class="stat-card accent">
-          <div class="stat-label">Inscritos · 12m</div>
-          <div class="stat-value">{sub_12_display}</div>
-          <div class="stat-sub">Pé no chão</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">RPM Médio</div>
-          <div class="stat-value">{rpm_display}</div>
-          <div class="stat-sub">{rpm_currency} · típico do nicho</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Idioma</div>
-          <div class="stat-value">{lang_upper}</div>
-          <div class="stat-sub">Mercado alvo</div>
-        </div>
-      </div>
-
-      <div class="reality-note">⚠ <strong>Realidade do mercado:</strong> a maioria dos canais novos faz entre 1K e 15K inscritos em 6 meses postando consistentemente. Estes números são projeções <em>conservadoras</em> baseadas em execução disciplinada do SOP — não promessas. O crescimento real depende de consistência, qualidade de hooks e otimização contínua.</div>
     </div>
-
-    {description_block}
 
     <div class="page-footer">
       <div>{channel_name}</div>
@@ -2173,25 +2171,69 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     </div>
   </div>
 
-  <!-- PAGE 3 — VIDEOS -->
+  <!-- PAGE 3 — PROJEÇÃO FINANCEIRA + DESCRIÇÃO -->
   <div class="page page-break">
     <div class="page-header">
-      <div class="ph-brand"><div class="ph-brand-dot"></div>Vídeos Iniciais</div>
+      <div class="ph-brand"><div class="ph-brand-dot"></div>Projeção & Posicionamento</div>
       <div class="ph-channel">{channel_name} · LACASADARK</div>
     </div>
 
     <div class="block">
-      <div class="block-eyebrow">02 · CONTEÚDO INICIAL</div>
-      <h2 class="block-title">Os 4 primeiros vídeos do canal</h2>
-      <p class="block-body small">Títulos derivados diretamente do SOP do nicho, com thumbs cinematográficas e estimativas de views baseadas na força de cada hook.</p>
-      <div class="videos-grid">{videos_html}</div>
+      <div class="block-eyebrow">03 · PROJEÇÃO ESTIMADA</div>
+      <h2 class="block-title">Potencial financeiro do canal</h2>
+      <p class="block-body small">Suposições baseadas em médias de mercado de canais bem executados no nicho. Não são promessas — são referências do que é possível com disciplina, consistência e qualidade de execução.</p>
+
+      <div class="stats-grid-5">
+        <div class="stat-card">
+          <div class="stat-label">Inscritos · 6m</div>
+          <div class="stat-value">{sub_6_display}</div>
+          <div class="stat-sub">Estimativa</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Inscritos · 12m</div>
+          <div class="stat-value">{sub_12_display}</div>
+          <div class="stat-sub">Estimativa</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">RPM Médio</div>
+          <div class="stat-value">{rpm_display}</div>
+          <div class="stat-sub">{rpm_currency} · nicho</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Views/mês</div>
+          <div class="stat-value">{monthly_views_display}</div>
+          <div class="stat-sub">Quando maduro</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-label">AdSense/mês</div>
+          <div class="stat-value">{adsense_display}</div>
+          <div class="stat-sub">Receita estimada</div>
+        </div>
+      </div>
+
+      <div class="reality-note">⚠ <strong>Tudo isto é uma suposição</strong> baseada em médias de canais bem executados no mesmo nicho. Os números reais dependem de <em>consistência de postagem, qualidade de hooks, retenção, CTR e otimização contínua</em>. Use como referência de potencial, não como garantia. AdSense é calculado por (views × RPM × 0.55), descontada a parte do YouTube.</div>
+    </div>
+
+    {description_block}
+
+    <div class="page-footer">
+      <div>{channel_name}</div>
+      <div>03</div>
+    </div>
+  </div>
+
+  <!-- PAGE 4 — DIFERENCIAL -->
+  <div class="page page-break">
+    <div class="page-header">
+      <div class="ph-brand"><div class="ph-brand-dot"></div>Diferencial Competitivo</div>
+      <div class="ph-channel">{channel_name} · LACASADARK</div>
     </div>
 
     {superior_block}
 
     <div class="page-footer">
       <div>{channel_name}</div>
-      <div>03</div>
+      <div>04</div>
     </div>
   </div>
 
