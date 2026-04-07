@@ -186,11 +186,11 @@ O hook prende em 5s? Tem 3+ open loops? Tom consistente? Spikes a cada 2-3min? C
 INSTRUCAO: Minimo 1500 palavras nesta parte. Cada exemplo deve ser ESCRITO por voce no estilo exato do canal.""",
         },
         {
-            "key": "parte6_thumbs_alto_ctr",
-            "label": "Parte 6/6 — Biblioteca de Thumbs de Alto CTR",
-            "prompt": f"""PARTE 6 de 6 — BIBLIOTECA DE THUMBS DE ALTO CTR
+            "key": "parte6_dna_visual",
+            "label": "Parte 6/6 — DNA Visual Completo (Thumbs + Branding + Video Style)",
+            "prompt": f"""PARTE 6 de 6 — DNA VISUAL COMPLETO DO CANAL
 
-Analise visual EXTREMAMENTE DETALHADA das thumbnails do canal + concorrentes do nicho "{niche_name}". Objetivo: recriar thumbs que gerem CTR >= 8% desde o primeiro video.
+Analise visual EXTREMAMENTE DETALHADA de TUDO que e visivel no canal do nicho "{niche_name}": thumbs, logo, banner, estilo dos videos, B-roll, color grading, tipografia, intro/outro. Objetivo: recriar a identidade visual por completo e alimentar um agente automatizado que vai gerar assets novos no mesmo estilo. CADA item aqui vai virar input pra IA de geracao de imagem/video.
 
 1. TOP 10 THUMBS DO CANAL ORIGINAL (da mais clicavel pra menos). Para CADA uma:
 - Titulo exato do video
@@ -234,7 +234,131 @@ Analise visual EXTREMAMENTE DETALHADA das thumbnails do canal + concorrentes do 
 
 8. PROMPT BASE EM INGLES pra gerar novas thumbs (ImageFX/Midjourney/DALL-E) que replique o estilo exato do canal. Deve incluir: "cinematic movie poster YouTube thumbnail 1280x720", estilo, paleta, arquetipo, iluminacao, mood, "NO LOGO NO WATERMARK". ~80 palavras.
 
-IMPORTANTE: cite numeros, cores HEX reais, fontes especificas. Nada generico. Se nao tiver certeza da fonte, diga "familia serif condensada" em vez de inventar. Minimo 1500 palavras nesta parte.""",
+═══ DNA VISUAL COMPLETO DO CANAL (alem das thumbs) ═══
+
+9. LOGO / AVATAR DO CANAL
+- Estilo: emblema/icone/letra/mascote/simbolo abstrato?
+- Forma base (circulo, escudo, hexagono, quadrado)
+- Cores em HEX (background + simbolo + detalhes)
+- Estilo grafico (flat, gradiente, 3d, vintage, metalico, minimalista)
+- Mood/sensacao transmitida (autoridade, misterio, energia, premium...)
+- PROMPT EM INGLES pra recriar: ~60 palavras, comeca com "square YouTube channel logo icon," e termina com "NO white background, NO padding, fills 95% of frame, 4k"
+
+10. BANNER / HEADER DO CANAL
+- Tema visual central (paisagem, colagem, foto unica, tipografico)
+- Elementos presentes (personagens, monumentos, texturas, frase, logo)
+- Paleta HEX dominante (3 cores)
+- Tratamento de luz (dramatico, suave, neon, cinematografico)
+- Texto presente no banner (se houver): palavras exatas, fonte, cor
+- PROMPT EM INGLES ~70 palavras, comeca com "ultra-wide cinematic YouTube channel banner 16:9,"
+
+11. ESTILO VISUAL DOS VIDEOS (o "look" do video, nao as thumbs)
+- Tipo de imagem dominante: B-roll de arquivo? Imagens geradas por IA? Animacao? Talking head? Misto?
+- Color grading dominante (teal & orange, dessaturado vintage, alto contraste, monochrome, warm golden, cold blue...)
+- Lente/framing tipico (wide cinematico, close-up intimo, drone, angulo baixo heroico, sweeping pans)
+- Iluminacao (golden hour, god rays, firelight, fluorescent cold, mixed volumetric)
+- Texturas/filtros visiveis (film grain, vhs, letterbox, light leaks, dust particles)
+- Movimento (camera parada, ken burns, parallax, drone swoops, shake sutil)
+- Transicoes entre shots (cortes duros, crossfade, match cuts, whip pan, zoom in)
+- Ritmo visual: quantos shots por minuto em media?
+
+12. TEXT OVERLAY DENTRO DOS VIDEOS (captions, lower thirds, quote cards)
+- Frequencia (toda palavra? so palavras-chave? so numeros?)
+- Estilo (kinetic typography, static caption, lower third TV news, big bold block)
+- Fonte + cor + outline + fundo
+- Posicao dominante (centro, bottom, top, moving)
+- Animacao (pop, fade, slide, none)
+
+13. INTRO / OUTRO
+- Intro: existe? Duracao em segundos? Descricao visual em 2 frases
+- Outro: existe? Tem end screen com videos sugeridos + subscribe prompt? Layout?
+- Musica de intro/outro: descricao do mood (epic orchestral, dark ambient, hopeful cinematic...)
+
+14. BRANDING CONSOLIDADO — ASSINATURA VISUAL DO CANAL EM 1 PARAGRAFO
+- Em 4-6 frases, descreva o "visual signature" do canal como se estivesse ensinando outro designer a recriar. Precisa ser tao especifico que qualquer designer leia e consiga reproduzir sem precisar ver o canal.
+
+═══ OUTPUT FINAL — BLOCO JSON IMPORTAVEL ═══
+
+Ao FINAL da sua resposta, entregue um bloco JSON valido dentro de ```json ... ``` contendo o DNA visual estruturado. Esse JSON vai ser importado direto por um agente automatizado, entao os campos precisam estar no formato exato abaixo:
+
+```json
+{{
+  "niche": "{niche_name}",
+  "palette": {{
+    "primary": "#hex",
+    "secondary": "#hex",
+    "accent": "#hex",
+    "warning": "#hex",
+    "neutral": "#hex"
+  }},
+  "typography": {{
+    "primary_font": "Nome ou familia",
+    "secondary_font": "Nome ou familia",
+    "weight": "bold/black/regular",
+    "style": "serif/sans/marker/handwritten"
+  }},
+  "thumbnail": {{
+    "dominant_archetype": "descricao em 1 frase",
+    "composition_rule": "tercos/centralizado/assimetrico",
+    "hero_subject_position": "left/center/right",
+    "uses_human_face_pct": 80,
+    "avg_text_words": 3,
+    "text_color": "#hex",
+    "text_outline_color": "#hex",
+    "base_prompt_en": "prompt ingles ~80 palavras pra gerar novas thumbs"
+  }},
+  "logo": {{
+    "shape": "circle/shield/square/hex",
+    "style": "flat/gradient/metallic/vintage/minimalist",
+    "colors_hex": ["#hex", "#hex"],
+    "mood": "premium/authority/mystery/energy",
+    "base_prompt_en": "prompt ingles ~60 palavras"
+  }},
+  "banner": {{
+    "theme": "descricao",
+    "palette_hex": ["#hex", "#hex", "#hex"],
+    "lighting": "dramatic/soft/neon/cinematic",
+    "has_text": true,
+    "base_prompt_en": "prompt ingles ~70 palavras"
+  }},
+  "video_look": {{
+    "dominant_content_type": "ai_generated/stock_broll/animation/talking_head/mixed",
+    "color_grading": "teal_orange/desaturated_vintage/warm_golden/cold_blue/high_contrast",
+    "lens_style": "cinematic_wide/close_up/drone/heroic_low_angle",
+    "lighting": "golden_hour/god_rays/firelight/cold_fluorescent",
+    "textures": ["film_grain", "letterbox"],
+    "motion": "ken_burns/parallax/drone_swoops/static",
+    "transitions": "hard_cuts/crossfade/match_cuts/whip_pan",
+    "shots_per_minute_avg": 12
+  }},
+  "text_overlay": {{
+    "frequency": "keywords_only/every_word/numbers_only/none",
+    "style": "kinetic/static_caption/lower_third/bold_block",
+    "font": "nome ou familia",
+    "color": "#hex",
+    "outline": "#hex",
+    "position": "center/bottom/top"
+  }},
+  "intro_outro": {{
+    "has_intro": true,
+    "intro_duration_sec": 5,
+    "intro_description": "2 frases",
+    "has_end_screen": true,
+    "music_mood": "epic_orchestral/dark_ambient/hopeful_cinematic"
+  }},
+  "brand_signature": "paragrafo de 4-6 frases descrevendo o visual signature consolidado",
+  "templates": [
+    {{"name": "nome do template", "fixed_elements": "o que nao muda", "variable_elements": "o que muda", "use_case": "quando usar"}}
+  ],
+  "anti_patterns": ["o que NUNCA fazer 1", "2", "3", "4", "5"]
+}}
+```
+
+IMPORTANTE GERAL DA PARTE 6:
+- Cite numeros, cores HEX reais, fontes especificas. Nada generico.
+- Se nao tiver certeza da fonte, diga "familia serif condensada" em vez de inventar um nome falso.
+- O JSON final DEVE ser valido (sem trailing commas, aspas duplas, hex com #).
+- Minimo 2000 palavras nesta parte (a mais longa e importante das 6).""",
         },
     ]
 
@@ -324,7 +448,7 @@ def compile_sop(dna: dict, niche_name: str = "") -> str:
         "parte3_storytelling_regras",
         "parte4_estrategia_competitivo",
         "parte5_sop_ia_template",
-        "parte6_thumbs_alto_ctr",
+        "parte6_dna_visual",
     ]
 
     total_words = 0
