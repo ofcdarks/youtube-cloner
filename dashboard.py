@@ -849,25 +849,89 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
                 logger.info(f"[ANALYZE] Transcript SOP: {len(sop_content)} chars")
 
         if not sop_content:
-            sop_prompt = f"""Analise o conceito deste canal do YouTube e crie um SOP completo e detalhado.
+            sop_prompt = f"""Analise o conceito deste canal do YouTube e crie um SOP COMPLETO com as 17 secoes padrao.
 
 URL: {url}
 Nicho: {niche_name}
 
-Crie um SOP (Standard Operating Procedure) incluindo TODAS estas secoes:
+Crie um SOP (Standard Operating Procedure) com TODAS essas 17 secoes, cada uma DETALHADA e especifica para o nicho:
 
-1. VISAO GERAL DO CANAL: Nicho exato, publico-alvo, estilo visual, formato dos videos, duracao media
-2. FORMULA DE TITULOS: Padroes de titulos virais para esse nicho com exemplos
-3. ESTRUTURA DE ROTEIRO: Hook (primeiros 30s), desenvolvimento por atos, climax, resolucao, CTA
-4. PLAYBOOK DE HOOKS: 10 tipos de ganchos que funcionam nesse nicho com exemplos
-5. TECNICAS DE STORYTELLING: Open loops, pattern interrupts, cliffhangers, specific spikes
-6. REGRAS DE OURO: 10 regras que devem ser seguidas em todo roteiro
-7. PILARES DE CONTEUDO: 5 categorias principais de videos
-8. ESTILO DE THUMBNAIL: Padroes visuais (cores, tipografia, composicao) para thumbnails virais
-9. VERSAO IA: Instrucoes para uma IA replicar este estilo (tom, vocabulario, ritmo, formalidade)
+## Parte 1/5 — Autopsia do Canal
 
-Seja EXTREMAMENTE detalhado e especifico para o nicho "{niche_name}".{lang_instruction}"""
-            sop_content = chat(sop_prompt, system="Voce e um estrategista de canais faceless do YouTube com 10 anos de experiencia.", max_tokens=MAX_TOKENS_LARGE)
+### 1. IDENTIDADE PROFUNDA
+- Nicho EXATO e sub-nicho
+- Publico-alvo (idade/genero, interesses, DORES, DESEJOS)
+- Proposta de valor UNICA
+- Tom de voz (5 frases reais que exemplificam)
+- Persona do narrador
+- 10 expressoes/palavras tipicas do canal
+
+### 2. FORMATO E PRODUCAO
+- Duracao ideal
+- Frequencia ideal
+- Estilo visual exato (renderizacao, DOF, iluminacao, camera, movimentos)
+- Estrutura de producao (passos concretos)
+
+### 3. ANATOMIA DO ROTEIRO
+- Tabela de atos/blocos com tempo e descricao
+- Cenas obrigatorias em todo video
+- Cenas PROIBIDAS
+
+### 4. PLAYBOOK DE HOOKS
+- 8 tipos de ganchos com exemplos e percentual de uso
+- Regras dos hooks
+
+### 5. TECNICAS DE STORYTELLING
+- Minimo 8 tecnicas numeradas com explicacao detalhada
+
+### 6. REGRAS DE OURO
+- 15 regras INVIOLAVEIS numeradas
+
+### 7. PILARES DE CONTEUDO
+- 5-7 pilares com percentual de uso e exemplos
+
+### 8. FORMULA DE TITULOS
+- 5 templates com 3 exemplos cada
+- Keywords obrigatorias
+- Palavras capitalizadas de enfase
+
+### 9. THUMBNAIL
+- Regras visuais detalhadas
+- O que NAO fazer
+
+### 10. SEO E METADADOS
+- Tags obrigatorias (20+)
+- Descricao template completo
+- Categoria YouTube, idioma, captions
+
+### 11. MONETIZACAO E RPM
+- RPM/CPM esperados
+- 7+ estrategias de monetizacao
+
+### 12. RETENCAO E ENGAJAMENTO
+- Estrategias de retencao
+- Estrategias de engajamento
+
+### 13. COMPETIDORES E INTELIGENCIA DE MERCADO
+- 5+ canais competidores
+- Diferenciais do nosso canal
+- Tendencias do nicho
+
+### 14. EVOLUCAO DO CANAL
+- Plano mes 1-2, 3-4, 5-6, 6-12, ano 1+
+
+### 15. SYSTEM PROMPT COMPLETO
+- Prompt pronto para copiar e colar na IA (minimo 300 palavras)
+- Contexto do canal, regras invioláveis, estrutura, vocabulario
+
+### 16. TEMPLATE DE ROTEIRO PREENCHIVEL
+- Template cena-a-cena pronto para preencher
+
+### 17. CHECKLIST — 15 PERGUNTAS SIM/NAO
+- 15 perguntas binarias para validar qualidade antes de publicar
+
+Seja EXTREMAMENTE detalhado. Cada secao deve ter ao menos 200 palavras. SOP total minimo: 4000 palavras. Especifico para o nicho "{niche_name}".{lang_instruction}"""
+            sop_content = chat(sop_prompt, system="Voce e um estrategista de canais faceless do YouTube com 10 anos de experiencia. Sua especialidade e criar SOPs (Standard Operating Procedures) ultra detalhados de 17 secoes que servem como DNA para replicar e elevar canais bem-sucedidos.", max_tokens=MAX_TOKENS_LARGE)
 
         save_file(project_id, "analise", f"SOP - {niche_name}", f"sop_{project_id}.md", sop_content)
         log_activity(project_id, "sop_generated", f"SOP via {sop_source}")

@@ -24,6 +24,67 @@ async def deploy_check(request: Request):
     return JSONResponse({"deployed": "9ab9872", "ts": "2026-04-06"})
 
 
+# Mapping: project name (exact match in DB) -> SOP file basename in output/
+SOP_FILE_MAP = {
+    "ROBOS ENCANTADOS": "sop_robos_encantados_floresta.md",
+    "RESCUE": "sop_rescue_complete.md",
+    "BIBLICO": "sop_biblico_complete.md",
+    "POV": "sop_pov_complete.md",
+    "ANACRON": "sop_anacron_complete.md",
+    "HISTORICOS 3D": "sop_anacron_complete.md",
+    "GHIBLI": "sop_ghibli_cozy_life.md",
+    "GLIBLI": "sop_ghibli_cozy_life.md",
+}
+
+
+def _load_sop_file(filename: str) -> str | None:
+    """Try multiple paths to load a SOP file (Docker build-time + dev)."""
+    import os
+    for base in ["/app/seed_output", "/app/output", "output"]:
+        path = os.path.join(base, filename)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            continue
+    return None
+
+
+@router.get("/api/reseed-all-sops")
+async def reseed_all_sops(request: Request):
+    """Update SOPs for all projects from output/ files — idempotent, safe to rerun."""
+    from database import get_projects, save_file, get_db
+    results = {}
+    for project in get_projects():
+        name = project.get("name", "").strip()
+        if name not in SOP_FILE_MAP:
+            results[name or "(unnamed)"] = "skipped (not in map)"
+            continue
+        filename = SOP_FILE_MAP[name]
+        sop = _load_sop_file(filename)
+        if not sop:
+            results[name] = f"file not found: {filename}"
+            continue
+        pid = project["id"]
+        # Delete any existing SOP files for this project to avoid duplicates
+        try:
+            with get_db() as conn:
+                conn.execute(
+                    "DELETE FROM files WHERE project_id=? AND category='analise' AND (label LIKE '%SOP%' OR filename LIKE 'sop_%')",
+                    (pid,),
+                )
+        except Exception as e:
+            logger.warning(f"Failed to clean old SOPs for {name}: {e}")
+        # Insert fresh SOP
+        try:
+            save_file(pid, "analise", f"SOP - {name} (Complete 17 Sections)", f"sop_{pid}.md", sop)
+            results[name] = f"updated ({len(sop)} chars)"
+        except Exception as e:
+            results[name] = f"error: {e}"
+            logger.error(f"Failed to save SOP for {name}: {e}")
+    return JSONResponse({"ok": True, "results": results})
+
+
 @router.get("/api/seed-robos-encantados")
 async def seed_robos_encantados(request: Request):
     """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
