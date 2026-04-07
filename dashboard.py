@@ -809,17 +809,19 @@ async def api_create_student(request: Request, user=Depends(require_admin)):
         pass
 
     # Google Drive folder for student (auto-sync)
+    # Uses get_or_create_student_folder which puts "Aluno - {name}" inside
+    # the admin root "YT Cloner" folder — consistent with connect-drive flow
+    # and prevents duplicate flat folders at Drive root.
     drive_folder_id = ""
     try:
-        from protocols.google_export import create_folder, share_folder
+        from protocols.google_export import get_or_create_student_folder, share_folder
         from database import update_user, log_activity
-        folder_name = f"YT Cloner - {name}"
-        drive_folder_id = create_folder(folder_name)
+        drive_folder_id = get_or_create_student_folder(name)
         share_folder(drive_folder_id, email, role="writer")
         update_user(uid, drive_folder_id=drive_folder_id)
         log_activity(project_id or "", "drive_student_folder",
                      f"Pasta Drive criada para aluno {name}: {drive_folder_id}")
-        logger.info(f"[CREATE-STUDENT] Drive folder {drive_folder_id} created and shared with {email}")
+        logger.info(f"[CREATE-STUDENT] Drive folder {drive_folder_id} (Aluno - {name}) created and shared with {email}")
     except Exception as e:
         logger.warning(f"[CREATE-STUDENT] Drive folder creation failed (student created without Drive): {e}")
 
