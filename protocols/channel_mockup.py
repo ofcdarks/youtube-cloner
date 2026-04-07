@@ -129,8 +129,8 @@ OUTPUT JSON exato (preencha TODOS os campos):
     "Fraqueza típica do nicho 3 — em PT-BR"
   ],
   "strategy_edge": "Em PT-BR: por que este canal cresce em 6 meses mais do que concorrentes",
-  "logo_prompt": "English ImageFX prompt: circular logo, professional vector style, [conceito específico do nicho], [cores], modern minimal, high contrast, 4k",
-  "banner_prompt": "English ImageFX prompt: cinematic YouTube channel banner 2560x1440, ultra-wide composition, [conceito do nicho], [cores principais], dramatic volumetric lighting, atmospheric, epic scale, important elements centered (YouTube safe area), no text on edges, 8k professional",
+  "logo_prompt": "English ImageFX prompt: square YouTube channel logo icon, [conceito específico do nicho], [cores], bold modern emblem design, fills the entire canvas edge-to-edge, NO white background, NO padding, NO whitespace borders, centered subject covering 95 percent of the frame, high contrast, premium vector style, 4k",
+  "banner_prompt": "English ImageFX prompt: ultra-wide cinematic YouTube channel banner, aspect ratio 16:9, [conceito do nicho], [cores principais], dramatic volumetric lighting, atmospheric, epic horizontal scale, important elements centered in the safe area (middle 33 percent), no text on edges, fills the entire frame edge-to-edge with rich detail, 8k professional",
   "videos": [
     {{
       "title": "Título 1 — use o seed 1 traduzido culturalmente para {language}",

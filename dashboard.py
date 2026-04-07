@@ -1879,11 +1879,11 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   header.cover .sub {{ font-size: 13px; opacity: 0.92; }}
   header.cover .lang-badge {{ display: inline-block; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,0.25); font-size: 11px; font-weight: 600; margin-top: 8px; }}
   .disclaimer {{ background: #fff8e1; border-left: 4px solid {accent}; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: #7a5b00; margin-bottom: 22px; line-height: 1.5; }}
-  .banner-wrap {{ width: 100%; aspect-ratio: 16/9; max-height: 320px; overflow: hidden; border-radius: 12px; background: #111; margin-bottom: 18px; }}
+  .banner-wrap {{ width: 100%; aspect-ratio: 5.4/1; max-height: 260px; min-height: 130px; overflow: hidden; border-radius: 12px; background: #111; margin-bottom: 18px; }}
   .banner-wrap img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
   .channel-header {{ display: flex; align-items: center; gap: 18px; padding: 12px 0 22px; border-bottom: 1px solid #eee; margin-bottom: 22px; }}
   .channel-header .logo {{ width: 86px; height: 86px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, {primary}, {accent}); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 32px; }}
-  .channel-header .logo img {{ width: 100%; height: 100%; object-fit: cover; }}
+  .channel-header .logo img {{ width: 135%; height: 135%; object-fit: cover; }}
   .channel-header h2 {{ margin: 0 0 4px; font-size: 22px; }}
   .channel-header .stats {{ font-size: 12px; color: #666; }}
   .channel-header .stats strong {{ color: #16a34a; }}
