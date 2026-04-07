@@ -8,6 +8,7 @@
     <div class="links">
         <a href="/">Dashboard</a>
         <a href="/admin/projects" style="color:#b388ff">Projetos</a>
+        <a href="/admin/bent-ideas">Ideias Dobradas</a>
         <a href="/admin/students">Alunos</a>
         <a href="/logout" style="color:#ff5252">Sair</a>
     </div>
@@ -186,24 +187,22 @@ function cloneProject(projectId, name) {
         var lang = document.getElementById('clone-lang').value;
         var newName = document.getElementById('clone-name').value.trim();
         var loading = showToast('Clonando projeto para ' + lang + '... (pode demorar até 5 min se for adaptação cultural)', 'loading');
-        fetch('/api/admin/clone-language', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Session': window.SESSION_TOKEN || '',
-                'X-CSRF-Token': window.CSRF_TOKEN || ''
-            },
-            body: JSON.stringify({project_id: projectId, target_language: lang, new_name: newName})
-        })
+        // Use apiPost which handles auth tokens (X-Session, X-CSRF-Token, 401 redirects)
+        // Then manually parse the response to get structured error info
+        apiPost('/api/admin/clone-language', {project_id: projectId, target_language: lang, new_name: newName})
         .then(function(r) {
             return r.text().then(function(txt) {
-                try { return { status: r.status, ok: r.ok, data: JSON.parse(txt) }; }
-                catch(e) { return { status: r.status, ok: false, data: { error: 'Resposta invalida do servidor (' + r.status + '): ' + txt.substring(0, 200) } }; }
+                var data;
+                try { data = JSON.parse(txt); }
+                catch(e) {
+                    return { status: r.status, ok: false, data: { error: 'Resposta invalida do servidor (HTTP ' + r.status + '): ' + txt.substring(0, 200) } };
+                }
+                return { status: r.status, ok: r.ok, data: data };
             });
         })
         .then(function(resp) {
             removeToast(loading);
-            var data = resp.data;
+            var data = resp.data || {};
             if (resp.ok && data.ok) {
                 var stats = '"' + data.name + '" → ' + data.target_lang +
                     ' · SOP ' + (data.sop_chars || 0) + ' chars · ' +
@@ -220,14 +219,18 @@ function cloneProject(projectId, name) {
                 }
                 setTimeout(function() { location.reload(); }, 3000);
             } else {
-                var err = data.error || ('HTTP ' + resp.status);
+                var err = data.error || ('HTTP ' + resp.status + ' - resposta vazia');
                 var phase = data.phase ? ' [fase: ' + data.phase + ']' : '';
-                showToast('❌ ' + err + phase, 'error', 10000);
+                showToast('❌ ' + err + phase, 'error', 12000);
+                console.error('[CLONE] failed:', resp);
             }
         })
         .catch(function(e) {
             removeToast(loading);
-            showToast('❌ Erro de rede: ' + e.message, 'error', 10000);
+            // apiPost throws 'unauthorized' on 401 and redirects to login
+            if (e && e.message === 'unauthorized') return;
+            showToast('❌ Erro de rede: ' + (e && e.message ? e.message : String(e)), 'error', 10000);
+            console.error('[CLONE] network error:', e);
         });
     });
 }

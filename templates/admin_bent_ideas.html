@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}YT Cloner - Ideias Dobradas{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/projects">Projetos</a>
+        <a href="/admin/bent-ideas" style="color:#b388ff">Ideias Dobradas</a>
+        <a href="/admin/students">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="page">
+    <div class="section">
+        <div class="section-title" style="justify-content:space-between">
+            <span><span class="sec-icon">&#128260;</span> Ideias Dobradas — Banco de Oportunidades</span>
+            <span style="font-size:11px;color:#94a3b8">{{ total }} análises salvas</span>
+        </div>
+
+        <p style="color:#94a3b8;font-size:13px;margin:8px 0 16px 0;line-height:1.6">
+            Toda análise feita no <strong style="color:#10b981">🔄 Dobrar Ideia</strong> é salva aqui automaticamente.
+            Use esta página pra revisar oportunidades antigas, marcar variações favoritas com ⭐ e formalizar as melhores
+            ideias em projetos novos depois.
+        </p>
+
+        <!-- Filter by project -->
+        {% if projects %}
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+            <label style="color:#cbd5e1;font-size:12px">Filtrar por projeto fonte:</label>
+            <select onchange="filterByProject(this.value)" class="form-input" style="max-width:280px;font-size:12px">
+                <option value="">— Todos os projetos —</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if filter_project == p.id %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+            {% if filter_project %}
+            <a href="/admin/bent-ideas" style="color:#94a3b8;font-size:11px;text-decoration:underline">Limpar filtro</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if items %}
+        <div id="bent-list" style="display:flex;flex-direction:column;gap:14px">
+            {% for item in items %}
+            <div id="bent-card-{{ item.id }}" class="bent-card" style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:18px;transition:border-color 0.15s">
+
+                <!-- Header: source title + meta + actions -->
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">
+                    <div style="flex:1;min-width:0">
+                        <div style="color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">
+                            #{{ item.id }} · {{ item.source_mode|upper }} · {{ item.created_at[:16]|replace('T', ' ') }}
+                            {% if item.source_project_name %}· <span style="color:#a78bfa">{{ item.source_project_name }}</span>{% endif %}
+                        </div>
+                        <div style="color:#f8fafc;font-size:15px;font-weight:600;line-height:1.3;word-wrap:break-word">
+                            {{ item.source_title|default('(sem título)') }}
+                        </div>
+                        <div style="color:#64748b;font-size:11px;margin-top:6px">
+                            {% if item.source_views %}{{ '{:,}'.format(item.source_views) }} views · {% endif %}
+                            {{ item.language }} · {{ item.num_variations }} variações
+                            {% if item.source_url %}· <a href="{{ item.source_url }}" target="_blank" style="color:#60a5fa">ver fonte ↗</a>{% endif %}
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-shrink:0">
+                        <button type="button" onclick="toggleBentExpand({{ item.id }})" id="expand-btn-{{ item.id }}"
+                                style="background:#7c3aed;color:#fff;border:none;padding:6px 12px;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600">
+                            🔍 Ver variações
+                        </button>
+                        <button type="button" onclick="deleteBentIdea({{ item.id }})"
+                                style="background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:5px;font-size:11px;cursor:pointer">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DNA preview (always visible) -->
+                {% if item.dna and item.dna.why_it_worked %}
+                <div style="background:#0c1226;border:1px solid #1e3a8a;padding:10px 14px;border-radius:6px;margin-bottom:10px">
+                    <div style="color:#60a5fa;font-size:9px;font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">🧠 DNA do sucesso</div>
+                    <div style="color:#cbd5e1;font-size:12px;line-height:1.5">{{ item.dna.why_it_worked|default('') }}</div>
+                    {% if item.dna.title_formula %}
+                    <div style="color:#94a3b8;font-size:11px;margin-top:6px"><strong style="color:#60a5fa">Fórmula:</strong> {{ item.dna.title_formula }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Variations (collapsed by default) -->
+                <div id="variations-{{ item.id }}" style="display:none;margin-top:12px;border-top:1px solid #1e293b;padding-top:14px">
+                    {% if item.variations %}
+                    {% for v in item.variations %}
+                    <div style="background:#1e293b;border:1px solid {% if v.starred %}#fbbf24{% else %}#334155{% endif %};border-radius:8px;padding:14px;margin-bottom:10px">
+
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+                            <div style="flex:1;min-width:0">
+                                <div style="color:#a78bfa;font-size:9px;font-weight:600;margin-bottom:3px">
+                                    VAR {{ loop.index }} · {{ v.new_niche_suggestion|default('') }}
+                                </div>
+                                <div style="color:#f8fafc;font-size:13px;font-weight:600;line-height:1.4">
+                                    {% if v.starred %}⭐ {% endif %}{{ v.title|default('(sem título)') }}
+                                </div>
+                            </div>
+                            <button type="button"
+                                    onclick="toggleStar({{ item.id }}, {{ loop.index0 }}, {{ 'true' if v.starred else 'false' }}, this)"
+                                    title="Marcar como favorita pra formalizar depois"
+                                    style="background:{% if v.starred %}#fbbf24{% else %}#334155{% endif %};color:{% if v.starred %}#000{% else %}#fbbf24{% endif %};border:1px solid #fbbf24;padding:5px 10px;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700;flex-shrink:0">
+                                {% if v.starred %}⭐ Favorita{% else %}☆ Marcar{% endif %}
+                            </button>
+                        </div>
+
+                        <!-- Strategic badges -->
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+                            {% if v.rpm_tier %}
+                            <span style="background:{% if v.rpm_tier == 'HIGH' %}#10b98118;color:#10b981;border-color:#10b98140{% elif v.rpm_tier == 'MEDIUM' %}#f59e0b18;color:#f59e0b;border-color:#f59e0b40{% else %}#64748b18;color:#94a3b8;border-color:#64748b40{% endif %};border:1px solid;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600">💰 {{ v.rpm_tier }}{% if v.rpm_estimate_usd %} · {{ v.rpm_estimate_usd }}{% endif %}</span>
+                            {% endif %}
+                            {% if v.competition_level %}
+                            <span style="background:{% if v.competition_level == 'LOW' %}#10b98118;color:#10b981;border-color:#10b98140{% elif v.competition_level == 'MEDIUM' %}#f59e0b18;color:#f59e0b;border-color:#f59e0b40{% else %}#ef444418;color:#ef4444;border-color:#ef444440{% endif %};border:1px solid;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600">🎯 {{ v.competition_level }}</span>
+                            {% endif %}
+                            {% if v.production_complexity %}
+                            <span style="background:{% if v.production_complexity == 'EASY' %}#10b98118;color:#10b981;border-color:#10b98140{% elif v.production_complexity == 'MEDIUM' %}#f59e0b18;color:#f59e0b;border-color:#f59e0b40{% else %}#ef444418;color:#ef4444;border-color:#ef444440{% endif %};border:1px solid;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600">⚒️ {{ v.production_complexity }}{% if v.estimated_production_hours %} · {{ v.estimated_production_hours }}h{% endif %}</span>
+                            {% endif %}
+                            {% if v.composite_score %}
+                            <span style="background:#7c3aed18;color:#a78bfa;border:1px solid #7c3aed40;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">★ {{ v.composite_score }}</span>
+                            {% endif %}
+                        </div>
+
+                        {% if v.angle %}
+                        <div style="color:#94a3b8;font-size:11px;margin-bottom:4px"><strong style="color:#cbd5e1">Ângulo:</strong> {{ v.angle }}</div>
+                        {% endif %}
+                        {% if v.reasoning %}
+                        <div style="color:#94a3b8;font-size:11px;margin-bottom:4px;line-height:1.5"><strong style="color:#cbd5e1">Por quê:</strong> {{ v.reasoning }}</div>
+                        {% endif %}
+                        {% if v.timing_hook %}
+                        <div style="color:#fbbf24;font-size:11px;margin-bottom:4px"><strong>⚡ Timing:</strong> {{ v.timing_hook }}</div>
+                        {% endif %}
+                        {% if v.target_audience %}
+                        <div style="color:#94a3b8;font-size:11px;margin-bottom:4px"><strong style="color:#cbd5e1">Público:</strong> {{ v.target_audience }}</div>
+                        {% endif %}
+
+                        {% if v.example_pillars %}
+                        <div style="margin-top:6px">
+                            {% for p in v.example_pillars %}
+                            <span style="display:inline-block;background:#334155;color:#cbd5e1;padding:2px 7px;border-radius:4px;margin-right:4px;margin-bottom:3px;font-size:10px">{{ p }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        {% if v.first_3_titles %}
+                        <details style="margin-top:6px">
+                            <summary style="cursor:pointer;color:#10b981;font-size:10px;font-weight:600">🎬 {{ v.first_3_titles|length }} títulos sugeridos</summary>
+                            <ul style="color:#94a3b8;font-size:10px;margin:4px 0 0 14px;padding:0">
+                                {% for t in v.first_3_titles %}
+                                <li style="margin-bottom:2px">{{ t }}</li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                        {% endif %}
+
+                        <button type="button" onclick="copyToClipboard('{{ v.title|replace("'", "\\'") }}', this)"
+                                style="margin-top:8px;padding:5px 10px;background:#7c3aed18;color:#a78bfa;border:1px solid #7c3aed40;border-radius:4px;font-size:10px;cursor:pointer">
+                            📋 Copiar título
+                        </button>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div style="color:#64748b;font-size:12px;text-align:center;padding:20px">Nenhuma variação salva nessa análise.</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:60px 20px;color:#64748b">
+            <div style="font-size:48px;margin-bottom:12px">🔄</div>
+            <div style="font-size:16px;color:#94a3b8;margin-bottom:8px">Nenhuma ideia dobrada ainda</div>
+            <div style="font-size:13px">Use o botão <strong style="color:#10b981">🔄 Dobrar Ideia</strong> no Dashboard pra começar a salvar análises.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script src="/static/js/app.js?v=20260406b"></script>
+<script>
+function toggleBentExpand(id) {
+    var box = document.getElementById('variations-' + id);
+    var btn = document.getElementById('expand-btn-' + id);
+    if (!box) return;
+    if (box.style.display === 'none') {
+        box.style.display = 'block';
+        if (btn) btn.innerHTML = '🔼 Ocultar';
+    } else {
+        box.style.display = 'none';
+        if (btn) btn.innerHTML = '🔍 Ver variações';
+    }
+}
+
+function filterByProject(projectId) {
+    if (projectId) {
+        window.location.href = '/admin/bent-ideas?project=' + encodeURIComponent(projectId);
+    } else {
+        window.location.href = '/admin/bent-ideas';
+    }
+}
+
+function deleteBentIdea(bentId) {
+    showConfirm('Remover Ideia Dobrada', 'Esta análise será apagada permanentemente. Continuar?', function() {
+        apiPost('/api/admin/delete-bent-idea', {bent_id: bentId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                var card = document.getElementById('bent-card-' + bentId);
+                if (card) {
+                    card.style.transition = 'opacity 0.3s';
+                    card.style.opacity = '0';
+                    setTimeout(function() { card.remove(); }, 300);
+                }
+                showToast('Removida', 'success', 2000);
+            } else {
+                showToast('Erro: ' + (data.error || 'falha'), 'error');
+            }
+        })
+        .catch(function(e) {
+            if (e && e.message === 'unauthorized') return;
+            showToast('Erro: ' + e.message, 'error');
+        });
+    });
+}
+
+function toggleStar(bentId, varIdx, currentlyStarred, btn) {
+    var newStarred = !currentlyStarred;
+    apiPost('/api/admin/star-bent-variation', {bent_id: bentId, variation_idx: varIdx, starred: newStarred})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            // Update button state inline
+            if (newStarred) {
+                btn.style.background = '#fbbf24';
+                btn.style.color = '#000';
+                btn.innerHTML = '⭐ Favorita';
+                btn.setAttribute('onclick', btn.getAttribute('onclick').replace('false', 'true'));
+            } else {
+                btn.style.background = '#334155';
+                btn.style.color = '#fbbf24';
+                btn.innerHTML = '☆ Marcar';
+                btn.setAttribute('onclick', btn.getAttribute('onclick').replace('true', 'false'));
+            }
+            showToast(newStarred ? '⭐ Favoritada' : 'Removida dos favoritos', 'success', 1500);
+        } else {
+            showToast('Erro: ' + (data.error || 'falha'), 'error');
+        }
+    })
+    .catch(function(e) {
+        if (e && e.message === 'unauthorized') return;
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+function copyToClipboard(text, btn) {
+    navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copiado!';
+        setTimeout(function() { btn.innerHTML = orig; }, 1500);
+    });
+}
+</script>
+{% endblock %}

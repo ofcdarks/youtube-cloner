@@ -1501,6 +1501,84 @@ async def admin_projects(request: Request, user=Depends(require_admin)):
     return render(request, "admin_projects.html", {"user": user, "projects": projects})
 
 
+@app.get("/admin/bent-ideas", response_class=HTMLResponse)
+async def admin_bent_ideas(request: Request, project: str = "", user=Depends(require_admin)):
+    """Dedicated page to view and manage saved bent ideas (niche bender history)."""
+    from database import get_bent_ideas, get_projects as db_projects
+
+    items = get_bent_ideas(limit=200, project_id=project)
+    projects = db_projects()
+
+    # Enrich items with project name lookup
+    project_map = {p["id"]: p["name"] for p in projects}
+    for it in items:
+        it["source_project_name"] = project_map.get(it.get("source_project_id", ""), "")
+
+    return render(request, "admin_bent_ideas.html", {
+        "user": user,
+        "items": items,
+        "projects": projects,
+        "filter_project": project,
+        "total": len(items),
+    })
+
+
+@app.post("/api/admin/delete-bent-idea")
+async def api_delete_bent_idea(request: Request, user=Depends(require_admin)):
+    """Delete a saved bent idea."""
+    from database import get_db
+    body = await request.json()
+    bent_id = body.get("bent_id")
+    if not bent_id:
+        return JSONResponse({"error": "bent_id obrigatorio"}, status_code=400)
+    try:
+        with get_db() as conn:
+            conn.execute("DELETE FROM bent_ideas WHERE id=?", (int(bent_id),))
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.exception(f"delete-bent-idea error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+@app.post("/api/admin/star-bent-variation")
+async def api_star_bent_variation(request: Request, user=Depends(require_admin)):
+    """Mark a specific variation within a bent idea as 'starred' for later formalization.
+
+    Stores in the variations_json by setting starred=true on the variation at index N.
+    """
+    import json as _json
+    from database import get_db
+    body = await request.json()
+    bent_id = body.get("bent_id")
+    var_idx = body.get("variation_idx")
+    starred = bool(body.get("starred", True))
+    if bent_id is None or var_idx is None:
+        return JSONResponse({"error": "bent_id e variation_idx obrigatorios"}, status_code=400)
+    try:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT variations_json FROM bent_ideas WHERE id=?",
+                (int(bent_id),),
+            ).fetchone()
+            if not row:
+                return JSONResponse({"error": "Bent idea nao encontrada"}, status_code=404)
+            try:
+                variations = _json.loads(row["variations_json"] or "[]")
+            except Exception:
+                variations = []
+            if not isinstance(variations, list) or int(var_idx) >= len(variations):
+                return JSONResponse({"error": "variation_idx fora do range"}, status_code=400)
+            variations[int(var_idx)]["starred"] = starred
+            conn.execute(
+                "UPDATE bent_ideas SET variations_json=? WHERE id=?",
+                (_json.dumps(variations, ensure_ascii=False), int(bent_id)),
+            )
+        return JSONResponse({"ok": True, "starred": starred})
+    except Exception as e:
+        logger.exception(f"star-bent-variation error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
 @app.get("/admin/radar", response_class=HTMLResponse)
 async def admin_radar(request: Request, project: str = "", user=Depends(require_admin)):
     """Dedicated Radar page — trend analysis for a project."""
