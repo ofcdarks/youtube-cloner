@@ -1581,6 +1581,56 @@ async def api_star_bent_variation(request: Request, user=Depends(require_admin))
         return JSONResponse({"error": str(e)[:200]}, status_code=500)
 
 
+@app.get("/admin/niches-lab", response_class=HTMLResponse)
+async def admin_niches_lab(request: Request, user=Depends(require_admin)):
+    """Niches Lab — Top Niches playbook + Deep Dive turbinado com DataForSEO."""
+    from protocols.niches_lab import TOP_NICHES
+    return render(request, "admin_niches_lab.html", {
+        "user": user,
+        "top_niches": TOP_NICHES,
+    })
+
+
+@app.post("/api/admin/niches-lab/enrich")
+async def api_niches_lab_enrich(request: Request, user=Depends(require_admin)):
+    """Enriquece a lista curada de Top Niches com dados ao vivo do DataForSEO."""
+    from protocols.niches_lab import enrich_top_niches
+    body = await request.json()
+    country = (body.get("country") or "us").lower()
+    language = (body.get("language") or "en").lower()
+    try:
+        enriched = enrich_top_niches(country=country, language=language)
+        has_live = any(n.get("live", {}).get("has_data") for n in enriched)
+        return JSONResponse({
+            "ok": True,
+            "country": country,
+            "language": language,
+            "niches": enriched,
+            "live_data_available": has_live,
+        })
+    except Exception as e:
+        logger.exception(f"niches-lab/enrich error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+@app.post("/api/admin/niches-lab/deep-dive")
+async def api_niches_lab_deep_dive(request: Request, user=Depends(require_admin)):
+    """Deep Dive de um nicho — sub-niches reais via DataForSEO Labs + plano 30 dias."""
+    from protocols.niches_lab import deep_dive_niche
+    body = await request.json()
+    niche = (body.get("niche") or "").strip()
+    country = (body.get("country") or "us").lower()
+    language = (body.get("language") or "en").lower()
+    if not niche:
+        return JSONResponse({"error": "niche obrigatorio"}, status_code=400)
+    try:
+        result = deep_dive_niche(niche, country=country, language=language)
+        return JSONResponse(result)
+    except Exception as e:
+        logger.exception(f"niches-lab/deep-dive error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
 @app.get("/admin/radar", response_class=HTMLResponse)
 async def admin_radar(request: Request, project: str = "", user=Depends(require_admin)):
     """Dedicated Radar page — trend analysis for a project."""

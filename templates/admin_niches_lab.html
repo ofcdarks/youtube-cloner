@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+
+{% block title %}YT Cloner - Niches Lab{% endblock %}
+
+{% block body %}
+<div class="topbar">
+    <h1>YT Channel Cloner</h1>
+    <div class="links">
+        <a href="/">Dashboard</a>
+        <a href="/admin/projects">Projetos</a>
+        <a href="/admin/niches-lab" style="color:#FFD700">Niches Lab</a>
+        <a href="/admin/bent-ideas">Ideias Dobradas</a>
+        <a href="/admin/students">Alunos</a>
+        <a href="/logout" style="color:#ff5252">Sair</a>
+    </div>
+</div>
+
+<div class="page" style="max-width:1100px">
+
+    <!-- Hero -->
+    <div style="background:linear-gradient(160deg,#08080E 0%,#1a0525 35%,#0a1628 65%,#08080E 100%);padding:32px 24px;text-align:center;border-radius:14px;margin-bottom:18px;border:1px solid rgba(255,255,255,0.06)">
+        <div style="display:inline-block;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.25);border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;color:#FFD700;letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">
+            Powered by DataForSEO &middot; Real-Time Data
+        </div>
+        <h1 style="font-size:34px;font-weight:900;margin:0 0 8px;background:linear-gradient(135deg,#fff 20%,#7B68EE 60%,#FFD700 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+            Niches Lab &mdash; Playbook + Deep Dive
+        </h1>
+        <p style="font-size:14px;color:#8888A0;max-width:560px;margin:8px auto 0;line-height:1.5">
+            Top 8 nichos virais 2026 enriquecidos com search volume real, competition score e CPC do DataForSEO.
+            <br>Faça deep dive em qualquer nicho pra ver sub-nichos reais derivados de keyword suggestions.
+        </p>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:0">
+        <button id="tab-top" class="lab-tab lab-tab-active" onclick="switchTab('top')">🏆 Top Nichos</button>
+        <button id="tab-deep" class="lab-tab" onclick="switchTab('deep')">🔬 Deep Dive</button>
+    </div>
+
+    <!-- ============ TAB 1: TOP NICHES ============ -->
+    <div id="pane-top">
+
+        <!-- Country/Language selector + Enrich button -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px">
+            <span style="font-size:12px;color:#888">País:</span>
+            <select id="enrich-country" class="form-input" style="max-width:140px;font-size:12px">
+                <option value="us">🇺🇸 USA</option>
+                <option value="br">🇧🇷 Brasil</option>
+                <option value="gb">🇬🇧 UK</option>
+                <option value="es">🇪🇸 Espanha</option>
+                <option value="mx">🇲🇽 México</option>
+                <option value="de">🇩🇪 Alemanha</option>
+                <option value="fr">🇫🇷 França</option>
+                <option value="jp">🇯🇵 Japão</option>
+            </select>
+            <span style="font-size:12px;color:#888;margin-left:8px">Idioma:</span>
+            <select id="enrich-lang" class="form-input" style="max-width:140px;font-size:12px">
+                <option value="en">English</option>
+                <option value="pt">Português</option>
+                <option value="es">Español</option>
+                <option value="de">Deutsch</option>
+                <option value="fr">Français</option>
+                <option value="ja">日本語</option>
+            </select>
+            <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="enrichTopNiches()">
+                ⚡ Enrich com DataForSEO
+            </button>
+            <span id="enrich-status" style="font-size:11px;color:#666;margin-left:auto"></span>
+        </div>
+
+        <!-- Quick Stats Strip -->
+        <div id="top-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+            <div class="lab-stat">
+                <div style="font-size:18px;font-weight:800;color:#FFD700">$15-50</div>
+                <div style="font-size:10px;color:#666">Best CPM</div>
+                <div style="font-size:9px;color:#7B68EE">Finance</div>
+            </div>
+            <div class="lab-stat">
+                <div style="font-size:18px;font-weight:800;color:#FFD700">10K ch</div>
+                <div style="font-size:10px;color:#666">Lowest Competition</div>
+                <div style="font-size:9px;color:#7B68EE">English Learning</div>
+            </div>
+            <div class="lab-stat">
+                <div style="font-size:18px;font-weight:800;color:#FFD700">21x</div>
+                <div style="font-size:10px;color:#666">Fastest Growth</div>
+                <div style="font-size:9px;color:#7B68EE">Revenge Stories</div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="lab-filter lab-filter-active" data-filter="all" onclick="filterNiches('all')">Todos</button>
+            <button class="lab-filter" data-filter="easy" onclick="filterNiches('easy')">Fácil de Começar</button>
+            <button class="lab-filter" data-filter="highcpm" onclick="filterNiches('highcpm')">Alto CPM</button>
+            <button class="lab-filter" data-filter="lowcomp" onclick="filterNiches('lowcomp')">Baixa Competição</button>
+        </div>
+
+        <!-- Niche Cards -->
+        <div id="niche-list">
+            {% for n in top_niches %}
+            <div class="niche-card" data-rank="{{ n.rank }}" data-difficulty="{{ n.difficulty }}" data-comp="{{ n.competition }}" data-cpm-low="{{ n.cpm_low }}">
+                <div class="niche-header" onclick="toggleNiche({{ n.rank }})">
+                    <div style="flex:1">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                            <span style="font-size:11px;font-weight:800;color:#FFD700;background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:4px">#{{ n.rank }}</span>
+                            <span style="font-size:18px">{{ n.emoji }}</span>
+                            <span style="font-size:15px;font-weight:700;color:#fff">{{ n.name }}</span>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <span class="lab-badge" style="background:rgba(46,204,64,0.15);color:#2ECC40">CPM {{ n.cpm_est }}</span>
+                            <span class="lab-badge lab-badge-comp-{{ n.competition|lower|replace(' ','-') }}">{{ n.competition }}</span>
+                            <span class="lab-badge" style="background:rgba(255,215,0,0.12);color:#FFD700">{{ n.growth }} growth</span>
+                            <span class="lab-badge live-badge live-{{ n.rank }}" style="display:none"></span>
+                        </div>
+                    </div>
+                    <div class="niche-arrow" id="arrow-{{ n.rank }}">▾</div>
+                </div>
+
+                <div class="niche-detail" id="detail-{{ n.rank }}" style="display:none">
+                    <p style="font-size:13px;color:#B0B0C0;line-height:1.6;margin:14px 0 12px">{{ n.desc }}</p>
+
+                    <div class="lab-info-row"><span class="lab-info-label">🎬 Formato</span><span class="lab-info-val">{{ n.format }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label">🛠️ Ferramentas</span><span class="lab-info-val">{{ n.tools }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label">🎯 Estratégia</span><span class="lab-info-val">{{ n.tip }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label">💎 Afiliados</span><span class="lab-info-val">{{ n.affiliate }}</span></div>
+
+                    <div class="live-data-{{ n.rank }}" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:6px">
+                        <div style="font-size:10px;color:#00d4ff;font-weight:700;margin-bottom:6px">⚡ DATAFORSEO LIVE</div>
+                        <div class="live-content-{{ n.rank }}" style="font-size:12px;color:#cbd5e1"></div>
+                    </div>
+
+                    <div style="margin-top:10px;display:flex;gap:8px">
+                        <button class="btn-primary" style="font-size:11px;padding:6px 12px" onclick="event.stopPropagation(); deepDiveFromCard('{{ n.seed }}', '{{ n.name }}')">
+                            🔬 Deep Dive Este Nicho
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ============ TAB 2: DEEP DIVE ============ -->
+    <div id="pane-deep" style="display:none">
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:18px;margin-bottom:14px">
+            <div style="font-size:13px;color:#FFD700;font-weight:700;margin-bottom:10px">🔬 Análise Profunda de Nicho</div>
+            <p style="font-size:12px;color:#888;line-height:1.5;margin-bottom:14px">
+                Digite uma seed keyword (ex: "true crime", "personal finance", "ai tools") e o DataForSEO retorna sub-nichos reais
+                ordenados por demanda × CPC. Use isso pra descobrir oportunidades antes de criar o canal.
+            </p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input type="text" id="dd-niche" class="form-input" placeholder="ex: revenge stories, court drama, ai tools..." style="flex:1;min-width:220px">
+                <select id="dd-country" class="form-input" style="max-width:120px">
+                    <option value="us">🇺🇸 USA</option>
+                    <option value="br">🇧🇷 Brasil</option>
+                    <option value="gb">🇬🇧 UK</option>
+                    <option value="es">🇪🇸 ES</option>
+                    <option value="mx">🇲🇽 MX</option>
+                    <option value="de">🇩🇪 DE</option>
+                    <option value="fr">🇫🇷 FR</option>
+                    <option value="jp">🇯🇵 JP</option>
+                </select>
+                <select id="dd-lang" class="form-input" style="max-width:120px">
+                    <option value="en">English</option>
+                    <option value="pt">Português</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                    <option value="fr">Français</option>
+                    <option value="ja">日本語</option>
+                </select>
+                <button class="btn-primary" style="padding:9px 18px" onclick="runDeepDive()">⚡ Analisar</button>
+            </div>
+        </div>
+
+        <div id="dd-result"></div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<style>
+.lab-tab { background:none; border:none; border-bottom:2px solid transparent; color:#555; padding:12px 18px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s }
+.lab-tab-active { color:#fff; border-bottom-color:#FFD700 }
+.lab-stat { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:12px; text-align:center; border-radius:8px }
+.lab-filter { background:rgba(255,255,255,0.05); color:#888; border:none; padding:6px 14px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s }
+.lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF); color:#fff }
+.niche-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:10px; padding:14px; margin-bottom:8px; transition:all 0.3s }
+.niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)); border-color:rgba(123,104,238,0.3) }
+.niche-header { display:flex; justify-content:space-between; align-items:flex-start; cursor:pointer }
+.niche-arrow { color:#444; font-size:18px; transition:transform 0.3s }
+.niche-arrow.up { transform:rotate(180deg) }
+.lab-badge { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.5px }
+.lab-badge-comp-very-low { background:rgba(46,204,64,0.18); color:#2ECC40 }
+.lab-badge-comp-low { background:rgba(123,199,77,0.18); color:#7BC74D }
+.lab-badge-comp-medium { background:rgba(255,220,0,0.18); color:#FFDC00 }
+.lab-badge-comp-high { background:rgba(255,65,54,0.18); color:#FF4136 }
+.lab-info-row { display:flex; gap:10px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; margin-bottom:5px }
+.lab-info-label { min-width:110px; font-size:11px; color:#7B68EE; font-weight:700 }
+.lab-info-val { font-size:12px; color:#C8C8D8; line-height:1.5; flex:1 }
+.dd-subniche { background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:12px; margin-bottom:6px }
+.dd-week { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:10px; padding:14px; margin-bottom:8px }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
+<script src="/static/js/app.js?v=20260407"></script>
+<script>
+function switchTab(name) {
+    document.getElementById('tab-top').classList.toggle('lab-tab-active', name === 'top');
+    document.getElementById('tab-deep').classList.toggle('lab-tab-active', name === 'deep');
+    document.getElementById('pane-top').style.display = name === 'top' ? 'block' : 'none';
+    document.getElementById('pane-deep').style.display = name === 'deep' ? 'block' : 'none';
+}
+
+function toggleNiche(rank) {
+    var detail = document.getElementById('detail-' + rank);
+    var arrow = document.getElementById('arrow-' + rank);
+    var card = detail.closest('.niche-card');
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+        arrow.classList.add('up');
+        card.classList.add('expanded');
+    } else {
+        detail.style.display = 'none';
+        arrow.classList.remove('up');
+        card.classList.remove('expanded');
+    }
+}
+
+function filterNiches(type) {
+    document.querySelectorAll('.lab-filter').forEach(function(b) {
+        b.classList.toggle('lab-filter-active', b.dataset.filter === type);
+    });
+    document.querySelectorAll('.niche-card').forEach(function(c) {
+        var diff = parseInt(c.dataset.difficulty);
+        var comp = c.dataset.comp;
+        var cpmLow = parseInt(c.dataset.cpmLow) || 0;
+        var show = true;
+        if (type === 'easy') show = diff <= 2;
+        else if (type === 'highcpm') show = cpmLow >= 12;
+        else if (type === 'lowcomp') show = (comp === 'LOW' || comp === 'VERY LOW');
+        c.style.display = show ? 'block' : 'none';
+    });
+}
+
+function enrichTopNiches() {
+    var country = document.getElementById('enrich-country').value;
+    var language = document.getElementById('enrich-lang').value;
+    var status = document.getElementById('enrich-status');
+    status.textContent = 'Buscando dados ao vivo...';
+    status.style.color = '#FFD700';
+
+    apiPost('/api/admin/niches-lab/enrich', {country: country, language: language})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.ok) {
+            status.textContent = '❌ ' + (data.error || 'erro');
+            status.style.color = '#FF4136';
+            return;
+        }
+        var hits = 0;
+        data.niches.forEach(function(n) {
+            var live = n.live || {};
+            if (live.has_data) {
+                hits++;
+                var badge = document.querySelector('.live-' + n.rank);
+                if (badge) {
+                    badge.style.display = 'inline-block';
+                    badge.style.background = 'rgba(0,212,255,0.15)';
+                    badge.style.color = '#00d4ff';
+                    badge.textContent = '⚡ ' + (live.search_volume ? live.search_volume.toLocaleString() : 0) + '/mo';
+                }
+                var content = document.querySelector('.live-content-' + n.rank);
+                var box = document.querySelector('.live-data-' + n.rank);
+                if (content && box) {
+                    box.style.display = 'block';
+                    content.innerHTML =
+                        '<div><strong>Search Volume:</strong> ' + (live.search_volume || 0).toLocaleString() + '/mês</div>' +
+                        '<div><strong>CPC:</strong> $' + (live.cpc || 0).toFixed(2) + ' &middot; <strong>CPM Real Estimado:</strong> ' + (live.cpm_real || '—') + '</div>' +
+                        '<div><strong>Competição Real:</strong> ' + (live.competition_real || '—') + ' (índice ' + (live.competition_index || 0) + '/100)</div>';
+                }
+            }
+        });
+        if (hits > 0) {
+            status.textContent = '✅ ' + hits + '/8 enriquecidos com dados ao vivo';
+            status.style.color = '#2ECC40';
+        } else {
+            status.textContent = '⚠️ Sem dados — verifique credenciais DataForSEO';
+            status.style.color = '#FFDC00';
+        }
+    })
+    .catch(function(e) {
+        if (e && e.message === 'unauthorized') return;
+        status.textContent = '❌ ' + e.message;
+        status.style.color = '#FF4136';
+    });
+}
+
+function deepDiveFromCard(seed, displayName) {
+    document.getElementById('dd-niche').value = seed;
+    switchTab('deep');
+    runDeepDive();
+}
+
+function runDeepDive() {
+    var niche = document.getElementById('dd-niche').value.trim();
+    var country = document.getElementById('dd-country').value;
+    var language = document.getElementById('dd-lang').value;
+    if (!niche) { showToast('Digite uma seed keyword', 'error'); return; }
+
+    var resultDiv = document.getElementById('dd-result');
+    resultDiv.innerHTML = '<div style="text-align:center;padding:40px;color:#888"><div style="font-size:24px;margin-bottom:8px">⚡</div>Analisando "' + niche + '" via DataForSEO...<br><small>(pode levar 15-30s)</small></div>';
+
+    apiPost('/api/admin/niches-lab/deep-dive', {niche: niche, country: country, language: language})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.ok) {
+            resultDiv.innerHTML = '<div style="padding:20px;background:rgba(255,65,54,0.1);border:1px solid rgba(255,65,54,0.3);border-radius:8px;color:#FF6B6B">❌ ' + (data.error || 'erro') + '</div>';
+            return;
+        }
+        renderDeepDive(data, resultDiv);
+    })
+    .catch(function(e) {
+        if (e && e.message === 'unauthorized') return;
+        resultDiv.innerHTML = '<div style="padding:20px;background:rgba(255,65,54,0.1);border:1px solid rgba(255,65,54,0.3);border-radius:8px;color:#FF6B6B">❌ ' + e.message + '</div>';
+    });
+}
+
+function renderDeepDive(data, target) {
+    var s = data.summary || {};
+    var v = data.verdict || {};
+    var html = '';
+
+    // Verdict header
+    html += '<div style="background:linear-gradient(135deg,' + v.color + '15,transparent);border:1px solid ' + v.color + '40;border-radius:12px;padding:18px;margin-bottom:12px">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">';
+    html += '<div><div style="font-size:11px;color:#888;text-transform:uppercase">Veredicto</div><div style="font-size:22px;font-weight:900;color:' + v.color + '">' + v.rating + '</div></div>';
+    html += '<div style="font-size:32px;font-weight:900;color:' + v.color + '">' + v.score + '<span style="font-size:14px;color:#666">/100</span></div>';
+    html += '</div>';
+    html += '<ul style="margin:8px 0 0 16px;padding:0;color:#B0B0C0;font-size:12px;line-height:1.7">';
+    (v.notes || []).forEach(function(n) { html += '<li>' + n + '</li>'; });
+    html += '</ul></div>';
+
+    // Summary stats
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px">';
+    html += '<div class="lab-stat"><div style="font-size:18px;font-weight:800;color:#FFD700">' + (s.total_search_volume || 0).toLocaleString() + '</div><div style="font-size:10px;color:#666">Volume Total /mês</div></div>';
+    html += '<div class="lab-stat"><div style="font-size:18px;font-weight:800;color:#2ECC40">$' + (s.avg_cpc || 0).toFixed(2) + '</div><div style="font-size:10px;color:#666">CPC Médio</div></div>';
+    html += '<div class="lab-stat"><div style="font-size:18px;font-weight:800;color:#7B68EE">' + (s.cpm_estimate_range || '—') + '</div><div style="font-size:10px;color:#666">CPM Estimado</div></div>';
+    html += '<div class="lab-stat"><div style="font-size:18px;font-weight:800;color:#FF6B6B">' + (s.competition_label || '—') + '</div><div style="font-size:10px;color:#666">Competição (' + (s.avg_competition_index || 0) + '/100)</div></div>';
+    html += '<div class="lab-stat"><div style="font-size:18px;font-weight:800;color:#00d4ff">' + (s.keyword_count || 0) + '</div><div style="font-size:10px;color:#666">Keywords Analisadas</div></div>';
+    html += '</div>';
+
+    // Sub-niches
+    html += '<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:12px">';
+    html += '<div style="font-size:13px;font-weight:800;color:#FFD700;margin-bottom:10px">🎯 Top Sub-Nichos (ordenados por demanda × CPC)</div>';
+    if (!data.sub_niches || data.sub_niches.length === 0) {
+        html += '<div style="color:#666;font-size:12px;text-align:center;padding:16px">Nenhum sub-nicho encontrado. Tenta uma seed mais genérica.</div>';
+    } else {
+        data.sub_niches.forEach(function(sn, i) {
+            var compColor = sn.competition === 'VERY LOW' ? '#2ECC40' : sn.competition === 'LOW' ? '#7BC74D' : sn.competition === 'MEDIUM' ? '#FFDC00' : '#FF4136';
+            html += '<div class="dd-subniche">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">';
+            html += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px">#' + (i + 1) + ' &middot; ' + sn.keyword + '</div>';
+            html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+            html += '<span class="lab-badge" style="background:rgba(0,212,255,0.15);color:#00d4ff">' + sn.search_volume.toLocaleString() + '/mo</span>';
+            html += '<span class="lab-badge" style="background:rgba(46,204,64,0.15);color:#2ECC40">CPC $' + sn.cpc.toFixed(2) + '</span>';
+            html += '<span class="lab-badge" style="background:rgba(123,104,238,0.15);color:#a78bfa">CPM ' + sn.cpm_est + '</span>';
+            html += '<span class="lab-badge" style="background:' + compColor + '20;color:' + compColor + '">' + sn.competition + '</span>';
+            html += '</div></div>';
+            html += '<button class="lab-badge" style="background:#7c3aed;color:#fff;border:none;cursor:pointer" onclick="copyKw(\'' + sn.keyword.replace(/'/g, "\\'") + '\', this)">📋</button>';
+            html += '</div></div>';
+        });
+    }
+    html += '</div>';
+
+    // Long tail
+    if (data.long_tail && data.long_tail.length) {
+        html += '<details style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:14px;margin-bottom:12px">';
+        html += '<summary style="cursor:pointer;font-size:12px;color:#888;font-weight:700">📊 ' + data.long_tail.length + ' keywords long-tail adicionais</summary>';
+        html += '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:5px">';
+        data.long_tail.forEach(function(lt) {
+            html += '<span class="lab-badge" style="background:rgba(255,255,255,0.05);color:#aaa;cursor:pointer" onclick="copyKw(\'' + lt.keyword.replace(/'/g, "\\'") + '\', this)" title="' + lt.search_volume + '/mo · CPC $' + lt.cpc + '">' + lt.keyword + '</span>';
+        });
+        html += '</div></details>';
+    }
+
+    // Action plan
+    html += '<div style="background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:12px;padding:16px">';
+    html += '<div style="font-size:14px;font-weight:800;color:#FFD700;margin-bottom:12px">⚡ Plano de Ação 30 Dias (contextualizado para "' + data.niche + '")</div>';
+    (data.action_plan || []).forEach(function(w) {
+        html += '<div class="dd-week" style="border-color:' + w.color + '30">';
+        html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+        html += '<div style="background:' + w.color + '20;border:1px solid ' + w.color + '40;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:800;color:' + w.color + '">' + w.week + '</div>';
+        html += '<div style="font-size:13px;font-weight:700;color:#fff">' + w.title + '</div></div>';
+        w.tasks.forEach(function(t) {
+            html += '<div style="display:flex;gap:8px;margin-bottom:5px;align-items:flex-start"><div style="min-width:6px;height:6px;border-radius:50%;background:' + w.color + ';margin-top:6px"></div><div style="font-size:12px;color:#999;line-height:1.5">' + t + '</div></div>';
+        });
+        html += '</div>';
+    });
+    html += '</div>';
+
+    target.innerHTML = html;
+}
+
+function copyKw(text, btn) {
+    navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '✓';
+        setTimeout(function() { btn.innerHTML = orig; }, 1200);
+    });
+}
+</script>
+{% endblock %}
