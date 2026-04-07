@@ -58,8 +58,9 @@ Você está criando thumbnails CINEMATOGRÁFICOS estilo Hollywood — NUNCA foto
 1. **CAMADA DE FUNDO (background plate)**: cena ampla cinematográfica relacionada ao tema (paisagem épica, ruínas, batalha, cosmos, laboratório, etc.) com lighting dramático (god rays, golden hour, fogo, neblina volumétrica).
 2. **CAMADA DE PERSONAGEM (hero subject)**: figura humana em primeiro plano (3/4 view ou perfil), grande, ocupando 30-50% do frame, com expressão intensa OU pose de poder. NÃO centralizado — deslocado pra um lado pra deixar espaço pro título.
 3. **CAMADA DE TÍTULO (text overlay)**: texto MASSIVO em FONTE SERIFADA CLÁSSICA (estilo Trajan, Cinzel, Optimus Princeps) ou FONTE SANS BOLD CONDENSED com 2-3 palavras MÁXIMO, ocupando o lado oposto do personagem. Cor: branco com glow dourado/vermelho OU dourado metálico com sombra preta forte.
-4. **CAMADA DE BRANDING**: logo pequeno do canal num dos cantos superiores + selo "4K ULTRA HD" no canto oposto.
-5. **CAMADA DE EFEITOS**: partículas de luz, fagulhas, poeira volumétrica, lens flares sutis, vinheta nas bordas, color grading cinematográfico (teal & orange / dourado quente / azul frio).
+4. **CAMADA DE EFEITOS**: partículas de luz, fagulhas, poeira volumétrica, lens flares sutis, vinheta nas bordas, color grading cinematográfico (teal & orange / dourado quente / azul frio).
+
+NUNCA inclua: logo do canal, watermark, selo "4K", "ULTRA HD", badges de qualidade, marcas d'água, ou qualquer elemento de branding. A imagem deve ser LIMPA — só fundo + personagem + título + efeitos.
 
 PALAVRAS-CHAVE OBRIGATÓRIAS NO PROMPT (use a maioria): "cinematic movie poster", "dramatic volumetric lighting", "8k ultra detailed", "epic composition", "rule of thirds", "shallow depth of field", "color grading", "film grain", "hyperrealistic", "atmospheric", "moody lighting", "professional photography", "sharp focus on subject", "blurred cinematic background".
 
@@ -107,25 +108,25 @@ OUTPUT JSON exato (preencha TODOS os campos):
   "videos": [
     {{
       "title": "Título 1 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt: cinematic movie poster style YouTube thumbnail 1280x720, [cena de fundo épica relacionada ao tema], dramatic volumetric lighting with god rays, hero character on the right side (3/4 view, intense expression, period-accurate clothing), MASSIVE bold serif title text on the left side (2-3 words, white with golden glow and heavy black shadow), small channel logo top-left corner, '4K ULTRA HD' badge top-right, shallow depth of field, teal and orange color grading, film grain, hyperrealistic, sharp focus on hero, blurred atmospheric background, lens flare, dust particles, vignette, rule of thirds, 8k ultra detailed, epic composition",
+      "thumbnail_prompt": "English ImageFX prompt: cinematic movie poster style YouTube thumbnail 1280x720, [cena de fundo épica relacionada ao tema], dramatic volumetric lighting with god rays, hero character on the right side (3/4 view, intense expression, period-accurate clothing), MASSIVE bold serif title text on the left side (2-3 words, white with golden glow and heavy black shadow), shallow depth of field, teal and orange color grading, film grain, hyperrealistic, sharp focus on hero, blurred atmospheric background, lens flare, dust particles, vignette, rule of thirds, 8k ultra detailed, epic composition, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition",
       "views_estimate": "500K",
       "duration": "12:45"
     }},
     {{
       "title": "Título 2 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 2 — DIFERENTE da thumb 1: variar ângulo (close-up extremo OU wide shot), variar lighting (golden hour OU blue hour OU firelight), variar layout do título (esquerda OU direita OU dividido em duas linhas grandes). Mesmo nível cinematográfico de camadas. Inclua: cinematic movie poster, volumetric lighting, hero subject, massive bold title text overlay, channel logo, 4K badge, color grading, film grain, hyperrealistic, 8k.",
+      "thumbnail_prompt": "English ImageFX prompt for thumbnail 2 — DIFERENTE da thumb 1: variar ângulo (close-up extremo OU wide shot), variar lighting (golden hour OU blue hour OU firelight), variar layout do título (esquerda OU direita OU dividido em duas linhas grandes). Mesmo nível cinematográfico de camadas. Inclua: cinematic movie poster, volumetric lighting, hero subject, massive bold title text overlay, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, NO 4K BADGE.",
       "views_estimate": "350K",
       "duration": "10:22"
     }},
     {{
       "title": "Título 3 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 3 — DIFERENTE de 1 e 2: outro ângulo cinematográfico, outro mood, outro arranjo de título. Mantenha as 5 camadas (background plate, hero subject, massive serif title, branding logo + 4K badge, atmospheric effects). Tema: [adapte ao título]. Inclua: cinematic poster style, dramatic lighting, hyperrealistic, 8k, epic.",
+      "thumbnail_prompt": "English ImageFX prompt for thumbnail 3 — DIFERENTE de 1 e 2: outro ângulo cinematográfico, outro mood, outro arranjo de título. Mantenha as 4 camadas (background plate, hero subject, massive serif title, atmospheric effects). Tema: [adapte ao título]. Inclua: cinematic poster style, dramatic lighting, hyperrealistic, 8k, epic, NO LOGO, NO WATERMARK, NO 4K BADGE, clean.",
       "views_estimate": "420K",
       "duration": "14:30"
     }},
     {{
       "title": "Título 4 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 4 — DIFERENTE de 1, 2, 3: novo conceito visual mantendo identidade do canal. Mesmas 5 camadas obrigatórias. Cinematic movie poster, volumetric god rays, hero on one side, massive serif title on the other, channel logo, 4K ULTRA HD badge, teal/orange OR golden grading, film grain, lens flare, dust particles, vignette, hyperrealistic 8k.",
+      "thumbnail_prompt": "English ImageFX prompt for thumbnail 4 — DIFERENTE de 1, 2, 3: novo conceito visual mantendo identidade do canal. Mesmas 4 camadas obrigatórias. Cinematic movie poster, volumetric god rays, hero on one side, massive serif title on the other, teal/orange OR golden grading, film grain, lens flare, dust particles, vignette, hyperrealistic 8k, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition.",
       "views_estimate": "600K",
       "duration": "18:15"
     }}
