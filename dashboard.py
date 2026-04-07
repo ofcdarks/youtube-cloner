@@ -1665,10 +1665,11 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
     """
     body = await request.json()
     project_id = (body.get("project_id") or "").strip()
+    override_language = (body.get("language") or "").strip()
     if not project_id:
         return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
 
-    from database import get_project, save_file, get_files
+    from database import get_project, save_file, get_files, get_ideas
     from services import get_project_sop
     from protocols.channel_mockup import generate_channel_mockup
     import asyncio
@@ -1679,11 +1680,28 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
         return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
 
     niche_name = proj.get("niche_chosen") or proj.get("name", "")
-    language = (proj.get("language") or "pt-BR").strip()
+    language = override_language or (proj.get("language") or "pt-BR").strip()
     # Map our internal lang code to country (best-effort)
-    country_map = {"pt-BR": "BR", "es": "ES", "en": "US", "fr": "FR", "de": "DE", "it": "IT", "ja": "JP", "ko": "KR"}
+    country_map = {
+        "pt-BR": "BR", "es": "ES", "en": "US", "fr": "FR", "de": "DE",
+        "it": "IT", "ja": "JP", "ko": "KR", "zh": "CN", "ru": "RU",
+        "ar": "SA", "hi": "IN", "tr": "TR", "nl": "NL",
+    }
     country = country_map.get(language, "US")
     sop_excerpt = (get_project_sop(project_id) or "")[:3000]
+
+    # Pull the top 4 SOP-generated titles from the project to seed the mockup
+    seed_titles: list[str] = []
+    try:
+        ideas = get_ideas(project_id) or []
+        # Prefer scored ideas first, then fall back to creation order
+        ideas_sorted = sorted(ideas, key=lambda i: -(i.get("score") or 0))
+        for it in ideas_sorted[:4]:
+            t = (it.get("title") or "").strip()
+            if t:
+                seed_titles.append(t)
+    except Exception as e:
+        logger.warning(f"generate-channel-mockup: failed to fetch seed titles: {e}")
 
     try:
         mockup = await asyncio.to_thread(
@@ -1693,6 +1711,7 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
             language,
             country,
             "faceless",
+            seed_titles,
         )
     except Exception as e:
         logger.exception(f"generate-channel-mockup error: {e}")

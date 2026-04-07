@@ -227,7 +227,17 @@ function renderMockupEmpty(projectId, projectName) {
         '</div>';
 }
 
-function generateMockup(projectId, projectName) {
+function regenerateMockupInLanguage(projectId, projectName) {
+    var sel = document.getElementById('mk-channel-lang');
+    var btn = document.getElementById('mk-regen-lang-btn');
+    if (!sel) return;
+    var lang = sel.value;
+    if (!lang) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳...'; }
+    generateMockup(projectId, projectName, lang);
+}
+
+function generateMockup(projectId, projectName, language) {
     var content = document.getElementById('mockup-content');
     content.innerHTML =
         '<div style="text-align:center;padding:60px 20px">' +
@@ -239,12 +249,14 @@ function generateMockup(projectId, projectName) {
             '</div>' +
         '</div>';
 
-    apiPost('/api/admin/generate-channel-mockup', {project_id: projectId})
+    var payload = {project_id: projectId};
+    if (language) payload.language = language;
+    apiPost('/api/admin/generate-channel-mockup', payload)
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.ok && data.mockup) {
             renderMockup(data.mockup, projectId, true);
-            showToast('Mockup gerado com sucesso!', 'success');
+            showToast('Mockup ' + (language ? 'regerado em ' + language : 'gerado') + ' com sucesso!', 'success');
         } else {
             content.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444">❌ ' + (data.error || 'Erro desconhecido') + '</div><div style="text-align:center"><button onclick="renderMockupEmpty(\'' + projectId + '\', \'' + projectName.replace(/'/g, "\\'") + '\')" style="padding:10px 20px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:6px;cursor:pointer">↻ Tentar de novo</button></div>';
         }
@@ -282,12 +294,35 @@ function renderMockup(m, projectId, isFresh) {
     var html = '';
 
     // Action bar
-    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #1f2937">';
+    var curLangAll = m.language || m.description_language || 'pt-BR';
+    var allLangs = [
+        ['pt-BR','Português (BR)'], ['en','English'], ['es','Español'],
+        ['fr','Français'], ['de','Deutsch'], ['it','Italiano'],
+        ['ja','日本語'], ['ko','한국어'], ['zh','中文'], ['ru','Русский'],
+        ['ar','العربية'], ['hi','हिन्दी'], ['tr','Türkçe'], ['nl','Nederlands']
+    ];
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #1f2937">';
     html += '<button onclick="generateAllMockupImages(\'' + projectId + '\')" style="padding:9px 18px;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" id="btn-gen-all">🎨 Gerar TODAS as Imagens</button>';
     html += '<button onclick="generateMockup(\'' + projectId + '\', \'' + escapeHtmlMockup(m.channel_name || '').replace(/'/g, "\\'") + '\')" style="padding:9px 18px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">↻ Regenerar Identidade</button>';
+    // Channel language selector — regenerates the WHOLE mockup (titles, thumbs, desc, tags, hashtags) in the chosen language
+    html += '<div style="display:flex;gap:6px;align-items:center;padding:4px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px">';
+    html += '<span style="font-size:11px;color:#94a3b8">🌐 Idioma do canal:</span>';
+    html += '<select id="mk-channel-lang" style="padding:5px 8px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">';
+    allLangs.forEach(function(l) {
+        var sel = l[0] === curLangAll ? ' selected' : '';
+        html += '<option value="' + l[0] + '"' + sel + '>' + escapeHtmlMockup(l[1]) + '</option>';
+    });
+    html += '</select>';
+    html += '<button id="mk-regen-lang-btn" onclick="regenerateMockupInLanguage(\'' + projectId + '\', \'' + escapeHtmlMockup(m.channel_name || '').replace(/'/g, "\\'") + '\')" title="Regerar tudo neste idioma" style="padding:5px 10px;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">↻ Aplicar</button>';
+    html += '</div>';
     html += '<button onclick="copyMockupAll()" style="padding:9px 18px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">📋 Copiar JSON</button>';
     html += '<div style="margin-left:auto;font-size:11px;color:#64748b;align-self:center">💾 Salvo em Arquivos do Projeto</div>';
     html += '</div>';
+
+    // Disclaimer (faceless + AI reconstituted) — always shown
+    if (m.disclaimer) {
+        html += '<div style="background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(239,68,68,0.05));border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#fbbf24;line-height:1.5">' + escapeHtmlMockup(m.disclaimer) + '</div>';
+    }
 
     // Banner — full image (contain) on black, no crop, 16:9 always visible on mobile/desktop
     html += '<div style="background:#0f0f0f;border-radius:14px;overflow:hidden;border:1px solid #1f2937">';
@@ -358,35 +393,44 @@ function renderMockup(m, projectId, isFresh) {
 
     // Description
     if (m.description) {
-        var curLang = m.description_language || 'pt-BR';
-        var langs = [
-            ['pt-BR','Português (BR)'], ['en','English'], ['es','Español'],
-            ['fr','Français'], ['de','Deutsch'], ['it','Italiano'],
-            ['ja','日本語'], ['ko','한국어'], ['zh','中文'], ['ru','Русский'],
-            ['ar','العربية'], ['hi','हिन्दी'], ['tr','Türkçe'], ['nl','Nederlands']
-        ];
         html += '<div style="background:rgba(255,255,255,0.02);border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:14px">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap">';
-        html += '<div style="font-weight:800;font-size:13px;color:#fbbf24">📝 Descrição do Canal <span id="mk-desc-lang-label" style="font-size:10px;color:#64748b;font-weight:500;margin-left:6px">(' + escapeHtmlMockup(curLang) + ')</span></div>';
-        html += '<div style="display:flex;gap:6px;align-items:center">';
-        html += '<select id="mk-desc-lang" style="padding:5px 8px;background:#0f172a;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">';
-        langs.forEach(function(l) {
-            var sel = l[0] === curLang ? ' selected' : '';
-            html += '<option value="' + l[0] + '"' + sel + '>' + escapeHtmlMockup(l[1]) + '</option>';
-        });
-        html += '</select>';
-        html += '<button id="mk-desc-translate-btn" onclick="translateMockupDescription(\'' + projectId + '\')" style="padding:5px 10px;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">🌐 Traduzir</button>';
-        html += '</div></div>';
+        html += '<div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#fbbf24">📝 Descrição do Canal <span style="font-size:10px;color:#64748b;font-weight:500;margin-left:6px">(' + escapeHtmlMockup(m.language || m.description_language || 'pt-BR') + ')</span></div>';
         html += '<p id="mk-desc-text" style="font-size:13px;color:#cbd5e1;line-height:1.7;margin:0 0 10px;white-space:pre-wrap">' + escapeHtmlMockup(m.description) + '</p>';
         html += '<button onclick="copyMockupDescription(this)" style="padding:6px 12px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">📋 Copiar Descrição</button>';
         html += '</div>';
     }
 
-    // Keywords
+    // Tags YouTube
+    if (m.tags && m.tags.length) {
+        html += '<div style="background:rgba(255,255,255,0.02);border:1px solid #1f2937;border-radius:12px;padding:14px;margin-top:14px">';
+        html += '<div style="font-weight:800;font-size:12px;margin-bottom:8px;color:#22c55e">🏷️ Tags YouTube (' + m.tags.length + ')</div>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+        m.tags.forEach(function(t) {
+            html += '<span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2)">' + escapeHtmlMockup(t) + '</span>';
+        });
+        html += '</div>';
+        html += '<button onclick="copyMockupField(' + JSON.stringify(JSON.stringify(m.tags.join(', '))) + ', this)" style="padding:5px 10px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">📋 Copiar Tags</button>';
+        html += '</div>';
+    }
+
+    // Hashtags
+    if (m.hashtags && m.hashtags.length) {
+        html += '<div style="background:rgba(255,255,255,0.02);border:1px solid #1f2937;border-radius:12px;padding:14px;margin-top:14px">';
+        html += '<div style="font-weight:800;font-size:12px;margin-bottom:8px;color:#3b82f6">#️⃣ Hashtags (' + m.hashtags.length + ')</div>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+        m.hashtags.forEach(function(h) {
+            html += '<span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid rgba(59,130,246,0.2)">' + escapeHtmlMockup(h) + '</span>';
+        });
+        html += '</div>';
+        html += '<button onclick="copyMockupField(' + JSON.stringify(JSON.stringify(m.hashtags.join(' '))) + ', this)" style="padding:5px 10px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">📋 Copiar Hashtags</button>';
+        html += '</div>';
+    }
+
+    // Keywords (legacy/extra)
     if (m.keywords && m.keywords.length) {
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px">';
         m.keywords.forEach(function(k) {
-            html += '<span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(59,130,246,0.1);color:#3b82f6">#' + escapeHtmlMockup(k) + '</span>';
+            html += '<span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(168,85,247,0.1);color:#a855f7">' + escapeHtmlMockup(k) + '</span>';
         });
         html += '</div>';
     }

@@ -35,14 +35,33 @@ from typing import Any
 logger = logging.getLogger("ytcloner.channel_mockup")
 
 
+# Fallback disclaimers per language — used when the AI omits the field
+_DEFAULT_DISCLAIMERS: dict[str, str] = {
+    "pt-BR": "⚠️ Este canal é faceless e usa inteligência artificial para reconstituir cenas, narrações e visuais com fins educativos e informativos. Os conteúdos não representam gravações reais.",
+    "en": "⚠️ This is a faceless channel. All scenes, narration and visuals are AI-reconstructed for educational and informational purposes. Content does not represent real footage.",
+    "es": "⚠️ Este es un canal faceless. Las escenas, narraciones y visuales son reconstituidos con inteligencia artificial con fines educativos e informativos. El contenido no representa grabaciones reales.",
+    "fr": "⚠️ Cette chaîne est faceless. Les scènes, narrations et visuels sont reconstitués par intelligence artificielle à des fins éducatives et informatives.",
+    "de": "⚠️ Dies ist ein faceless Kanal. Szenen, Erzählungen und visuelle Inhalte werden zu Bildungs- und Informationszwecken durch künstliche Intelligenz rekonstruiert.",
+    "it": "⚠️ Questo è un canale faceless. Scene, narrazioni e contenuti visivi sono ricostruiti tramite intelligenza artificiale a scopo educativo e informativo.",
+    "ja": "⚠️ このチャンネルはフェイスレス（顔出しなし）チャンネルです。映像・ナレーション・ビジュアルは教育・情報目的でAIにより再構成されています。",
+    "ko": "⚠️ 이 채널은 페이스리스 채널입니다. 모든 장면, 내레이션 및 시각 자료는 교육 및 정보 제공 목적으로 AI에 의해 재구성된 것입니다.",
+    "zh": "⚠️ 本频道为虚拟（faceless）频道，所有场景、旁白与画面均由人工智能为教育与信息目的重构，并非真实录像。",
+    "ru": "⚠️ Это faceless-канал. Все сцены, озвучка и визуальные материалы воссозданы искусственным интеллектом в образовательных и информационных целях.",
+    "ar": "⚠️ هذه قناة بدون وجه (faceless). جميع المشاهد والسرد والمرئيات مُعاد بناؤها بواسطة الذكاء الاصطناعي لأغراض تعليمية وإعلامية.",
+    "hi": "⚠️ यह एक फेसलेस चैनल है। सभी दृश्य, कथन और चित्र शैक्षिक और सूचनात्मक उद्देश्यों के लिए AI द्वारा पुनर्निर्मित किए गए हैं।",
+    "tr": "⚠️ Bu bir faceless kanaldır. Sahneler, anlatım ve görseller eğitim ve bilgilendirme amaçlı yapay zekâ tarafından yeniden oluşturulmuştur.",
+    "nl": "⚠️ Dit is een faceless kanaal. Alle scènes, voice-overs en beelden zijn met behulp van kunstmatige intelligentie gereconstrueerd voor educatieve en informatieve doeleinden.",
+}
+
+
 _SYSTEM_PROMPT = """Você é um DIRETOR CRIATIVO de canais YouTube de elite. Sua missão é, dado um nicho e contexto, criar a IDENTIDADE COMPLETA de um canal MUITO SUPERIOR aos concorrentes existentes naquele nicho.
 
-REGRA CRÍTICA DE IDIOMA:
-- "tagline", "description", "whats_better", "weaknesses_fixed", "strategy_edge" → SEMPRE em PORTUGUÊS DO BRASIL (PT-BR), o usuário é brasileiro.
-- "channel_name" e os "title" dos vídeos → no idioma alvo do canal (definido por language).
+REGRA CRÍTICA DE IDIOMA (LEIA COM ATENÇÃO):
+- TODOS os conteúdos voltados ao público — "channel_name", "tagline", "description", "videos[].title", "tags", "hashtags", "keywords", "disclaimer" — devem estar 100% no IDIOMA ALVO do canal definido pelo campo `language`. Se language=es → tudo em espanhol. Se language=en → tudo em inglês. Se language=ja → tudo em japonês. NUNCA misture idiomas.
+- Os campos de meta-análise interna ("whats_better", "weaknesses_fixed", "strategy_edge") devem estar SEMPRE em PORTUGUÊS DO BRASIL (PT-BR), porque são lidos pelo admin brasileiro.
 - "logo_prompt", "banner_prompt", "thumbnail_prompt" → SEMPRE em INGLÊS (são prompts pra ImageFX/Imagen).
-- "keywords" → no idioma alvo do canal.
 - NUNCA escreva explicações em inglês fora dos prompts de imagem.
+- Os "videos[].title" devem ser EXATAMENTE os títulos sementes que eu fornecer (quando fornecidos). Se o seed_title estiver em outro idioma que não o `language` alvo, TRADUZA culturalmente pro idioma alvo (não literal). Se não houver seeds, crie 4 títulos virais no idioma alvo.
 
 REGRAS DE QUALIDADE:
 - Não copie nomes genéricos. Crie nomes ORIGINAIS e memoráveis.
@@ -75,28 +94,33 @@ _USER_TEMPLATE = """Crie a identidade completa de um canal YouTube SUPERIOR para
 
 ═══ NICHO ALVO ═══
 Nome do nicho: {niche_name}
-Idioma do canal: {language}
+Idioma do canal (TODOS os textos públicos devem estar neste idioma): {language}
 País alvo: {country}
 Estilo de produção: {style}
 
 ═══ CONTEXTO DO PROJETO (do SOP) ═══
 {sop_excerpt}
 
+═══ TÍTULOS SEMENTES (use EXATAMENTE estes 4 títulos, traduzindo culturalmente pra {language} se necessário) ═══
+{seed_titles_block}
+
 ═══ TAREFA ═══
-Gere a identidade completa do canal. SUPERE qualquer concorrente típico do nicho. Pense em:
-1. Um nome memorável e único (não use clichês como "Top 10", "Daily", "Channel")
-2. Tagline curta e impactante (em PT-BR)
-3. Descrição rica de ~200 palavras (em PT-BR) que conecte emocionalmente
-4. 4 títulos de vídeo VIRAIS com thumbnail prompts visuais
-5. Identidade visual coerente (cores, fontes, conceito de logo e banner)
-6. Por que este canal vai DOMINAR (em PT-BR, com estratégia clara)
+Gere a identidade completa do canal. SUPERE qualquer concorrente típico do nicho. Lembre:
+1. Nome memorável e único no idioma {language} (sem clichês "Top 10", "Daily", "Channel")
+2. Tagline curta e impactante NO IDIOMA {language}
+3. Descrição rica de ~200 palavras NO IDIOMA {language} que conecte emocionalmente
+4. Os 4 títulos de vídeo são FIXOS — use os títulos sementes acima (traduzidos pra {language} se necessário). Crie thumbnail_prompt CINEMATOGRÁFICO específico pra cada um.
+5. Tags YouTube (10-15) e hashtags (8-10) NO IDIOMA {language}, otimizados pra SEO no país {country}
+6. Disclaimer CURTO no idioma {language} avisando que o canal é faceless e que conteúdo/visuais são RECONSTITUÍDOS por inteligência artificial pra fins informativos/educativos
+7. whats_better/weaknesses_fixed/strategy_edge em PT-BR (são pro admin brasileiro ler)
 
 OUTPUT JSON exato (preencha TODOS os campos):
 {{
-  "channel_name": "Nome criativo e original no idioma {language}",
-  "tagline": "Slogan curto e impactante em PT-BR",
-  "description": "Descrição completa em PT-BR (~200 palavras) explicando proposta, valor único, e quem é o público-alvo",
-  "whats_better": "3 frases em PT-BR explicando por que este canal é OBJETIVAMENTE superior aos concorrentes do nicho",
+  "channel_name": "Nome criativo no idioma {language}",
+  "tagline": "Slogan no idioma {language}",
+  "description": "Descrição completa NO IDIOMA {language} (~200 palavras)",
+  "disclaimer": "Aviso curto NO IDIOMA {language}: este canal é faceless e usa IA para reconstituir cenas/narrações com fins educativos. (~30-50 palavras)",
+  "whats_better": "3 frases EM PT-BR explicando por que este canal é OBJETIVAMENTE superior aos concorrentes do nicho",
   "weaknesses_fixed": [
     "Fraqueza típica do nicho 1 — em PT-BR",
     "Fraqueza típica do nicho 2 — em PT-BR",
@@ -107,33 +131,35 @@ OUTPUT JSON exato (preencha TODOS os campos):
   "banner_prompt": "English ImageFX prompt: cinematic YouTube channel banner 2560x1440, ultra-wide composition, [conceito do nicho], [cores principais], dramatic volumetric lighting, atmospheric, epic scale, important elements centered (YouTube safe area), no text on edges, 8k professional",
   "videos": [
     {{
-      "title": "Título 1 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt: cinematic movie poster style YouTube thumbnail 1280x720, [cena de fundo épica relacionada ao tema], dramatic volumetric lighting with god rays, hero character on the right side (3/4 view, intense expression, period-accurate clothing), MASSIVE bold serif title text on the left side (2-3 words, white with golden glow and heavy black shadow), shallow depth of field, teal and orange color grading, film grain, hyperrealistic, sharp focus on hero, blurred atmospheric background, lens flare, dust particles, vignette, rule of thirds, 8k ultra detailed, epic composition, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition",
+      "title": "Título 1 — use o seed 1 traduzido culturalmente para {language}",
+      "thumbnail_prompt": "English ImageFX prompt: cinematic movie poster style YouTube thumbnail 1280x720, [cena de fundo épica RELACIONADA AO TÍTULO acima], dramatic volumetric lighting with god rays, hero character on the right side (3/4 view, intense expression, period-accurate clothing), MASSIVE bold serif title text on the left side (2-3 words, white with golden glow and heavy black shadow), shallow depth of field, teal and orange color grading, film grain, hyperrealistic, sharp focus on hero, blurred atmospheric background, lens flare, dust particles, vignette, rule of thirds, 8k ultra detailed, epic composition, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition",
       "views_estimate": "500K",
       "duration": "12:45"
     }},
     {{
-      "title": "Título 2 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 2 — DIFERENTE da thumb 1: variar ângulo (close-up extremo OU wide shot), variar lighting (golden hour OU blue hour OU firelight), variar layout do título (esquerda OU direita OU dividido em duas linhas grandes). Mesmo nível cinematográfico de camadas. Inclua: cinematic movie poster, volumetric lighting, hero subject, massive bold title text overlay, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, NO 4K BADGE.",
+      "title": "Título 2 — use o seed 2 traduzido culturalmente para {language}",
+      "thumbnail_prompt": "English ImageFX prompt for thumbnail 2 — DIFERENTE da thumb 1, RELACIONADO AO TÍTULO 2: variar ângulo, lighting, layout do título. Cinematic movie poster, volumetric lighting, hero subject, massive bold title text overlay, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, NO 4K BADGE.",
       "views_estimate": "350K",
       "duration": "10:22"
     }},
     {{
-      "title": "Título 3 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 3 — DIFERENTE de 1 e 2: outro ângulo cinematográfico, outro mood, outro arranjo de título. Mantenha as 4 camadas (background plate, hero subject, massive serif title, atmospheric effects). Tema: [adapte ao título]. Inclua: cinematic poster style, dramatic lighting, hyperrealistic, 8k, epic, NO LOGO, NO WATERMARK, NO 4K BADGE, clean.",
+      "title": "Título 3 — use o seed 3 traduzido culturalmente para {language}",
+      "thumbnail_prompt": "English ImageFX prompt for thumbnail 3 — DIFERENTE de 1 e 2, RELACIONADO AO TÍTULO 3: outro ângulo cinematográfico, outro mood, outro arranjo de título. Mantenha as 4 camadas (background plate, hero subject, massive serif title, atmospheric effects). Cinematic poster style, dramatic lighting, hyperrealistic, 8k, epic, NO LOGO, NO WATERMARK, NO 4K BADGE, clean.",
       "views_estimate": "420K",
       "duration": "14:30"
     }},
     {{
-      "title": "Título 4 viral no idioma {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 4 — DIFERENTE de 1, 2, 3: novo conceito visual mantendo identidade do canal. Mesmas 4 camadas obrigatórias. Cinematic movie poster, volumetric god rays, hero on one side, massive serif title on the other, teal/orange OR golden grading, film grain, lens flare, dust particles, vignette, hyperrealistic 8k, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition.",
+      "title": "Título 4 — use o seed 4 traduzido culturalmente para {language}",
+      "thumbnail_prompt": "English ImageFX prompt for thumbnail 4 — DIFERENTE de 1, 2, 3, RELACIONADO AO TÍTULO 4. Mesmas 4 camadas. Cinematic movie poster, volumetric god rays, hero on one side, massive serif title on the other, teal/orange OR golden grading, film grain, lens flare, dust particles, vignette, hyperrealistic 8k, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition.",
       "views_estimate": "600K",
       "duration": "18:15"
     }}
   ],
   "colors": {{"primary": "#hex", "secondary": "#hex", "accent": "#hex"}},
   "fonts": "Sugestão de fontes (ex: Montserrat Bold + Inter Regular)",
-  "keywords": ["kw1 no idioma {language}", "kw2", "kw3", "kw4", "kw5"]
+  "keywords": ["palavra-chave 1 no idioma {language}", "...", "...10 palavras"],
+  "tags": ["tag YouTube 1 no idioma {language}", "tag 2", "...", "12-15 tags otimizadas SEO"],
+  "hashtags": ["#hashtag1 no idioma {language}", "#hashtag2", "...", "8-10 hashtags"]
 }}"""
 
 
@@ -158,12 +184,14 @@ def _extract_json(text: str) -> dict:
     return json.loads(text[start : end + 1])
 
 
-def _normalize(raw: dict, niche_name: str) -> dict[str, Any]:
+def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str, Any]:
     """Coerce keys to snake_case + fill defaults so the UI never breaks."""
     out = {
         "channel_name": str(raw.get("channel_name") or raw.get("channelName") or niche_name)[:120],
         "tagline": str(raw.get("tagline") or "")[:200],
         "description": str(raw.get("description") or "")[:2500],
+        "description_language": language,
+        "disclaimer": str(raw.get("disclaimer") or "")[:600],
         "whats_better": str(raw.get("whats_better") or raw.get("whatsBetter") or "")[:800],
         "weaknesses_fixed": [],
         "strategy_edge": str(raw.get("strategy_edge") or raw.get("strategyEdge") or "")[:600],
@@ -173,6 +201,9 @@ def _normalize(raw: dict, niche_name: str) -> dict[str, Any]:
         "colors": {"primary": "#7c3aed", "secondary": "#1e293b", "accent": "#fbbf24"},
         "fonts": str(raw.get("fonts") or "Inter Bold + Inter Regular")[:200],
         "keywords": [],
+        "tags": [],
+        "hashtags": [],
+        "language": language,
     }
 
     wf = raw.get("weaknesses_fixed") or raw.get("weaknessesFixed") or []
@@ -189,7 +220,23 @@ def _normalize(raw: dict, niche_name: str) -> dict[str, Any]:
 
     kws = raw.get("keywords") or []
     if isinstance(kws, list):
-        out["keywords"] = [str(k)[:60] for k in kws[:10]]
+        out["keywords"] = [str(k)[:60] for k in kws[:15]]
+
+    tags = raw.get("tags") or []
+    if isinstance(tags, list):
+        out["tags"] = [str(t).lstrip("#")[:60] for t in tags[:20]]
+
+    hts = raw.get("hashtags") or []
+    if isinstance(hts, list):
+        out["hashtags"] = [
+            ("#" + str(h).lstrip("#")[:50]) for h in hts[:15] if str(h).strip()
+        ]
+
+    # Fallback: if AI didn't return a disclaimer, build a minimal one in the target language
+    if not out["disclaimer"]:
+        out["disclaimer"] = _DEFAULT_DISCLAIMERS.get(
+            language, _DEFAULT_DISCLAIMERS["en"]
+        )
 
     videos = raw.get("videos") or []
     if isinstance(videos, list):
@@ -227,12 +274,23 @@ def generate_channel_mockup(
     language: str = "pt-BR",
     country: str = "BR",
     style: str = "faceless",
+    seed_titles: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Generate a full channel mockup for a niche. Returns a normalized dict
     safe to render. Raises Exception if AI fails or returns garbage.
+
+    seed_titles: optional 4 SOP-derived titles to anchor the mockup. The AI
+    will translate them culturally to the target language and build matching
+    cinematic thumbnails.
     """
     from protocols.ai_client import chat
+
+    seeds = [t.strip() for t in (seed_titles or []) if t and t.strip()][:4]
+    if seeds:
+        seed_titles_block = "\n".join(f"  {i + 1}. {t}" for i, t in enumerate(seeds))
+    else:
+        seed_titles_block = "(sem títulos sementes — crie 4 títulos virais novos no idioma alvo)"
 
     user_prompt = _USER_TEMPLATE.format(
         niche_name=niche_name or "(nicho não nomeado)",
@@ -240,14 +298,15 @@ def generate_channel_mockup(
         country=country or "BR",
         style=style or "faceless",
         sop_excerpt=(sop_excerpt or "(SOP não disponível — gere baseado apenas no nome do nicho)")[:3000],
+        seed_titles_block=seed_titles_block,
     )
 
     response = chat(
         prompt=user_prompt,
         system=_SYSTEM_PROMPT,
-        max_tokens=5000,
+        max_tokens=5500,
         temperature=0.7,
-        timeout=180,
+        timeout=200,
     )
 
     if not response or not response.strip():
@@ -262,4 +321,4 @@ def generate_channel_mockup(
     if not isinstance(raw, dict):
         raise RuntimeError("AI retornou estrutura inválida (esperado objeto JSON)")
 
-    return _normalize(raw, niche_name)
+    return _normalize(raw, niche_name, language or "pt-BR")
