@@ -999,7 +999,12 @@ def _get_date_days_ago(days: int) -> str:
 @router.post("/api/admin/clone-language")
 @limiter.limit("3/minute")
 async def api_clone_language(request: Request, user=Depends(require_auth)):
-    """Clone a project's SOP and adapt it for a different language/market."""
+    """Clone a project's SOP (and adapt it for a different language/market when applicable).
+
+    Resilient version: each phase has specific error handling so the user gets
+    actionable feedback. Same-language clones skip AI adaptation and just copy.
+    Title/niche adaptation failures are non-fatal (SOP is the critical asset).
+    """
     if user.get("role") != "admin":
         return JSONResponse({"error": "Admin only"}, status_code=403)
 
@@ -1014,46 +1019,131 @@ async def api_clone_language(request: Request, user=Depends(require_auth)):
     from config import LANG_LABELS
 
     if target_language not in LANG_LABELS:
-        return JSONResponse({"error": f"Idioma invalido. Use: {', '.join(LANG_LABELS.keys())}"}, status_code=400)
+        return JSONResponse(
+            {"error": f"Idioma invalido. Use: {', '.join(LANG_LABELS.keys())}"},
+            status_code=400,
+        )
 
     import asyncio
+    import json as _json
+    import logging
+    import re as _re
+    from pathlib import Path as _Path
+
+    log = logging.getLogger("ytcloner.clone")
 
     def _clone():
-        from database import get_project, get_db, create_project, save_file, save_niche, save_idea, log_activity
+        from datetime import datetime
+        from database import (
+            get_project, get_db, create_project, save_file, save_niche,
+            save_idea, log_activity,
+        )
         from protocols.ai_client import chat
+        from config import PROJECTS_DIR
 
+        # ── Phase 1: Load source project ──────────────────────────────
         source = get_project(source_project_id)
         if not source:
-            return {"error": "Projeto fonte nao encontrado"}
+            return {"error": "Projeto fonte nao encontrado", "phase": "load_project"}
 
-        # Get source SOP
-        with get_db() as conn:
-            sop_row = conn.execute("SELECT content FROM files WHERE project_id=? AND category='analise' LIMIT 1",
-                                  (source_project_id,)).fetchone()
-            ideas = [dict(r) for r in conn.execute("SELECT title, hook, pillar, priority FROM ideas WHERE project_id=? LIMIT 30",
-                                                    (source_project_id,)).fetchall()]
-            niches = [dict(r) for r in conn.execute("SELECT name, description, rpm_range, competition, color, pillars FROM niches WHERE project_id=?",
-                                                     (source_project_id,)).fetchall()]
+        log.info(f"[CLONE] phase=load_project source={source_project_id} name={source.get('name')}")
 
-        if not sop_row:
-            return {"error": "SOP do projeto fonte nao encontrado"}
+        # ── Phase 2: Load source SOP (DB → filesystem fallback) ───────
+        source_sop = ""
+        try:
+            with get_db() as conn:
+                sop_row = conn.execute(
+                    "SELECT content FROM files WHERE project_id=? AND category='analise' AND content IS NOT NULL AND content != '' ORDER BY id ASC LIMIT 1",
+                    (source_project_id,),
+                ).fetchone()
+            if sop_row and sop_row["content"]:
+                source_sop = sop_row["content"]
+        except Exception as e:
+            log.exception(f"[CLONE] phase=load_sop_db error: {e}")
 
-        source_sop = sop_row["content"]
+        # Filesystem fallback for legacy projects
+        if not source_sop:
+            try:
+                proj_dir = PROJECTS_DIR / source_project_id
+                if proj_dir.exists():
+                    for f in sorted(proj_dir.glob("sop*.md")) + sorted(proj_dir.glob("*sop*.md")):
+                        try:
+                            source_sop = f.read_text(encoding="utf-8")
+                            if source_sop.strip():
+                                log.info(f"[CLONE] phase=load_sop_fs found at {f}")
+                                break
+                        except Exception:
+                            continue
+            except Exception as e:
+                log.exception(f"[CLONE] phase=load_sop_fs error: {e}")
+
+        if not source_sop or len(source_sop.strip()) < 50:
+            return {
+                "error": "Projeto fonte nao tem SOP carregado. Rode o pipeline ou gere o SOP antes de clonar.",
+                "phase": "load_sop",
+            }
+
+        # ── Phase 3: Load ideas + niches (best effort) ────────────────
+        ideas = []
+        niches = []
+        try:
+            with get_db() as conn:
+                ideas = [
+                    dict(r) for r in conn.execute(
+                        "SELECT title, hook, summary, pillar, priority FROM ideas WHERE project_id=? LIMIT 30",
+                        (source_project_id,),
+                    ).fetchall()
+                ]
+                niches = [
+                    dict(r) for r in conn.execute(
+                        "SELECT name, description, rpm_range, competition, color, pillars FROM niches WHERE project_id=?",
+                        (source_project_id,),
+                    ).fetchall()
+                ]
+        except Exception as e:
+            log.exception(f"[CLONE] phase=load_ideas_niches error: {e}")
+            # non-fatal — continue with empty lists
+
+        log.info(f"[CLONE] loaded ideas={len(ideas)} niches={len(niches)}")
+
         source_lang = source.get("language", "pt-BR")
         target_label = LANG_LABELS[target_language]
         source_label = LANG_LABELS.get(source_lang, source_lang)
         niche_name = new_name or f"{source.get('name', 'Projeto')} ({target_language.upper()})"
+        same_language = (source_lang == target_language)
 
-        # Create new project
-        new_project_id = create_project(
-            name=niche_name,
-            channel_original=source.get("channel_original", ""),
-            niche_chosen=niche_name,
-            language=target_language,
-        )
+        # ── Phase 4: Create destination project ───────────────────────
+        try:
+            new_project_id = create_project(
+                name=niche_name,
+                channel_original=source.get("channel_original", ""),
+                niche_chosen=niche_name,
+                language=target_language,
+                meta={
+                    "cloned_from": source_project_id,
+                    "cloned_at": datetime.now().isoformat(),
+                    "source_lang": source_lang,
+                },
+            )
+        except Exception as e:
+            log.exception(f"[CLONE] phase=create_project error: {e}")
+            return {
+                "error": f"Falha ao criar projeto destino: {str(e)[:200]}",
+                "phase": "create_project",
+            }
 
-        # Adapt SOP for target language/market
-        adapt_prompt = f"""Voce e um especialista em adaptacao de conteudo para mercados internacionais.
+        log.info(f"[CLONE] created destination project_id={new_project_id} same_lang={same_language}")
+
+        warnings: list[str] = []
+
+        # ── Phase 5: SOP adaptation (or copy if same language) ────────
+        adapted_sop = ""
+        if same_language:
+            # No translation needed — copy verbatim
+            adapted_sop = source_sop
+            log.info(f"[CLONE] phase=sop same language — copied verbatim ({len(adapted_sop)} chars)")
+        else:
+            adapt_prompt = f"""Voce e um especialista em adaptacao de conteudo para mercados internacionais.
 
 Adapte o SOP abaixo de {source_label} para {target_label}.
 
@@ -1076,16 +1166,59 @@ O resultado deve parecer que foi criado nativamente para o mercado {target_label
 
 Escreva o SOP completo adaptado em {target_label}."""
 
-        adapted_sop = chat(adapt_prompt,
-                          system=f"Especialista em localizacao de conteudo YouTube para {target_label}. Adaptacao cultural profunda, nao traducao.",
-                          max_tokens=8000, temperature=0.7)
+            try:
+                adapted_sop = chat(
+                    adapt_prompt,
+                    system=f"Especialista em localizacao de conteudo YouTube para {target_label}. Adaptacao cultural profunda, nao traducao.",
+                    max_tokens=12000,
+                    temperature=0.7,
+                    timeout=300,
+                )
+            except Exception as e:
+                log.exception(f"[CLONE] phase=adapt_sop error: {e}")
+                # Fallback: copy original SOP and warn
+                adapted_sop = source_sop
+                warnings.append(f"Adaptacao do SOP via IA falhou ({str(e)[:120]}) — SOP original copiado sem adaptacao")
 
-        save_file(new_project_id, "analise", f"SOP - {niche_name}", f"sop_{new_project_id}.md", adapted_sop)
+            if not adapted_sop or len(adapted_sop.strip()) < 100:
+                # AI returned empty/garbage — fall back to source
+                adapted_sop = source_sop
+                warnings.append("IA retornou SOP vazio — SOP original copiado sem adaptacao")
 
-        # Adapt titles
+        try:
+            save_file(
+                new_project_id, "analise", f"SOP - {niche_name}",
+                f"sop_{new_project_id}.md", adapted_sop,
+            )
+        except Exception as e:
+            log.exception(f"[CLONE] phase=save_sop error: {e}")
+            return {
+                "error": f"Projeto criado mas falhou ao salvar SOP: {str(e)[:200]}",
+                "phase": "save_sop",
+                "new_project_id": new_project_id,
+            }
+
+        log.info(f"[CLONE] phase=save_sop OK ({len(adapted_sop)} chars)")
+
+        # ── Phase 6: Title adaptation (non-fatal) ─────────────────────
+        adapted_count = 0
         if ideas:
-            titles_text = "\n".join([f'- {i["title"]}' for i in ideas[:30]])
-            titles_prompt = f"""Adapte estes 30 titulos de {source_label} para {target_label}.
+            if same_language:
+                # Just copy titles verbatim
+                for i, idea in enumerate(ideas[:30]):
+                    try:
+                        save_idea(
+                            new_project_id, i + 1,
+                            idea.get("title", ""), idea.get("hook", ""),
+                            idea.get("summary", ""), idea.get("pillar", ""),
+                            idea.get("priority", "MEDIA"),
+                        )
+                        adapted_count += 1
+                    except Exception as e:
+                        log.warning(f"[CLONE] save_idea failed for idea {i}: {e}")
+            else:
+                titles_text = "\n".join([f'- {i["title"]}' for i in ideas[:30]])
+                titles_prompt = f"""Adapte estes {len(ideas[:30])} titulos de {source_label} para {target_label}.
 
 TITULOS ORIGINAIS:
 {titles_text}
@@ -1100,29 +1233,79 @@ Para CADA titulo:
 
 Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...","priority":"ALTA/MEDIA/BAIXA"}}]"""
 
-            titles_response = chat(titles_prompt, max_tokens=6000, temperature=0.8)
-            import re
-            json_match = re.search(r'\[.*\]', titles_response, re.DOTALL)
-            if json_match:
                 try:
-                    import json as _json
-                    adapted_ideas = _json.loads(json_match.group())
-                    for i, idea in enumerate(adapted_ideas[:30]):
-                        save_idea(new_project_id, i+1, idea.get("title", ""),
-                                 idea.get("hook", ""), idea.get("summary", ""),
-                                 idea.get("pillar", ""), idea.get("priority", "MEDIA"))
-                except Exception:
-                    pass
+                    titles_response = chat(
+                        titles_prompt,
+                        max_tokens=8000, temperature=0.8, timeout=240,
+                    )
+                    json_match = _re.search(r"\[.*\]", titles_response, _re.DOTALL)
+                    if json_match:
+                        adapted_ideas = _json.loads(json_match.group())
+                        for i, idea in enumerate(adapted_ideas[:30]):
+                            try:
+                                save_idea(
+                                    new_project_id, i + 1,
+                                    idea.get("title", ""), idea.get("hook", ""),
+                                    idea.get("summary", ""), idea.get("pillar", ""),
+                                    idea.get("priority", "MEDIA"),
+                                )
+                                adapted_count += 1
+                            except Exception as e:
+                                log.warning(f"[CLONE] save_idea failed: {e}")
+                    else:
+                        warnings.append("Adaptacao de titulos: IA nao retornou JSON valido")
+                except Exception as e:
+                    log.exception(f"[CLONE] phase=adapt_titles error: {e}")
+                    warnings.append(f"Adaptacao de titulos falhou: {str(e)[:120]}")
 
-        # Copy niches (adapt names)
+        log.info(f"[CLONE] phase=titles adapted={adapted_count}/{len(ideas)}")
+
+        # ── Phase 7: Niche copy (non-fatal) ──────────────────────────
+        # Fix: pillars from DB is a JSON string, need to decode before passing
+        # to save_niche (which calls json.dumps on it again).
         niche_colors = ["#e040fb", "#448aff", "#ff5252", "#ffd740", "#00e5ff"]
+        niches_saved = 0
         for i, n in enumerate(niches[:5]):
-            save_niche(new_project_id, n.get("name", ""), n.get("description", ""),
-                      n.get("rpm_range", ""), n.get("competition", ""),
-                      n.get("color", niche_colors[i % 5]), chosen=(i == 0),
-                      pillars=n.get("pillars", []))
+            try:
+                # Decode pillars JSON string back to list
+                pillars_raw = n.get("pillars", "")
+                pillars_list: list = []
+                if isinstance(pillars_raw, str) and pillars_raw.strip():
+                    try:
+                        decoded = _json.loads(pillars_raw)
+                        if isinstance(decoded, list):
+                            pillars_list = decoded
+                    except (ValueError, TypeError):
+                        pillars_list = []
+                elif isinstance(pillars_raw, list):
+                    pillars_list = pillars_raw
 
-        log_activity(new_project_id, "cloned", f"Clonado de {source.get('name', '')} ({source_lang}) para {target_language}")
+                save_niche(
+                    new_project_id,
+                    n.get("name", ""),
+                    n.get("description", ""),
+                    n.get("rpm_range", ""),
+                    n.get("competition", ""),
+                    n.get("color", niche_colors[i % 5]),
+                    chosen=(i == 0),
+                    pillars=pillars_list,
+                )
+                niches_saved += 1
+            except Exception as e:
+                log.warning(f"[CLONE] save_niche failed for niche {i}: {e}")
+                warnings.append(f"Falha ao copiar nicho '{n.get('name', '?')}': {str(e)[:80]}")
+
+        log.info(f"[CLONE] phase=niches saved={niches_saved}/{len(niches)}")
+
+        # ── Phase 8: Activity log ─────────────────────────────────────
+        try:
+            log_activity(
+                new_project_id, "cloned",
+                f"Clonado de {source.get('name', '')} ({source_lang}) para {target_language}"
+                + (f" — {len(warnings)} avisos" if warnings else ""),
+            )
+        except Exception as e:
+            log.warning(f"[CLONE] log_activity failed: {e}")
 
         return {
             "ok": True,
@@ -1130,14 +1313,23 @@ Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...
             "name": niche_name,
             "source_lang": source_lang,
             "target_lang": target_language,
+            "same_language": same_language,
+            "ideas_adapted": adapted_count,
+            "niches_copied": niches_saved,
+            "sop_chars": len(adapted_sop),
+            "warnings": warnings,
         }
 
     try:
         result = await asyncio.to_thread(_clone)
-        if "error" in result:
-            return JSONResponse(result, status_code=400)
+        if result.get("error"):
+            status = 404 if result.get("phase") == "load_project" else 400
+            return JSONResponse(result, status_code=status)
         return JSONResponse(result)
     except Exception as e:
-        import logging
-        logging.getLogger("ytcloner").error(f"clone-language error: {e}")
-        return JSONResponse({"error": "Falha ao clonar projeto."}, status_code=500)
+        import logging as _log_mod
+        _log_mod.getLogger("ytcloner").exception(f"clone-language unexpected error: {e}")
+        return JSONResponse(
+            {"error": f"Falha inesperada ao clonar: {str(e)[:200]}"},
+            status_code=500,
+        )

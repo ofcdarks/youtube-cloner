@@ -185,19 +185,50 @@ function cloneProject(projectId, name) {
     showConfirm('Clonar Projeto', html, function() {
         var lang = document.getElementById('clone-lang').value;
         var newName = document.getElementById('clone-name').value.trim();
-        var loading = showToast('Clonando e adaptando SOP + 30 titulos para ' + lang + '...', 'loading');
-        apiPost('/api/admin/clone-language', {project_id: projectId, target_language: lang, new_name: newName})
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+        var loading = showToast('Clonando projeto para ' + lang + '... (pode demorar até 5 min se for adaptação cultural)', 'loading');
+        fetch('/api/admin/clone-language', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Session': window.SESSION_TOKEN || '',
+                'X-CSRF-Token': window.CSRF_TOKEN || ''
+            },
+            body: JSON.stringify({project_id: projectId, target_language: lang, new_name: newName})
+        })
+        .then(function(r) {
+            return r.text().then(function(txt) {
+                try { return { status: r.status, ok: r.ok, data: JSON.parse(txt) }; }
+                catch(e) { return { status: r.status, ok: false, data: { error: 'Resposta invalida do servidor (' + r.status + '): ' + txt.substring(0, 200) } }; }
+            });
+        })
+        .then(function(resp) {
             removeToast(loading);
-            if (data.ok) {
-                showToast('Projeto clonado! "' + data.name + '" (' + data.target_lang + ')', 'success', 4000);
-                setTimeout(function() { location.reload(); }, 2000);
+            var data = resp.data;
+            if (resp.ok && data.ok) {
+                var stats = '"' + data.name + '" → ' + data.target_lang +
+                    ' · SOP ' + (data.sop_chars || 0) + ' chars · ' +
+                    (data.ideas_adapted || 0) + ' titulos · ' +
+                    (data.niches_copied || 0) + ' nichos';
+                if (data.same_language) stats += ' · cópia (mesmo idioma)';
+                showToast('✅ Clonado: ' + stats, 'success', 6000);
+
+                // Show warnings if any
+                if (data.warnings && data.warnings.length) {
+                    setTimeout(function() {
+                        showToast('⚠️ Avisos: ' + data.warnings.join(' · '), 'warning', 10000);
+                    }, 1500);
+                }
+                setTimeout(function() { location.reload(); }, 3000);
             } else {
-                showToast('Erro: ' + (data.error || ''), 'error');
+                var err = data.error || ('HTTP ' + resp.status);
+                var phase = data.phase ? ' [fase: ' + data.phase + ']' : '';
+                showToast('❌ ' + err + phase, 'error', 10000);
             }
         })
-        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+        .catch(function(e) {
+            removeToast(loading);
+            showToast('❌ Erro de rede: ' + e.message, 'error', 10000);
+        });
     });
 }
 
