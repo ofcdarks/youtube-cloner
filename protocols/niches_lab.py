@@ -24,6 +24,20 @@ from protocols.keywords_everywhere import _get_credentials, LOCATION_MAP, LANG_N
 
 logger = logging.getLogger("ytcloner.niches_lab")
 
+# In-memory translation cache: {language_code: [translated_niches]}
+_NICHE_TRANSLATIONS_CACHE: dict[str, list[dict[str, Any]]] = {}
+
+LANGUAGE_FULL_NAMES = {
+    "en": "English",
+    "pt": "Brazilian Portuguese",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "ja": "Japanese",
+    "ko": "Korean",
+}
+
 
 # ── Curated Top Niches (base playbook — abr/2026) ────────────────────
 _TOP_NICHES_RAW: list[dict[str, Any]] = [
@@ -239,6 +253,158 @@ def _post_dataforseo(endpoint: str, payload: list[dict], timeout: int = 30) -> d
         return None
 
 
+# Pre-baked PT-BR translation (instant, no AI call)
+_NICHE_TRANSLATIONS_PT: dict[int, dict[str, str]] = {
+    1: {
+        "name": "Histórias de Traição & Vingança",
+        "desc": "Narração com IA sobre stock footage. Histórias de traição, karma e justiça. Espectadores fazem maratona de 8-15 min. ~200 mil canais nesse espaço.",
+        "format": "Voz IA + stock footage + texto sobreposto",
+        "tools": "ChatGPT (scripts), ElevenLabs (voz), CapCut/Premiere",
+        "tip": "Posta 1 vídeo/dia. Hooks de cliffhanger nos primeiros 5s. 'Meu chefe me demitiu... Depois implorou pra eu voltar'",
+        "affiliate": "Baixo — foco em RPM do AdSense",
+    },
+    2: {
+        "name": "Finanças Pessoais & Investimentos",
+        "desc": "O REI do CPM. Bancos, cartões de crédito e plataformas de investimento pagam valores massivos. Sub-nichos: orçamento, cripto, renda passiva.",
+        "format": "Locução + gráficos + stock footage de cidades/lifestyle",
+        "tools": "Canva, voz IA, bibliotecas de stock footage",
+        "tip": "Niche DOWN forte: 'Investir para Artistas' ou 'Finanças para Gen Z'.",
+        "affiliate": "ENORME — cartões, corretoras, cursos ($50-200/venda)",
+    },
+    3: {
+        "name": "Ferramentas de IA & Renda Online",
+        "desc": "O nicho de 2026. Ensina como usar ferramentas de IA pra ganhar dinheiro. Gravação de tela + locução. Ferramentas novas todo dia = conteúdo infinito.",
+        "format": "Tutoriais com gravação de tela + locução IA",
+        "tools": "OBS, ElevenLabs, CapCut",
+        "tip": "Cobre ferramentas NOVAS primeiro. Velocidade é tudo. Pegue a onda do algoritmo.",
+        "affiliate": "MASSIVO — afiliados SaaS pagam $20-100/cadastro recorrente",
+    },
+    4: {
+        "name": "Podcasts de Inglês",
+        "desc": "Apenas ~10 mil canais competindo. Apps como Duolingo e Cambly pagam CPMs premium. Audiência global massiva querendo aprender inglês.",
+        "format": "Estilo podcast com legendas + visuais simples",
+        "tools": "Voz IA (inglês natural), Canva, editor simples",
+        "tip": "Foque em países específicos: 'Inglês pra Brasileiros', 'Inglês pra Japoneses'.",
+        "affiliate": "Bom — apps de idioma, cursos, livros",
+    },
+    5: {
+        "name": "Direito / Drama de Tribunal",
+        "desc": "Escritórios de advocacia pagam o MAIOR valor. Cobre casos bizarros de tribunal, breakdowns jurídicos, conteúdo estilo AITA.",
+        "format": "Narração IA + stock footage de tribunal + animações",
+        "tools": "ChatGPT, voz IA, stock footage",
+        "tip": "Histórias jurídicas do Reddit + casos reais = conteúdo infinito.",
+        "affiliate": "Médio — serviços jurídicos, seguros",
+    },
+    6: {
+        "name": "Recaps de Manhwa / Anime",
+        "desc": "Apenas ~10 mil canais. Recapitula histórias de manhwa/mangá com narração dramática. Audiência Gen Z massiva. Milhões de views.",
+        "format": "Painéis de manhwa + efeitos de zoom + narração IA",
+        "tools": "CapCut, voz IA, material de manhwa",
+        "tip": "Séries populares com tramas dramáticas. Formato Parte 1, Parte 2 gera retenção.",
+        "affiliate": "Baixo — merch, assinaturas de mangá",
+    },
+    7: {
+        "name": "Sons Ambientes & Conteúdo de Sono",
+        "desc": "Lives 24/7 de chuva, lareira, sons de floresta. Máquina de renda passiva. Configurou uma vez, roda pra sempre. ~20 mil canais.",
+        "format": "Vídeos longos (8-12h) ou lives",
+        "tools": "Bibliotecas de sons grátis, stock footage de natureza, OBS",
+        "tip": "Vídeos de 8-10 horas. YouTube AMA watch time. Um vídeo gera receita por anos.",
+        "affiliate": "Baixo — patrocínios de marcas de sono/wellness",
+    },
+    8: {
+        "name": "Cultura Pop & Análises de Celebridades",
+        "desc": "Velocidade é o REI. Cobre drama, términos, momentos virais em horas. CPM menor mas potencial massivo de views. Estratégia de volume.",
+        "format": "Comentário + clipes + screenshots + legendas",
+        "tools": "CapCut, voz IA, screenshots de redes sociais",
+        "tip": "Google Alerts pra celebs em alta. Quem posta primeiro vence.",
+        "affiliate": "Baixo — jogada de AdSense por volume",
+    },
+}
+
+
+def _apply_translation(niches: list[dict], translation_map: dict[int, dict[str, str]]) -> list[dict]:
+    """Merge a translation map into the base niches list (immutable)."""
+    out = []
+    for n in niches:
+        t = translation_map.get(n["rank"], {})
+        out.append({**n, **t})
+    return out
+
+
+def _ai_translate_niches(language: str) -> list[dict] | None:
+    """Translate niches via AI for any language. Returns None on failure."""
+    try:
+        from protocols.ai_client import chat
+    except Exception as e:
+        logger.warning(f"ai_client unavailable: {e}")
+        return None
+
+    target_lang = LANGUAGE_FULL_NAMES.get(language, language)
+    translatable = [
+        {
+            "rank": n["rank"],
+            "name": n["name"],
+            "desc": n["desc"],
+            "format": n["format"],
+            "tools": n["tools"],
+            "tip": n["tip"],
+            "affiliate": n["affiliate"],
+        }
+        for n in TOP_NICHES
+    ]
+
+    import json as _json
+    prompt = (
+        f"Translate the following YouTube niche playbook entries to {target_lang}. "
+        "Keep brand names, tool names, and tech terms in English (e.g. ChatGPT, ElevenLabs, AdSense, CPM, RPM). "
+        "Translate naturally — not literally. Keep the same JSON structure.\n\n"
+        f"Input:\n{_json.dumps(translatable, ensure_ascii=False)}\n\n"
+        "Return ONLY a JSON array with the same structure. No markdown, no code fences, no commentary."
+    )
+
+    try:
+        response = chat(prompt, max_tokens=4000, temperature=0.3, timeout=120)
+        # Strip potential code fences
+        text = response.strip()
+        if text.startswith("```"):
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip("` \n")
+        translated = _json.loads(text)
+        if not isinstance(translated, list):
+            return None
+        translation_map = {int(t["rank"]): t for t in translated if "rank" in t}
+        return _apply_translation(TOP_NICHES, translation_map)
+    except Exception as e:
+        logger.warning(f"AI translation to {language} failed: {e}")
+        return None
+
+
+def get_translated_niches(language: str = "en") -> list[dict]:
+    """
+    Return TOP_NICHES translated to the target language.
+    - English: returns TOP_NICHES as-is
+    - Portuguese: uses pre-baked translation (instant)
+    - Other languages: AI-translated on first call, cached in memory
+    """
+    lang = (language or "en").lower()[:2]
+    if lang == "en":
+        return TOP_NICHES
+    if lang in _NICHE_TRANSLATIONS_CACHE:
+        return _NICHE_TRANSLATIONS_CACHE[lang]
+    if lang == "pt":
+        translated = _apply_translation(TOP_NICHES, _NICHE_TRANSLATIONS_PT)
+        _NICHE_TRANSLATIONS_CACHE[lang] = translated
+        return translated
+    # AI-translate for other languages
+    ai_result = _ai_translate_niches(lang)
+    if ai_result:
+        _NICHE_TRANSLATIONS_CACHE[lang] = ai_result
+        return ai_result
+    return TOP_NICHES
+
+
 def enrich_top_niches(country: str = "us", language: str = "en") -> list[dict]:
     """
     Enriquece a lista curada de Top Niches com dados ao vivo do DataForSEO.
@@ -247,7 +413,8 @@ def enrich_top_niches(country: str = "us", language: str = "en") -> list[dict]:
     """
     from protocols.keywords_everywhere import get_keyword_data
 
-    seeds = [n["seed"] for n in TOP_NICHES]
+    base_niches = get_translated_niches(language)
+    seeds = [n["seed"] for n in base_niches]
     try:
         kw_data = get_keyword_data(seeds, country=country, language=language)
     except Exception as e:
@@ -257,7 +424,7 @@ def enrich_top_niches(country: str = "us", language: str = "en") -> list[dict]:
     by_kw = {item["keyword"].lower(): item for item in kw_data}
 
     enriched = []
-    for niche in TOP_NICHES:
+    for niche in base_niches:
         item = dict(niche)  # copy (immutable)
         kd = by_kw.get(niche["seed"].lower(), {})
         vol = kd.get("vol", 0) or 0

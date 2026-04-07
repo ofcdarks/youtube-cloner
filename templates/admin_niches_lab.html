@@ -104,7 +104,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                             <span style="font-size:11px;font-weight:800;color:#FFD700;background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:4px">#{{ n.rank }}</span>
                             <span style="font-size:18px">{{ n.emoji }}</span>
-                            <span style="font-size:15px;font-weight:700;color:#fff">{{ n.name }}</span>
+                            <span style="font-size:15px;font-weight:700;color:#fff" data-field="name" data-rank="{{ n.rank }}">{{ n.name }}</span>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <span class="lab-badge" style="background:rgba(46,204,64,0.15);color:#2ECC40">CPM {{ n.cpm_est }}</span>
@@ -117,12 +117,12 @@
                 </div>
 
                 <div class="niche-detail" id="detail-{{ n.rank }}" style="display:none">
-                    <p style="font-size:13px;color:#B0B0C0;line-height:1.6;margin:14px 0 12px">{{ n.desc }}</p>
+                    <p style="font-size:13px;color:#B0B0C0;line-height:1.6;margin:14px 0 12px" data-field="desc" data-rank="{{ n.rank }}">{{ n.desc }}</p>
 
-                    <div class="lab-info-row"><span class="lab-info-label">🎬 Formato</span><span class="lab-info-val">{{ n.format }}</span></div>
-                    <div class="lab-info-row"><span class="lab-info-label">🛠️ Ferramentas</span><span class="lab-info-val">{{ n.tools }}</span></div>
-                    <div class="lab-info-row"><span class="lab-info-label">🎯 Estratégia</span><span class="lab-info-val">{{ n.tip }}</span></div>
-                    <div class="lab-info-row"><span class="lab-info-label">💎 Afiliados</span><span class="lab-info-val">{{ n.affiliate }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label" data-label="format">🎬 Formato</span><span class="lab-info-val" data-field="format" data-rank="{{ n.rank }}">{{ n.format }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label" data-label="tools">🛠️ Ferramentas</span><span class="lab-info-val" data-field="tools" data-rank="{{ n.rank }}">{{ n.tools }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label" data-label="tip">🎯 Estratégia</span><span class="lab-info-val" data-field="tip" data-rank="{{ n.rank }}">{{ n.tip }}</span></div>
+                    <div class="lab-info-row"><span class="lab-info-label" data-label="affiliate">💎 Afiliados</span><span class="lab-info-val" data-field="affiliate" data-rank="{{ n.rank }}">{{ n.affiliate }}</span></div>
 
                     <div class="live-data-{{ n.rank }}" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:6px">
                         <div style="font-size:10px;color:#00d4ff;font-weight:700;margin-bottom:6px">⚡ DATAFORSEO LIVE</div>
@@ -130,7 +130,7 @@
                     </div>
 
                     <div style="margin-top:10px;display:flex;gap:8px">
-                        <button class="btn-primary" style="font-size:11px;padding:6px 12px" onclick="event.stopPropagation(); deepDiveFromCard('{{ n.seed }}', '{{ n.name }}')">
+                        <button class="btn-primary deep-dive-btn" style="font-size:11px;padding:6px 12px" onclick="event.stopPropagation(); deepDiveFromCard('{{ n.seed }}', '{{ n.name }}')">
                             🔬 Deep Dive Este Nicho
                         </button>
                     </div>
@@ -244,12 +244,48 @@ function filterNiches(type) {
     });
 }
 
+// Static label translations (UI chrome)
+var LABEL_TRANSLATIONS = {
+    en: {format: '🎬 Format', tools: '🛠️ Tools', tip: '🎯 Strategy', affiliate: '💎 Affiliates', deepDive: '🔬 Deep Dive This Niche'},
+    pt: {format: '🎬 Formato', tools: '🛠️ Ferramentas', tip: '🎯 Estratégia', affiliate: '💎 Afiliados', deepDive: '🔬 Deep Dive Este Nicho'},
+    es: {format: '🎬 Formato', tools: '🛠️ Herramientas', tip: '🎯 Estrategia', affiliate: '💎 Afiliados', deepDive: '🔬 Deep Dive Este Nicho'},
+    fr: {format: '🎬 Format', tools: '🛠️ Outils', tip: '🎯 Stratégie', affiliate: '💎 Affiliés', deepDive: '🔬 Deep Dive Cette Niche'},
+    de: {format: '🎬 Format', tools: '🛠️ Tools', tip: '🎯 Strategie', affiliate: '💎 Partner', deepDive: '🔬 Deep Dive Diese Nische'},
+    ja: {format: '🎬 フォーマット', tools: '🛠️ ツール', tip: '🎯 戦略', affiliate: '💎 アフィリエイト', deepDive: '🔬 このニッチを深掘り'},
+    it: {format: '🎬 Formato', tools: '🛠️ Strumenti', tip: '🎯 Strategia', affiliate: '💎 Affiliati', deepDive: '🔬 Deep Dive Questa Nicchia'},
+    ko: {format: '🎬 형식', tools: '🛠️ 도구', tip: '🎯 전략', affiliate: '💎 제휴', deepDive: '🔬 이 틈새 시장 심층 분석'},
+};
+
+function applyLabelTranslations(lang) {
+    var dict = LABEL_TRANSLATIONS[lang] || LABEL_TRANSLATIONS.en;
+    document.querySelectorAll('[data-label]').forEach(function(el) {
+        var key = el.getAttribute('data-label');
+        if (dict[key]) el.textContent = dict[key];
+    });
+    document.querySelectorAll('.deep-dive-btn').forEach(function(el) {
+        if (dict.deepDive) el.textContent = dict.deepDive;
+    });
+}
+
+function applyNicheTranslations(niches) {
+    niches.forEach(function(n) {
+        ['name', 'desc', 'format', 'tools', 'tip', 'affiliate'].forEach(function(field) {
+            if (!n[field]) return;
+            var els = document.querySelectorAll('[data-field="' + field + '"][data-rank="' + n.rank + '"]');
+            els.forEach(function(el) { el.textContent = n[field]; });
+        });
+    });
+}
+
 function enrichTopNiches() {
     var country = document.getElementById('enrich-country').value;
     var language = document.getElementById('enrich-lang').value;
     var status = document.getElementById('enrich-status');
-    status.textContent = 'Buscando dados ao vivo...';
+    status.textContent = 'Buscando dados ao vivo + traduzindo...';
     status.style.color = '#FFD700';
+
+    // Apply UI label translations immediately
+    applyLabelTranslations(language);
 
     apiPost('/api/admin/niches-lab/enrich', {country: country, language: language})
     .then(function(r) { return r.json(); })
@@ -259,6 +295,9 @@ function enrichTopNiches() {
             status.style.color = '#FF4136';
             return;
         }
+        // Update niche text content with translations
+        applyNicheTranslations(data.niches);
+
         var hits = 0;
         data.niches.forEach(function(n) {
             var live = n.live || {};
@@ -402,6 +441,14 @@ function renderDeepDive(data, target) {
 
     target.innerHTML = html;
 }
+
+// Auto-trigger enrichment when language or country changes
+document.addEventListener('DOMContentLoaded', function() {
+    var langSel = document.getElementById('enrich-lang');
+    var countrySel = document.getElementById('enrich-country');
+    if (langSel) langSel.addEventListener('change', function() { enrichTopNiches(); });
+    if (countrySel) countrySel.addEventListener('change', function() { enrichTopNiches(); });
+});
 
 function copyKw(text, btn) {
     navigator.clipboard.writeText(text).then(function() {
