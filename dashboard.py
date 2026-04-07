@@ -249,6 +249,8 @@ async def api_pipeline_progress(request: Request, niche: str = "", user=Depends(
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, project: str = "", user=Depends(require_auth)):
     """Main dashboard — admin sees full dashboard, student redirects."""
+    if user.get("must_change_password"):
+        return RedirectResponse("/change-password?first=1", status_code=302)
     if user.get("role") == "student":
         return RedirectResponse("/student", status_code=302)
 
@@ -773,6 +775,40 @@ async def api_create_assignment(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": "Falha ao criar atribuicao."}, status_code=500)
 
 
+@app.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request, user=Depends(require_auth), first: str = ""):
+    """Page where the student (or any user) can change their own password."""
+    must = bool(user.get("must_change_password")) or first == "1"
+    return render(
+        request,
+        "change_password.html",
+        {"must_change": must, "user_email": user.get("email", "")},
+    )
+
+
+@app.post("/api/change-password")
+@limiter.limit("5/minute")
+async def api_change_password(request: Request, user=Depends(require_auth)):
+    """Change the current user's password. Clears the must_change_password flag."""
+    body = await request.json()
+    new_pw = (body.get("new_password") or "").strip()
+    confirm = (body.get("confirm_password") or "").strip()
+    if not new_pw or len(new_pw) < 8:
+        return JSONResponse({"error": "Nova senha deve ter no minimo 8 caracteres"}, status_code=400)
+    if new_pw != confirm:
+        return JSONResponse({"error": "Senhas nao coincidem"}, status_code=400)
+    if new_pw == user.get("email", ""):
+        return JSONResponse({"error": "A nova senha nao pode ser igual ao email"}, status_code=400)
+
+    from database import change_user_password
+    ok = change_user_password(int(user["id"]), new_pw)
+    if not ok:
+        return JSONResponse({"error": "Falha ao alterar senha"}, status_code=500)
+
+    redirect = "/" if user.get("role") == "admin" else "/student"
+    return JSONResponse({"ok": True, "redirect": redirect})
+
+
 @app.post("/api/admin/create-student")
 @limiter.limit("10/minute")
 async def api_create_student(request: Request, user=Depends(require_admin)):
@@ -787,11 +823,27 @@ async def api_create_student(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": "Nome deve ter pelo menos 2 caracteres"}, status_code=400)
     if not email or "@" not in email:
         return JSONResponse({"error": "Email invalido"}, status_code=400)
-    if not password or len(password) < 12:
+
+    # Default password = email when admin doesn't supply one. Student is forced
+    # to change it on first login (must_change_password=1).
+    must_change = False
+    if not password:
+        password = email
+        must_change = True
+    elif password == email:
+        must_change = True
+    elif len(password) < 12:
         return JSONResponse({"error": "Senha deve ter pelo menos 12 caracteres"}, status_code=400)
 
     from database import create_user, create_assignment
-    uid = create_user(name, email, password, role="student", created_by=user.get("id"))
+    uid = create_user(
+        name,
+        email,
+        password,
+        role="student",
+        created_by=user.get("id"),
+        must_change_password=must_change,
+    )
     if not uid:
         return JSONResponse({"error": "Email ja cadastrado"}, status_code=400)
 

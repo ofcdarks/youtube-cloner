@@ -43,7 +43,10 @@ async def login_submit(request: Request):
     token = create_session(user["id"])
     logger.info(f"Login: {email} (role={user['role']})")
 
-    if user["role"] == "admin":
+    # Force first-time password change before letting the user in
+    if user.get("must_change_password"):
+        response = RedirectResponse("/change-password?first=1", status_code=302)
+    elif user["role"] == "admin":
         response = RedirectResponse("/", status_code=302)
     else:
         response = RedirectResponse("/student", status_code=302)

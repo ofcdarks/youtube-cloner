@@ -79,6 +79,11 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
     Admin can view as any student via ?view_as=<student_id>
     Student switches channels via ?channel=<channel_id>
     """
+    # First-login: force password change before allowing access
+    if user.get("must_change_password") and not view_as:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse("/change-password?first=1", status_code=302)
+
     # ── Impersonation: admin viewing as student ──
     impersonating = False
     target_user = user

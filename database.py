@@ -314,6 +314,8 @@ def _run_migrations():
         ("idx_video_perf_student", "CREATE INDEX IF NOT EXISTS idx_video_perf_student ON video_performance(student_id)"),
         # Allow admin to share their API key with students
         ("users_use_admin_api", "ALTER TABLE users ADD COLUMN use_admin_api INTEGER DEFAULT 0"),
+        # First-login flow: when 1, the user must change their password before continuing
+        ("users_must_change_password", "ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0"),
         ("ideas_search_volume", "ALTER TABLE ideas ADD COLUMN search_volume INTEGER DEFAULT 0"),
         ("ideas_search_competition", "ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1"),
         ("ideas_title_b", "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''"),
@@ -889,19 +891,36 @@ def get_stats() -> dict:
 # ── Users ────────────────────────────────────────────────
 
 def create_user(
-    name: str, email: str, password: str, role: str = "student", created_by: int | None = None
+    name: str,
+    email: str,
+    password: str,
+    role: str = "student",
+    created_by: int | None = None,
+    must_change_password: bool = False,
 ) -> int | None:
     now = datetime.now().isoformat()
     password_hash = _hash_password(password)
     with get_db() as conn:
         try:
             cur = conn.execute(
-                "INSERT INTO users (name, email, password_hash, role, created_by, created_at) VALUES (?,?,?,?,?,?)",
-                (name, email, password_hash, role, created_by, now),
+                "INSERT INTO users (name, email, password_hash, role, created_by, created_at, must_change_password) VALUES (?,?,?,?,?,?,?)",
+                (name, email, password_hash, role, created_by, now, 1 if must_change_password else 0),
             )
             return cur.lastrowid
         except sqlite3.IntegrityError:
             return None
+
+
+def change_user_password(user_id: int, new_password: str) -> bool:
+    """Hash and persist a new password, clearing the must_change_password flag."""
+    if not new_password or len(new_password) < 6:
+        return False
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE users SET password_hash=?, must_change_password=0 WHERE id=?",
+            (_hash_password(new_password), user_id),
+        )
+    return True
 
 
 def authenticate_user(email: str, password: str) -> dict | None:

@@ -134,8 +134,9 @@
                 <input type="email" id="student-email" placeholder="aluno@email.com">
             </div>
             <div class="form-group">
-                <label>Senha</label>
-                <input type="password" id="student-password" placeholder="Senha de acesso">
+                <label>Senha <span style="color:#6b7280;font-weight:400">(opcional — se vazio, o aluno faz login com a senha igual ao email e troca no primeiro acesso)</span></label>
+                <input type="password" id="student-password" placeholder="Deixe vazio para usar email como senha temporária">
+                <div style="font-size:11px;color:#22c55e;margin-top:6px">💡 Recomendado: deixe em branco. O aluno será forçado a definir uma senha pessoal no primeiro login.</div>
             </div>
             <div class="form-group">
                 <label>Nicho <span style="color:#6b7280;font-weight:400">(opcional — pode definir depois)</span></label>
@@ -199,12 +200,12 @@ function createStudent() {
     const project_id = document.getElementById('student-project').value;
     const titles_count = parseInt(document.getElementById('student-titles').value) || 5;
 
-    if (!name || !email || !password) {
-        showToast('Preencha nome, email e senha', 'error');
+    if (!name || !email) {
+        showToast('Preencha nome e email', 'error');
         return;
     }
 
-    const loading = showToast('Criando aluno...', 'loading');
+    const loading = showToast(password ? 'Criando aluno...' : 'Criando aluno (senha temporária = email)...', 'loading');
     apiFetch('/api/admin/create-student', {
         method: 'POST',
         body: JSON.stringify({name, email, password, niche, project_id, titles_count})
