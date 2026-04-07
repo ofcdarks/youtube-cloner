@@ -1924,6 +1924,38 @@ async def api_rename_project(request: Request, user=Depends(require_admin)):
     return JSONResponse({"ok": True, "name": new_name})
 
 
+@app.post("/api/admin/update-project-channel")
+@limiter.limit("30/minute")
+async def api_update_project_channel(request: Request, user=Depends(require_admin)):
+    """Update or clear the channel_original field of a project.
+    Accepts a YouTube URL, a free-text label (e.g. 'Loaded Dice'), or empty string.
+    """
+    body = await request.json()
+    project_id = body.get("project_id", "")
+    raw = (body.get("channel_original") or "").strip()
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+    if len(raw) > 300:
+        return JSONResponse({"error": "Valor muito longo (max 300)"}, status_code=400)
+
+    # Light validation: if it looks like a URL, ensure it's youtube; otherwise accept as label
+    value = raw
+    if raw and ("://" in raw or raw.startswith("www.")):
+        try:
+            value = validate_url(raw)
+        except Exception:
+            return JSONResponse({"error": "URL invalida"}, status_code=400)
+        if "youtube.com" not in value and "youtu.be" not in value:
+            return JSONResponse({"error": "URL deve ser do YouTube"}, status_code=400)
+
+    from database import get_project, update_project
+    proj = get_project(project_id)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+    update_project(project_id, channel_original=value)
+    return JSONResponse({"ok": True, "channel_original": value})
+
+
 @app.post("/api/admin/delete-project")
 @limiter.limit("10/minute")
 async def api_delete_project(request: Request, user=Depends(require_admin)):
