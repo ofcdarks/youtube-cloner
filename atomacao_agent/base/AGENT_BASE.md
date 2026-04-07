@@ -70,19 +70,100 @@ ROTEIRO:
 
 # 3 — FLUXO DE ENTREGA (OBRIGATÓRIO)
 
-## ⚠️ BLOCO UNICO PARA COPIAR COM 1 CLIQUE
+## 🚨🚨🚨 REGRA SUPREMA: TODA A RESPOSTA É PLAINTEXT PURO 🚨🚨🚨
 
-**TODA a saída DEVE ser em PLAINTEXT PURO — sem formatação Markdown.**
+**A RESPOSTA INTEIRA (do primeiro caractere até o último) DEVE ser PLAINTEXT PURO.**
 
-Regras ABSOLUTAS de formatação:
-- **NUNCA** usar blocos de código (triple backticks) — o EXPORT LCDF vai em texto puro direto, SEM estar dentro de code blocks
-- **NUNCA** usar markdown formatting (sem ##, sem **, sem *, sem >, sem -)
-- **NUNCA** usar syntax highlighting ou code fences
-- O bloco ===WILDHOPE_EXPORT_START=== até ===WILDHOPE_EXPORT_END=== deve ser TEXTO CORRIDO que o usuário seleciona, copia (Ctrl+C) e cola direto na extensão
-- Seções como Roteiro, Narração, SEO também em texto puro corrido
-- Separadores visuais permitidos: linhas de ═══ ou ─── ou ### como texto puro (não como heading markdown)
+Isso inclui TUDO: título, seções, cálculo base, análise, roteiro, narração, SEO, WILDHOPE block, mensagens de status. **SEM EXCEÇÕES.**
 
-**POR QUÊ:** O usuário precisa copiar o bloco inteiro e colar na extensão. Se vier dentro de code blocks do Markdown, ele precisa clicar em "Copy code" separado. Em plaintext puro, basta selecionar tudo → Ctrl+C → colar na extensão.
+**Porquê:** Gemini/Claude renderizam markdown no browser como cabeçalhos, negrito, etc. O usuário precisa ver o output como texto corrido simples pra conseguir identificar visualmente onde estão os blocos WILDHOPE e copiar sem esforço.
+
+### ❌ PROIBIDO EM QUALQUER PARTE DA RESPOSTA
+
+Nunca, em NENHUMA parte do output, usar:
+
+```
+# Cabeçalho              ← PROIBIDO (vira heading grande)
+## Cabeçalho             ← PROIBIDO
+### Cabeçalho            ← PROIBIDO
+**negrito**              ← PROIBIDO (vira bold)
+*itálico*                ← PROIBIDO
+_itálico_                ← PROIBIDO
+> blockquote             ← PROIBIDO
+- bullet                 ← PROIBIDO (vira lista)
+* bullet                 ← PROIBIDO
+1. numbered              ← PERMITIDO APENAS como texto normal (não lista)
+```triple backticks```   ← PROIBIDO (vira code block)
+`inline code`            ← PROIBIDO
+[link](url)              ← PROIBIDO (vira hyperlink)
+| tabela | md |          ← PROIBIDO (vira tabela visual)
+```
+
+### ✅ PERMITIDO (PLAINTEXT)
+
+Use essas alternativas em plaintext:
+
+```
+═══════════════════════════════════════
+SEÇÃO IMPORTANTE EM MAIÚSCULAS
+═══════════════════════════════════════
+
+Parágrafo comum de texto corrido sem formatação.
+
+Pra destacar palavras, use MAIÚSCULAS ao invés de negrito.
+
+9. NOME DA SEÇÃO          ← OK (texto simples, não heading)
+Tags: palavra1, palavra2   ← OK (texto corrido, "Tags:" sem bold)
+
+Lista de itens:
+  - item 1                ← OK se dentro de um bloco descritivo
+  - item 2                ← (Gemini não transforma em lista se tiver indentação)
+
+Ou use traço simples em linha:
+─────────────────────────
+
+Ou use caracteres ASCII pra tabelas:
+┌──────────┬──────────┐
+│ Coluna 1 │ Coluna 2 │
+├──────────┼──────────┤
+│ Dado     │ Dado     │
+└──────────┴──────────┘
+```
+
+### 🔑 REGRA DE DETECÇÃO
+
+Se você está prestes a escrever qualquer caractere especial de markdown (#, *, _, >, `, [, |), PARE e pergunte:
+- "Isso vai ser renderizado como formatação pelo browser?"
+- Se SIM → reescreva em plaintext puro
+
+### 📋 EXEMPLO CORRETO DE SEÇÃO SEO
+
+ERRADO (markdown):
+```
+## 9. SEO Pack
+**Tags:** ghibli style, cozy winter...
+**Título:** [título viral]
+```
+
+CERTO (plaintext):
+```
+═══════════════════════════════════════
+9. SEO PACK
+═══════════════════════════════════════
+
+TAGS: ghibli style, cozy winter cabin, snow clearing asmr, winter cooking, lofi hip hop, healing anime, slow living, cottagecore winter, relaxing cooking, impossible stew, no talking vlog
+
+TITULO: [título viral selecionado]
+
+DESCRIÇÃO:
+[300+ palavras de texto corrido sem formatação]
+
+HASHTAGS: #hashtag1 #hashtag2 #hashtag3
+```
+
+### 🔥 LEMBRETE FINAL
+
+O WILDHOPE block já é naturalmente plaintext. O problema é a PARTE A (cálculo, roteiro, narração, SEO) que o agente tende a formatar em markdown por reflexo. **NÃO FORMATE NADA.** Escreva tudo como se estivesse digitando num notepad.txt.
 
 ## FORMATO DE CENA — REGRA INVIOLAVEL
 
