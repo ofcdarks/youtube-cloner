@@ -100,10 +100,20 @@
     <div class="section">
         <div class="section-title"><span class="sec-icon">&#128640;</span> Executar Novo Nicho</div>
         <div class="form-panel">
-            <p class="form-hint">Analise um canal do YouTube e crie um novo projeto com SOP + 5 nichos + 30 titulos via AI.</p>
+            <p class="form-hint">Analise um canal do YouTube <strong>ou</strong> crie um template de nicho validado (sem canal) — ambos geram SOP + 5 nichos + 30 titulos via mesma pipeline.</p>
+
+            <!-- Template Mode Toggle -->
+            <div style="margin-bottom:12px;padding:8px 12px;background:#10b98115;border:1px solid #10b98140;border-radius:6px;display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="template-mode" onchange="toggleTemplateMode()" style="width:16px;height:16px;cursor:pointer;">
+                <label for="template-mode" style="font-size:12px;color:#10b981;font-weight:600;cursor:pointer;flex:1;">
+                    &#128194; Modo Template (sem canal) — cria base de nicho reutilizavel para multiplos alunos
+                </label>
+                <span id="mode-badge" style="font-size:10px;padding:3px 8px;border-radius:10px;background:#7c3aed30;color:#a78bfa;font-weight:700;">CANAL</span>
+            </div>
+
             <div class="form-row">
-                <div class="form-group grow-2">
-                    <label for="channel-url">URL do Canal YouTube</label>
+                <div class="form-group grow-2" id="channel-url-group">
+                    <label for="channel-url"><span id="url-label-text">URL do Canal YouTube</span></label>
                     <input type="text" id="channel-url" class="form-input" placeholder="https://youtube.com/@canal">
                 </div>
                 <div class="form-group grow-1">
@@ -635,20 +645,56 @@ function copyNextNlmPrompt() {
     });
 }
 
+function toggleTemplateMode() {
+    const cb = document.getElementById('template-mode');
+    const isTemplate = cb.checked;
+    const urlInput = document.getElementById('channel-url');
+    const urlGroup = document.getElementById('channel-url-group');
+    const urlLabel = document.getElementById('url-label-text');
+    const badge = document.getElementById('mode-badge');
+    const btn = document.getElementById('analyze-btn');
+
+    if (isTemplate) {
+        urlInput.disabled = true;
+        urlInput.value = '';
+        urlInput.placeholder = '(nao necessario em modo template)';
+        if (urlGroup) urlGroup.style.opacity = '0.4';
+        if (urlLabel) urlLabel.textContent = 'URL do Canal (desabilitado)';
+        if (badge) {
+            badge.textContent = 'TEMPLATE';
+            badge.style.background = '#10b98130';
+            badge.style.color = '#10b981';
+        }
+        if (btn) btn.innerHTML = '&#128194; Criar Template';
+    } else {
+        urlInput.disabled = false;
+        urlInput.placeholder = 'https://youtube.com/@canal';
+        if (urlGroup) urlGroup.style.opacity = '1';
+        if (urlLabel) urlLabel.textContent = 'URL do Canal YouTube';
+        if (badge) {
+            badge.textContent = 'CANAL';
+            badge.style.background = '#7c3aed30';
+            badge.style.color = '#a78bfa';
+        }
+        if (btn) btn.innerHTML = '&#128269; Analisar Canal';
+    }
+}
+
 function analyzeChannel() {
+    const templateMode = (document.getElementById('template-mode') || {}).checked || false;
     const url = document.getElementById('channel-url').value.trim();
     const nicheName = document.getElementById('niche-name').value.trim();
     const nlmSop = (document.getElementById('nlm-sop-response') || {}).value || '';
     const lang = document.getElementById('project-lang').value;
 
-    if (!url) { showToast('Informe a URL do canal', 'warning'); return; }
+    if (!templateMode && !url) { showToast('Informe a URL do canal (ou ative modo Template)', 'warning'); return; }
     if (!nicheName) { showToast('Informe o nome do nicho', 'warning'); return; }
 
     const btn = document.getElementById('analyze-btn');
     btn.disabled = true;
-    btn.innerHTML = '&#9881; Analisando...';
+    btn.innerHTML = '&#9881; ' + (templateMode ? 'Criando Template...' : 'Analisando...');
 
-    showProgressModal('Analisando Canal');
+    showProgressModal(templateMode ? 'Criando Template de Nicho' : 'Analisando Canal');
     updateProgress(5, 'Iniciando pipeline...');
 
     // SSE — real-time progress from server
@@ -671,7 +717,9 @@ function analyzeChannel() {
         console.warn('SSE not available, falling back');
     }
 
-    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, nlm_sop: nlmSop.trim(), language: lang})
+    const _defaultBtnHtml = templateMode ? '&#128194; Criar Template' : '&#128269; Analisar Canal';
+
+    apiPost('/api/admin/analyze-channel', {url: url, niche_name: nicheName, nlm_sop: nlmSop.trim(), language: lang, template_mode: templateMode})
     .then(r => {
         if (!r.ok) {
             return r.text().then(txt => {
@@ -684,8 +732,9 @@ function analyzeChannel() {
         if (sse) sse.close();
         if (data.ok) {
             const source = data.sop_source || 'AI';
+            const prefix = templateMode ? 'Template' : 'Projeto';
             updateProgress(100, '&#10003; Concluido! SOP via ' + source + ' + ' + data.niches_generated + ' nichos + ' + data.titles_generated + ' titulos');
-            showToast('Projeto "' + data.niche_name + '" criado! SOP via ' + source, 'success', 5000);
+            showToast(prefix + ' "' + data.niche_name + '" criado! SOP via ' + source, 'success', 5000);
             setTimeout(() => {
                 closeProgressModal();
                 window.location.href = '/?project=' + encodeURIComponent(data.project_id);
@@ -695,7 +744,7 @@ function analyzeChannel() {
             closeProgressModal();
             showToast('Erro: ' + (data.error || JSON.stringify(data).substring(0, 200)), 'error', 8000);
             btn.disabled = false;
-            btn.innerHTML = '&#128269; Analisar Canal';
+            btn.innerHTML = _defaultBtnHtml;
         }
     })
     .catch(e => {
@@ -705,7 +754,7 @@ function analyzeChannel() {
         showToast('Erro na analise: ' + (e.message || 'timeout/rede'), 'error', 8000);
         console.error('Analyze error:', e);
         btn.disabled = false;
-        btn.innerHTML = '&#128269; Analisar Canal';
+        btn.innerHTML = _defaultBtnHtml;
     });
 }
 

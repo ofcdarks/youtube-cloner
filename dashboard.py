@@ -828,9 +828,16 @@ async def api_create_student(request: Request, user=Depends(require_admin)):
 @app.post("/api/admin/analyze-channel")
 @limiter.limit("3/minute")
 async def api_admin_analyze_channel(request: Request, user=Depends(require_admin)):
-    """Full channel analysis pipeline: SOP → Niches → Titles → SEO → Mind Map."""
+    """Full channel analysis pipeline: SOP → Niches → Titles → SEO → Mind Map.
+
+    Two modes:
+    - Channel mode (default): requires url — runs transcript analysis, SOP from channel
+    - Template mode (template_mode=true): url optional — creates reusable niche template
+      that can be assigned to multiple students without a linked YouTube channel
+    """
     body = await request.json()
-    url = validate_url(body.get("url", ""))
+    template_mode = bool(body.get("template_mode", False))
+    url = validate_url(body.get("url", "")) if body.get("url") else ""
     niche_name = sanitize_niche_name(body.get("niche_name", ""))
     nlm_sop = (body.get("nlm_sop") or "").strip()
     language = (body.get("language") or "pt-BR").strip()
@@ -845,12 +852,13 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
     lang_label = LANG_LABELS.get(language, language)
     lang_instruction = f"\n\nIMPORTANTE: Todo o conteudo deve ser gerado em {lang_label}."
 
-    if not url:
+    if not template_mode and not url:
         return JSONResponse({"error": "URL invalida"}, status_code=400)
     if not niche_name or len(niche_name) < 2:
         return JSONResponse({"error": "Nome do nicho invalido (min 2 caracteres)"}, status_code=400)
 
-    logger.info(f"[ANALYZE] {user.get('email')}: url={url[:80]}, niche={niche_name}, lang={language}, nlm_sop={len(nlm_sop)} chars")
+    mode_label = "TEMPLATE" if template_mode else "CHANNEL"
+    logger.info(f"[ANALYZE:{mode_label}] {user.get('email')}: url={url[:80] or '(none)'}, niche={niche_name}, lang={language}, nlm_sop={len(nlm_sop)} chars")
 
     import asyncio
 
@@ -896,8 +904,8 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
             sop_source = "Manual"
             logger.info(f"[ANALYZE] Using pasted SOP: {len(sop_content)} chars")
 
-        # Priority 2: Transcripts + AI
-        if not sop_content:
+        # Priority 2: Transcripts + AI (skipped in template mode — no URL)
+        if not sop_content and url:
             logger.info(f"[ANALYZE] Trying transcript analysis for {url}")
             sop_content = analyze_via_transcripts(url, niche_name)
             if sop_content and len(sop_content) > 200:
@@ -905,10 +913,18 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
                 logger.info(f"[ANALYZE] Transcript SOP: {len(sop_content)} chars")
 
         if not sop_content:
-            sop_prompt = f"""Analise o conceito deste canal do YouTube e crie um SOP COMPLETO com as 17 secoes padrao.
+            # Template mode: no URL context, generate pure niche-based SOP
+            _url_line = f"URL: {url}\n" if url else ""
+            _intro = (
+                "Analise o conceito deste canal do YouTube e crie um SOP COMPLETO com as 17 secoes padrao."
+                if url else
+                f"Crie um SOP COMPLETO com as 17 secoes padrao para um canal faceless do YouTube no nicho '{niche_name}'. "
+                f"Este e um TEMPLATE de nicho validado que sera usado por multiplos criadores — nao ha canal de referencia, "
+                f"voce deve projetar o canal ideal para este nicho com base nas melhores praticas do segmento."
+            )
+            sop_prompt = f"""{_intro}
 
-URL: {url}
-Nicho: {niche_name}
+{_url_line}Nicho: {niche_name}
 
 Crie um SOP (Standard Operating Procedure) com TODAS essas 17 secoes, cada uma DETALHADA e especifica para o nicho:
 
@@ -995,7 +1011,8 @@ Seja EXTREMAMENTE detalhado. Cada secao deve ter ao menos 200 palavras. SOP tota
         _step(3, 'Gerando 5 nichos derivados')
 
         # Step 3: Generate 5 niches
-        niche_prompt = f"""Baseado neste canal "{niche_name}" ({url}), gere 5 sub-nichos derivados.
+        _channel_ref = f'"{niche_name}" ({url})' if url else f'"{niche_name}" (template de nicho, sem canal de referencia)'
+        niche_prompt = f"""Baseado neste canal {_channel_ref}, gere 5 sub-nichos derivados.
 SOP: {sop_content[:3000]}
 Retorne JSON: [{{"name":"...","description":"...","rpm_range":"$X-Y","competition":"Baixa/Media/Alta","color":"#hex","pillars":["..."]}}]
 Retorne APENAS o JSON.{lang_instruction}"""
