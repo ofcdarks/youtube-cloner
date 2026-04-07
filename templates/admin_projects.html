@@ -262,9 +262,18 @@ function escapeHtmlMockup(s) {
 
 // In-memory store of generated images per slot (logo, banner, thumb0..3)
 var _mockupImages = {};
+// In-memory store of prompts per slot, used by the regenerate buttons
+var _mockupPrompts = {};
+
+function regenMockupSlot(slot) {
+    var prompt = _mockupPrompts[slot];
+    if (!prompt) { showToast('Sem prompt para regenerar', 'error'); return; }
+    genMockupImage(slot, JSON.stringify(prompt));
+}
 
 function renderMockup(m, projectId, isFresh) {
     _mockupImages = {}; // reset on each render
+    _mockupPrompts = {};
     var content = document.getElementById('mockup-content');
     var primary = (m.colors && m.colors.primary) || '#7c3aed';
     var secondary = (m.colors && m.colors.secondary) || '#1e293b';
@@ -349,10 +358,27 @@ function renderMockup(m, projectId, isFresh) {
 
     // Description
     if (m.description) {
+        var curLang = m.description_language || 'pt-BR';
+        var langs = [
+            ['pt-BR','Português (BR)'], ['en','English'], ['es','Español'],
+            ['fr','Français'], ['de','Deutsch'], ['it','Italiano'],
+            ['ja','日本語'], ['ko','한국어'], ['zh','中文'], ['ru','Русский'],
+            ['ar','العربية'], ['hi','हिन्दी'], ['tr','Türkçe'], ['nl','Nederlands']
+        ];
         html += '<div style="background:rgba(255,255,255,0.02);border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:14px">';
-        html += '<div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#fbbf24">📝 Descrição do Canal</div>';
-        html += '<p style="font-size:13px;color:#cbd5e1;line-height:1.7;margin:0 0 10px;white-space:pre-wrap">' + escapeHtmlMockup(m.description) + '</p>';
-        html += '<button onclick="copyMockupField(' + JSON.stringify(JSON.stringify(m.description)) + ', this)" style="padding:6px 12px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">📋 Copiar Descrição</button>';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap">';
+        html += '<div style="font-weight:800;font-size:13px;color:#fbbf24">📝 Descrição do Canal <span id="mk-desc-lang-label" style="font-size:10px;color:#64748b;font-weight:500;margin-left:6px">(' + escapeHtmlMockup(curLang) + ')</span></div>';
+        html += '<div style="display:flex;gap:6px;align-items:center">';
+        html += '<select id="mk-desc-lang" style="padding:5px 8px;background:#0f172a;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">';
+        langs.forEach(function(l) {
+            var sel = l[0] === curLang ? ' selected' : '';
+            html += '<option value="' + l[0] + '"' + sel + '>' + escapeHtmlMockup(l[1]) + '</option>';
+        });
+        html += '</select>';
+        html += '<button id="mk-desc-translate-btn" onclick="translateMockupDescription(\'' + projectId + '\')" style="padding:5px 10px;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">🌐 Traduzir</button>';
+        html += '</div></div>';
+        html += '<p id="mk-desc-text" style="font-size:13px;color:#cbd5e1;line-height:1.7;margin:0 0 10px;white-space:pre-wrap">' + escapeHtmlMockup(m.description) + '</p>';
+        html += '<button onclick="copyMockupDescription(this)" style="padding:6px 12px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:6px;font-size:11px;cursor:pointer">📋 Copiar Descrição</button>';
         html += '</div>';
     }
 
@@ -392,6 +418,52 @@ function renderMockup(m, projectId, isFresh) {
     window._currentMockup = m;
 
     content.innerHTML = html;
+}
+
+function copyMockupDescription(btn) {
+    var el = document.getElementById('mk-desc-text');
+    if (!el) return;
+    navigator.clipboard.writeText(el.textContent || '').then(function() {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copiado';
+        setTimeout(function() { btn.innerHTML = orig; }, 1500);
+    }).catch(function() { showToast('Falha ao copiar', 'error'); });
+}
+
+function translateMockupDescription(projectId) {
+    var sel = document.getElementById('mk-desc-lang');
+    var btn = document.getElementById('mk-desc-translate-btn');
+    if (!sel || !btn) return;
+    var language = sel.value;
+    if (!language) return;
+    var origLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Traduzindo...';
+    apiPost('/api/admin/translate-mockup-description', {project_id: projectId, language: language})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = origLabel;
+        if (!data.ok) {
+            showToast(data.error || 'Erro ao traduzir', 'error', 6000);
+            return;
+        }
+        var textEl = document.getElementById('mk-desc-text');
+        if (textEl) textEl.textContent = data.description;
+        var lbl = document.getElementById('mk-desc-lang-label');
+        if (lbl) lbl.textContent = '(' + data.language + ')';
+        if (window._currentMockup) {
+            window._currentMockup.description = data.description;
+            window._currentMockup.description_language = data.language;
+        }
+        showToast('Descrição traduzida para ' + data.language, 'success');
+    })
+    .catch(function(e) {
+        btn.disabled = false;
+        btn.innerHTML = origLabel;
+        if (e && e.message === 'unauthorized') return;
+        showToast('Erro: ' + e.message, 'error');
+    });
 }
 
 function copyMockupField(value, btn) {
@@ -441,17 +513,19 @@ function genMockupImage(slot, promptStr) {
             return;
         }
         _mockupImages[slot] = data.url;
+        _mockupPrompts[slot] = prompt;
+        var regenBtn = '<button onclick="regenMockupSlot(\'' + slot + '\')" title="Regenerar" style="position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.75);color:#fff;border:1px solid rgba(255,255,255,0.25);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">↻</button>';
         // Replace slot background with the generated image
         if (slot === 'logo') {
             slotEl.style.background = 'url(' + data.url + ') center/cover';
-            slotEl.innerHTML = '<a href="' + data.url + '" download="logo.png" style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px">📥</a>';
+            slotEl.innerHTML = '<button onclick="regenMockupSlot(\'logo\')" title="Regenerar logo" style="position:absolute;top:-4px;left:-4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.85);color:#fff;border:1px solid rgba(255,255,255,0.25);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center">↻</button><a href="' + data.url + '" download="logo.png" style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px">📥</a>';
         } else if (slot === 'banner') {
             slotEl.style.background = 'url(' + data.url + ') center/cover';
-            slotEl.innerHTML = '<a href="' + data.url + '" download="banner.png" style="position:absolute;top:8px;right:8px;padding:6px 12px;border-radius:6px;background:rgba(0,0,0,0.7);color:#fff;font-size:11px;text-decoration:none">📥 Download</a>';
+            slotEl.innerHTML = regenBtn + '<a href="' + data.url + '" download="banner.png" style="position:absolute;top:8px;right:8px;padding:6px 12px;border-radius:6px;background:rgba(0,0,0,0.7);color:#fff;font-size:11px;text-decoration:none">📥 Download</a>';
         } else {
             // thumbN
             slotEl.style.background = 'url(' + data.url + ') center/cover';
-            slotEl.innerHTML = '<a href="' + data.url + '" download="' + slot + '.png" style="position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:4px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;text-decoration:none">📥</a><div style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,0.85);color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">12:00</div>';
+            slotEl.innerHTML = regenBtn + '<a href="' + data.url + '" download="' + slot + '.png" style="position:absolute;top:6px;right:6px;padding:3px 8px;border-radius:4px;background:rgba(0,0,0,0.7);color:#fff;font-size:9px;text-decoration:none">📥</a><div style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,0.85);color:#fff;padding:2px 6px;border-radius:4px;font-size:11px">12:00</div>';
         }
     })
     .catch(function(e) {
@@ -492,10 +566,11 @@ function generateAllMockupImages(projectId) {
         .then(function(data) {
             if (data.ok) {
                 _mockupImages[slot] = data.url;
+                _mockupPrompts[slot] = prompt;
                 var slotEl = document.getElementById('mk-' + slot);
                 if (slotEl) {
                     slotEl.style.background = 'url(' + data.url + ') center/cover';
-                    slotEl.innerHTML = '';
+                    slotEl.innerHTML = '<button onclick="regenMockupSlot(\'' + slot + '\')" title="Regenerar" style="position:absolute;top:6px;left:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.75);color:#fff;border:1px solid rgba(255,255,255,0.25);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2">↻</button>';
                 }
             } else if (data.code === 'NO_COOKIE') {
                 showToast('Configure ImageFX cookie em Admin antes de gerar imagens', 'error', 8000);

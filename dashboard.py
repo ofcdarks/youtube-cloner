@@ -1737,6 +1737,79 @@ async def api_get_channel_mockup(request: Request, user=Depends(require_admin), 
         return JSONResponse({"error": f"Mockup salvo invalido: {e}"}, status_code=500)
 
 
+@app.post("/api/admin/translate-mockup-description")
+@limiter.limit("10/minute")
+async def api_translate_mockup_description(request: Request, user=Depends(require_admin)):
+    """
+    Translate the saved mockup description into a target language and persist
+    the change so the next render shows it. Returns the updated description.
+    """
+    body = await request.json()
+    project_id = (body.get("project_id") or "").strip()
+    target_language = (body.get("language") or "").strip()
+    if not project_id or not target_language:
+        return JSONResponse({"error": "project_id e language obrigatorios"}, status_code=400)
+
+    import json as _json
+    from database import get_files, get_db
+
+    files = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
+    if not files:
+        return JSONResponse({"error": "Mockup nao encontrado"}, status_code=404)
+
+    try:
+        mockup = _json.loads(files[0].get("content", "") or "{}")
+    except Exception as e:
+        return JSONResponse({"error": f"Mockup salvo invalido: {e}"}, status_code=500)
+
+    original_desc = (mockup.get("description") or "").strip()
+    if not original_desc:
+        return JSONResponse({"error": "Sem descricao para traduzir"}, status_code=400)
+
+    from protocols.ai_client import chat
+    import asyncio
+
+    system = (
+        "Voce e um tradutor profissional especializado em conteudo para YouTube. "
+        "Traduza o texto preservando tom, estrutura e impacto emocional. "
+        "Retorne APENAS a traducao, sem explicacoes, sem aspas, sem preambulo."
+    )
+    user_prompt = (
+        f"Traduza a descricao de canal abaixo para o idioma: {target_language}.\n"
+        f"Mantenha o mesmo comprimento aproximado e o mesmo estilo persuasivo.\n\n"
+        f"TEXTO ORIGINAL:\n{original_desc}"
+    )
+
+    try:
+        translated = await asyncio.to_thread(
+            chat,
+            prompt=user_prompt,
+            system=system,
+            max_tokens=1500,
+            temperature=0.4,
+            timeout=120,
+        )
+    except Exception as e:
+        logger.exception(f"translate-mockup-description error: {e}")
+        return JSONResponse({"error": f"Falha na traducao: {str(e)[:200]}"}, status_code=502)
+
+    translated = (translated or "").strip()
+    if not translated:
+        return JSONResponse({"error": "Tradutor retornou vazio"}, status_code=502)
+
+    new_mockup = {**mockup, "description": translated, "description_language": target_language}
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE files SET content=? WHERE id=?",
+                (_json.dumps(new_mockup, ensure_ascii=False, indent=2), files[0]["id"]),
+            )
+    except Exception as e:
+        logger.warning(f"translate-mockup-description: failed to persist: {e}")
+
+    return JSONResponse({"ok": True, "description": translated, "language": target_language})
+
+
 @app.post("/api/admin/generate-mockup-image")
 @limiter.limit("20/minute")
 async def api_generate_mockup_image(request: Request, user=Depends(require_admin)):
