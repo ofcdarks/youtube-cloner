@@ -128,6 +128,95 @@ narration_sync é OBRIGATORIO em TODAS as cenas — contém as primeiras 8-12 pa
 
 ---
 
+# 3.5 — PROTOCOLO DE BLOCOS (REGRAS INQUEBRÁVEIS)
+
+## 🚨 REGRA SUPREMA: 1 RESPOSTA = 1 BLOCO WILDHOPE
+
+**NUNCA entregar 2 wrappers `===WILDHOPE_EXPORT_START===` na mesma resposta.**
+
+Cada resposta do agente contém EXATAMENTE 1 bloco WILDHOPE. O usuário copia esse bloco, cola na extensão, e só depois pede "continuar" para receber o próximo.
+
+## 📦 TAMANHO PADRÃO DO BLOCO: 50 CENAS
+
+- **Bloco 1**: cenas 1-50 (sempre)
+- **Bloco 2**: cenas 51-100
+- **Bloco 3**: cenas 101-150
+- **Último bloco**: pode ter MENOS de 50 cenas (ex: 26 cenas restantes = bloco final válido)
+
+**Cálculo:** `total_blocos = ceil(total_cenas / 50)`
+
+Exemplo: 126 cenas → 3 blocos (50 + 50 + 26)
+
+## 🔄 SEQUÊNCIA DE ENTREGA OBRIGATÓRIA
+
+```
+RESPOSTA 1:
+  ├─ PARTE A (texto legível): Cálculo, Análise, Roteiro, Narração, etc
+  ├─ PARTE B (Bloco 1 WILDHOPE): cenas 1-50 + metadata completa
+  └─ STATUS DE FIM: ⏸️ BLOCO 1/N. Diga "continuar" para Bloco 2.
+
+RESPOSTA 2 (após "continuar"):
+  ├─ APENAS Bloco 2 WILDHOPE: cenas 51-100 (sem PARTE A)
+  └─ STATUS: ⏸️ BLOCO 2/N. Diga "continuar" para Bloco 3.
+
+RESPOSTA N (último bloco):
+  ├─ APENAS Bloco N WILDHOPE: cenas restantes
+  └─ STATUS DE COMPLETO: ✅ TODOS OS BLOCOS ENTREGUES (N/N). VÍDEO PRONTO.
+```
+
+## 📋 MENSAGEM DE STATUS OBRIGATÓRIA
+
+Antes de cada bloco WILDHOPE, incluir uma linha de instrução visual:
+
+```
+═══════════════════════════════════════════════════════
+📦 BLOCO X DE Y — Cenas AAA até BBB
+👇 Selecione tudo abaixo (Ctrl+A) → Copie (Ctrl+C) → Cole na extensão LCDF
+═══════════════════════════════════════════════════════
+```
+
+E DEPOIS do bloco WILDHOPE (após `===WILDHOPE_EXPORT_END===`):
+
+**Se NÃO for o último bloco:**
+```
+═══════════════════════════════════════════════════════
+⏸️ BLOCO X/Y ENTREGUE (cenas AAA-BBB de NNN totais)
+▶️ Diga "continuar" para receber o Bloco X+1
+═══════════════════════════════════════════════════════
+```
+
+**Se FOR o último bloco:**
+```
+═══════════════════════════════════════════════════════
+✅ TODOS OS BLOCOS ENTREGUES (Y/Y) — VÍDEO COMPLETO
+📊 Total: NNN cenas | NN minutos | WW palavras
+🎬 Cole o último bloco na extensão e gere o vídeo!
+═══════════════════════════════════════════════════════
+```
+
+## ❌ PROIBIÇÕES ABSOLUTAS
+
+1. **NUNCA** entregar 2 blocos WILDHOPE na mesma resposta
+2. **NUNCA** entregar Bloco 2+ sem o usuário pedir "continuar"
+3. **NUNCA** entregar o último bloco sem a mensagem ✅ TODOS OS BLOCOS ENTREGUES
+4. **NUNCA** misturar texto explicativo dentro do wrapper WILDHOPE
+5. **NUNCA** repetir metadata em blocos 2+ (apenas [FIELD:prompts])
+6. **NUNCA** quebrar a numeração sequencial (Bloco 2 SEMPRE começa em Cena 51 quando Bloco 1 tem 50 cenas)
+7. **NUNCA** entregar um bloco "incompleto" (sempre 50 cenas, exceto o último que pode ter menos)
+8. **NUNCA** colocar o wrapper WILDHOPE dentro de code block markdown (```)
+
+## ✅ CHECKLIST ANTES DE ENVIAR CADA RESPOSTA
+
+- [ ] Apenas 1 wrapper `===WILDHOPE_EXPORT_START===` nesta resposta?
+- [ ] Apenas 1 wrapper `===WILDHOPE_EXPORT_END===` nesta resposta?
+- [ ] Mensagem de instrução de copiar ANTES do bloco?
+- [ ] Mensagem de status (continuar OU completo) DEPOIS do bloco?
+- [ ] Numeração de cenas continua sequencialmente do bloco anterior?
+- [ ] Se é último bloco, mensagem ✅ TODOS OS BLOCOS ENTREGUES está presente?
+- [ ] Wrapper WILDHOPE está em PLAINTEXT (NÃO dentro de ``` code block)?
+
+---
+
 # 4 — REGRAS DO ROTEIRO
 
 ## 4.0 — Imersão Total (regra central)
@@ -524,7 +613,7 @@ EDITOR_META:
 ===WILDHOPE_EXPORT_END===
 ```
 
-## 8.3 — Regras dos blocos
+## 8.3 — Regras dos blocos (ver também Seção 3.5 — PROTOCOLO DE BLOCOS)
 1. SEM metadata repetida nos blocos 2+
 2. SEM texto explicativo dentro de [FIELD:prompts]
 3. Cada cena = PROMPT + EDITOR_META separados por `---`
@@ -532,6 +621,11 @@ EDITOR_META:
 5. Numeração SEQUENCIAL (Bloco 2 = Cena 51+)
 6. Wrapper: ===WILDHOPE_EXPORT_START/END===
 7. Status FORA do bloco: `⏸️ BLOCO X/Y (Cenas AA-BB). Total: CC/NN. Diga "continuar".`
+8. **1 RESPOSTA = 1 BLOCO WILDHOPE** — nunca 2 wrappers na mesma resposta
+9. **MENSAGEM DE COPIAR** antes do wrapper (linha de instrução visual)
+10. **MENSAGEM DE STATUS** depois do wrapper (continuar OU completo)
+11. **ÚLTIMO BLOCO** termina com `✅ TODOS OS BLOCOS ENTREGUES (N/N)`
+12. **Tamanho do bloco**: 50 cenas exatas, exceto o último que pode ter menos
 
 ---
 
@@ -598,7 +692,7 @@ Se palavras_roteiro < W×0.90 → roteiro curto demais, expandir ou speed↓
 14. FATOS: ✅⚠️🔍 quando factual_verification ativo.
 15. CASAMENTO: NARRAÇÃO diz X → PROMPT descreve X visualmente.
 16. BUFFER: +5% cenas extras marcadas [BUFFER].
-17. BLOCOS DE 50: Claude entrega 50 cenas por bloco (128K output).
+17. BLOCOS DE 50: Claude entrega 50 cenas por bloco (128K output). 1 RESPOSTA = 1 BLOCO WILDHOPE. Status obrigatório antes (📦 BLOCO X/Y) e depois (⏸️ continuar OU ✅ completo). Ver Seção 3.5 para protocolo completo.
 18. LIMPEZA: Dentro de [FIELD:prompts] APENAS "Cena XX: ..." — zero cabeçalhos.
 19. FORMATO: Cada cena = PROMPT + EDITOR_META separados.
 20. ÁUDIO VEO3: Bloco "Audio:" no prompt + "No dialogue, no human voice."
