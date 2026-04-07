@@ -495,8 +495,10 @@ function generateScript(id, title) {
             clearInterval(scriptInterval);
             if (data.ok) {
                 updateProgress(100, 'Roteiro gerado! ' + data.script_words + ' palavras (' + data.duration_estimate + ')');
-                showToast('Roteiro gerado! ' + data.script_words + ' palavras', 'success', 5000);
-                setTimeout(() => { closeProgressModal(); reloadWithProject(); }, 2000);
+                setTimeout(function() {
+                    closeProgressModal();
+                    showScriptResultModal(data);
+                }, 800);
             } else {
                 closeProgressModal();
                 showToast('Erro: ' + (data.error || 'desconhecido'), 'error', 6000);
@@ -510,6 +512,132 @@ function generateScript(id, title) {
             if (btn) { btn.disabled = false; btn.textContent = '\u270E'; }
         });
     });
+}
+
+
+/* ── Script Result Modal (after generating a script) ─────── */
+
+function showScriptResultModal(data) {
+    var existing = document.getElementById('script-result-modal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'script-result-modal';
+    modal.className = 'modal-overlay active';
+    modal.style.cssText = 'align-items:flex-start;padding:24px';
+
+    var script = data.script || '';
+    var narration = data.narration || '';
+    var title = data.title || 'Roteiro';
+    var words = data.words || 0;
+    var nWords = data.narration_words || 0;
+    var duration = data.duration_estimate || '';
+
+    modal.innerHTML =
+        '<div class="modal-content" style="max-width:980px;width:100%;max-height:92vh">' +
+            '<div class="modal-header" style="border-bottom:1px solid #1f2937">' +
+                '<div>' +
+                    '<h3 style="margin:0">📝 Roteiro Gerado</h3>' +
+                    '<div style="font-size:11px;color:#94a3b8;margin-top:4px">' + escapeHtmlSafe(title) + '</div>' +
+                '</div>' +
+                '<button class="modal-close" onclick="closeScriptResultModal()">&#10005;</button>' +
+            '</div>' +
+            '<div style="display:flex;gap:0;border-bottom:1px solid #1f2937;background:rgba(0,0,0,0.3)">' +
+                '<button id="srm-tab-narration" class="srm-tab srm-tab-active" onclick="switchScriptTab(\'narration\')" style="flex:1;background:none;border:none;border-bottom:2px solid #FFD700;color:#fff;padding:14px;font-size:13px;font-weight:700;cursor:pointer">' +
+                    '🎙️ Narração Limpa <span style="color:#FFD700">(pro Agente)</span> · ' + nWords.toLocaleString() + ' palavras' +
+                '</button>' +
+                '<button id="srm-tab-script" class="srm-tab" onclick="switchScriptTab(\'script\')" style="flex:1;background:none;border:none;border-bottom:2px solid transparent;color:#94a3b8;padding:14px;font-size:13px;font-weight:600;cursor:pointer">' +
+                    '📜 Roteiro Completo · ' + words.toLocaleString() + ' palavras · ' + duration +
+                '</button>' +
+            '</div>' +
+            '<div style="padding:14px 20px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+                '<button class="btn-primary" id="srm-copy-btn" onclick="copyScriptResult()" style="background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;font-size:12px;padding:8px 16px">📋 Copiar pro Agente</button>' +
+                '<button class="btn-primary" onclick="downloadScriptResult()" style="background:#1e293b;color:#cbd5e1;font-size:12px;padding:8px 16px">💾 Baixar .txt</button>' +
+                '<span style="font-size:11px;color:#64748b;margin-left:auto">💾 Salvo em: <strong style="color:#94a3b8">' + escapeHtmlSafe(data.saved_to || 'Arquivos do Projeto') + '</strong></span>' +
+            '</div>' +
+            '<div style="padding:14px 20px 20px;flex:1;overflow-y:auto;min-height:0">' +
+                '<textarea id="srm-content" readonly style="width:100%;min-height:55vh;background:#0a0a14;border:1px solid #1f2937;border-radius:8px;color:#e2e8f0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.6;padding:14px;resize:vertical">' + escapeHtmlSafe(narration) + '</textarea>' +
+            '</div>' +
+        '</div>';
+
+    document.body.appendChild(modal);
+
+    // Store script + narration on the modal element so tab switching can swap them
+    modal.dataset.script = script;
+    modal.dataset.narration = narration;
+    modal.dataset.title = title;
+    modal.dataset.activeTab = 'narration';
+
+    // Click outside closes
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeScriptResultModal();
+    });
+}
+
+function escapeHtmlSafe(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function switchScriptTab(which) {
+    var modal = document.getElementById('script-result-modal');
+    if (!modal) return;
+    var content = which === 'script' ? modal.dataset.script : modal.dataset.narration;
+    document.getElementById('srm-content').value = content;
+    document.getElementById('srm-tab-narration').style.borderBottomColor = which === 'narration' ? '#FFD700' : 'transparent';
+    document.getElementById('srm-tab-narration').style.color = which === 'narration' ? '#fff' : '#94a3b8';
+    document.getElementById('srm-tab-script').style.borderBottomColor = which === 'script' ? '#FFD700' : 'transparent';
+    document.getElementById('srm-tab-script').style.color = which === 'script' ? '#fff' : '#94a3b8';
+    modal.dataset.activeTab = which;
+}
+
+function copyScriptResult() {
+    var ta = document.getElementById('srm-content');
+    if (!ta) return;
+    ta.select();
+    ta.setSelectionRange(0, 999999);
+    try {
+        navigator.clipboard.writeText(ta.value).then(function() {
+            var btn = document.getElementById('srm-copy-btn');
+            if (btn) {
+                var orig = btn.innerHTML;
+                btn.innerHTML = '✓ Copiado!';
+                setTimeout(function() { btn.innerHTML = orig; }, 1500);
+            }
+            showToast('Texto copiado pro clipboard', 'success', 2000);
+        });
+    } catch (e) {
+        document.execCommand('copy');
+        showToast('Texto copiado', 'success', 2000);
+    }
+}
+
+function downloadScriptResult() {
+    var modal = document.getElementById('script-result-modal');
+    if (!modal) return;
+    var which = modal.dataset.activeTab || 'narration';
+    var content = which === 'script' ? modal.dataset.script : modal.dataset.narration;
+    var title = modal.dataset.title || 'roteiro';
+    var slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
+    var prefix = which === 'script' ? 'roteiro-' : 'narracao-';
+    var blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = prefix + slug + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function closeScriptResultModal() {
+    var modal = document.getElementById('script-result-modal');
+    if (modal) {
+        modal.remove();
+        // Reload to refresh the project files panel (Roteiros + Narracoes)
+        if (typeof reloadWithProject === 'function') reloadWithProject();
+    }
 }
 
 

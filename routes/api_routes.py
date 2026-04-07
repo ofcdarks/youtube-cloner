@@ -775,8 +775,11 @@ async def api_generate_script(request: Request, user=Depends(require_auth)):
         return JSONResponse({"error": "idea_id obrigatorio"}, status_code=400)
 
     try:
-        from database import get_idea, get_files as db_get_files, get_projects as db_projects, save_script, get_project
-        from protocols.ai_client import generate_script
+        from database import (
+            get_idea, save_script, get_project, save_file,
+        )
+        from protocols.ai_client import generate_script, generate_narration
+        from services import sanitize_niche_name
 
         idea = get_idea(int(idea_id))
         if not idea:
@@ -792,17 +795,54 @@ async def api_generate_script(request: Request, user=Depends(require_auth)):
         from services import get_project_sop
         sop = get_project_sop(pid)
 
-        script = generate_script(idea["title"], idea.get("hook", ""), sop, language=lang)
+        # 1. Generate full script (with markers, sections, etc.)
+        script = generate_script(
+            idea["title"], idea.get("hook", ""), sop, language=lang
+        )
 
+        # 2. Generate clean narration (text-only, ready for the agent / TTS)
+        try:
+            narration = generate_narration(script)
+        except Exception as e:
+            logger.warning(f"generate_narration failed (using script as fallback): {e}")
+            narration = script
+
+        # 3. Persist script in scripts table (legacy)
         save_script(pid, idea["title"], script, int(idea_id), "10-12 min")
 
+        # 4. Also persist as files so they show up in the project's
+        #    "Arquivos do Projeto" panel under Roteiros + Narracoes
+        title_slug = sanitize_niche_name(idea["title"])[:60] or f"idea-{idea_id}"
+        idea_num = idea.get("num", idea_id)
+        roteiro_label = f"Roteiro - {idea['title'][:80]}"
+        roteiro_filename = f"roteiro_{idea_num}_{title_slug}.md"
+        narracao_label = f"Narracao - {idea['title'][:80]}"
+        narracao_filename = f"narracao_{idea_num}_{title_slug}.md"
+
+        try:
+            save_file(pid, "roteiro", roteiro_label, roteiro_filename, script, visible_to_students=True)
+        except Exception as e:
+            logger.warning(f"save_file roteiro failed: {e}")
+        try:
+            save_file(pid, "narracao", narracao_label, narracao_filename, narration, visible_to_students=True)
+        except Exception as e:
+            logger.warning(f"save_file narracao failed: {e}")
+
         words = len(script.split())
+        narration_words = len(narration.split())
+
         return JSONResponse({
             "ok": True,
             "title": idea["title"],
-            "script": script[:500] + "...",
+            "script": script,
+            "narration": narration,
             "words": words,
+            "narration_words": narration_words,
+            "script_words": words,
             "duration_estimate": f"~{round(words / 140, 1)} min",
+            "roteiro_label": roteiro_label,
+            "narracao_label": narracao_label,
+            "saved_to": "Arquivos do Projeto > Roteiros + Narracoes",
         })
     except Exception as e:
         logger.error(f"generate-script error: {e}")
