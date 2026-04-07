@@ -558,7 +558,15 @@ function loadRegionalNiches(forceRefresh) {
     if (list) list.innerHTML = '<div style="padding:60px;text-align:center;color:#888"><div style="font-size:32px;margin-bottom:12px">🌍</div>Gerando nichos validados para o mercado selecionado...<br><small style="color:#666">AI analysing + YouTube channel lookup</small></div>';
 
     apiPost('/api/admin/niches-lab/regional', {country: country, language: language, force_refresh: !!forceRefresh})
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        return r.text().then(function(txt) {
+            try { return JSON.parse(txt); }
+            catch (e) {
+                // Likely nginx timeout / HTML error page
+                throw new Error('Servidor demorou muito (provavelmente timeout do proxy). A AI pode ter gerado os nichos mas o proxy deu timeout. Tenta novamente em alguns segundos — o cache pode ter sido populado.');
+            }
+        });
+    })
     .then(function(data) {
         if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
         if (!data.ok) {

@@ -788,13 +788,106 @@ def _format_subs(n: int) -> str:
     return str(n)
 
 
+# Language-specific good/bad examples for the prompt
+_LANGUAGE_EXAMPLES = {
+    "pt": {
+        "bad": [
+            '"Brazilian Cryptocurrency Analysis"',
+            '"Brazilian Street Food Journeys"',
+            '"Amazon Rainforest Wildlife Spotlights"',
+            '"Novela Plot Breakdowns"',
+        ],
+        "good": [
+            '"Análise de Criptomoedas no Brasil"',
+            '"Comida de Rua Brasileira em Alta"',
+            '"Fauna da Amazônia — Documentários Curtos"',
+            '"Resumos de Novelas — Dramas Escondidos"',
+        ],
+        "sample_desc": "Canais brasileiros que analisam o mercado de criptomoedas em português, com foco em investidores iniciantes, estão crescendo rapidamente pois bancos e corretoras nacionais pagam CPMs premium e o público brasileiro consome muito conteúdo financeiro nesse nicho.",
+    },
+    "es": {
+        "bad": [
+            '"Mexican Street Food Compilations"',
+            '"Spanish Football Tactics Analysis"',
+            '"Latin American Crypto News"',
+        ],
+        "good": [
+            '"Comida Callejera Mexicana Viral"',
+            '"Tácticas del Fútbol Español"',
+            '"Noticias Crypto en Latinoamérica"',
+        ],
+        "sample_desc": "Canales en español que cubren noticias crypto para audiencias latinoamericanas están explotando porque el público hispano busca información financiera en su idioma y los anunciantes del sector pagan CPMs muy altos.",
+    },
+    "fr": {
+        "bad": ['"French Cooking Breakdowns"', '"Paris Street Food Tours"'],
+        "good": ['"Cuisine Française Décortiquée"', '"Street Food à Paris — Tournée"'],
+        "sample_desc": "Les chaînes françaises qui analysent la gastronomie locale connaissent une croissance explosive car le public francophone consomme énormément de contenu culinaire et les annonceurs du secteur paient des CPM élevés.",
+    },
+    "de": {
+        "bad": ['"German Car Reviews"', '"Berlin Nightlife Stories"'],
+        "good": ['"Deutsche Autotests — Neue Modelle"', '"Berliner Nachtleben — Geschichten"'],
+        "sample_desc": "Deutschsprachige Autokanäle wachsen rasant, weil deutsche Hersteller hohe CPMs zahlen und das Publikum umfassende Tests in ihrer Muttersprache bevorzugt.",
+    },
+    "it": {
+        "bad": ['"Italian Food Stories"', '"Rome History Videos"'],
+        "good": ['"Cucina Italiana — Segreti Regionali"', '"Storia di Roma in Pillole"'],
+        "sample_desc": "I canali italiani di cucina regionale stanno esplodendo perché il pubblico italiano cerca contenuti autentici nella propria lingua e gli sponsor del settore food pagano CPM premium.",
+    },
+    "ja": {
+        "bad": ['"Japanese Anime Recaps"', '"Tokyo Street Food"'],
+        "good": ['"アニメ徹底考察"', '"東京グルメ巡り"'],
+        "sample_desc": "日本語のアニメ考察チャンネルは、日本の視聴者が母国語での詳細な解説を求めており、関連スポンサーが高いCPMを支払うため急成長しています。",
+    },
+    "ko": {
+        "bad": ['"Korean Drama Recaps"', '"Seoul Street Food"'],
+        "good": ['"한국 드라마 심층 분석"', '"서울 길거리 음식 투어"'],
+        "sample_desc": "한국어로 드라마를 심층 분석하는 채널은 한국 시청자들이 모국어 콘텐츠를 선호하고 관련 광고주들이 높은 CPM을 지불하기 때문에 폭발적으로 성장하고 있습니다.",
+    },
+}
+
+
 def _build_regional_prompt(country: str, language: str) -> str:
     """Build the AI prompt for generating validated regional niches."""
     country_name = COUNTRY_NAMES.get(country.lower(), country.upper())
-    language_name = LANGUAGE_FULL_NAMES.get(language.lower()[:2], language)
+    lang_code = language.lower()[:2]
+    language_name = LANGUAGE_FULL_NAMES.get(lang_code, language)
 
-    return f"""You are a YouTube niche research strategist with 10 years of experience in faceless channels, regional content markets, and ad-rate analysis. You have personally studied thousands of thriving faceless channels across 15+ countries.
+    # Build language-specific examples block
+    examples = _LANGUAGE_EXAMPLES.get(lang_code)
+    if examples and lang_code != "en":
+        bad_list = "\n".join(f"   ❌ {b}" for b in examples["bad"])
+        good_list = "\n".join(f"   ✅ {g}" for g in examples["good"])
+        language_block = f"""
+════════════════════════════════════════════════════════════════════
+🚨 RULE #0 (MOST IMPORTANT) — LANGUAGE ENFORCEMENT 🚨
+════════════════════════════════════════════════════════════════════
 
+The "name" field AND "desc" AND "format" AND "tools" AND "tip" AND "affiliate"
+MUST be written 100% in {language_name}. ZERO English words in these fields,
+EXCEPT for brand/tool names that have no translation: ChatGPT, ElevenLabs,
+CapCut, YouTube, Shorts, AdSense, CPM, RPM, SaaS.
+
+❌ WRONG — these are ENGLISH names with {language_name} words sprinkled in:
+{bad_list}
+
+✅ CORRECT — these are natural {language_name} names written by a native speaker:
+{good_list}
+
+Example of a GOOD "desc" field in {language_name}:
+"{examples['sample_desc']}"
+
+If you output English names when {language_name} was requested, the entire
+response is INVALID and will be rejected. Do NOT prefix niche names with
+country adjectives in English (e.g. "Brazilian X", "German Y", "Japanese Z") —
+write them as a native {language_name} speaker would naturally name them.
+
+════════════════════════════════════════════════════════════════════
+"""
+    else:
+        language_block = ""
+
+    return f"""You are a YouTube niche research strategist with 10 years of experience in faceless channels, regional content markets, and ad-rate analysis. You have personally studied thousands of thriving faceless channels across 15+ countries. You are a NATIVE {language_name} speaker.
+{language_block}
 TASK: Generate 8 VALIDATED, CHAMPIONSHIP-LEVEL faceless YouTube niches that are:
 - Currently EXPLODING in {country_name} specifically (not generic US/global niches)
 - Proven monetization: actual creators earning $1K-50K/month right now
@@ -803,34 +896,37 @@ TASK: Generate 8 VALIDATED, CHAMPIONSHIP-LEVEL faceless YouTube niches that are:
 - Culturally/linguistically relevant to {country_name} specifically
 
 CRITICAL RULES — failure to follow these = unacceptable output:
-1. Each niche MUST be DIFFERENT from typical US/English niches when country is not US
-2. Include at least 3 niches UNIQUE to {country_name} culture, market, or language
-3. Focus on niches with REALISTIC CPM for {country_name} ad rates (don't inflate)
-4. Avoid generic "storytelling"/"history"/"facts" unless you have a very specific angle
-5. Think about what {language_name}-speaking audiences WANT that English channels DON'T cover
-6. Example channels MUST be real, currently active, in {language_name}, and >100K subs
-7. Do NOT repeat the same 8 niches if I ask again for a different region — each region has distinct winners
+1. ALL text content (name, desc, format, tools, tip, affiliate) MUST be in {language_name} — see RULE #0 above
+2. Each niche MUST be DIFFERENT from typical US/English niches when country is not US
+3. Include at least 3 niches UNIQUE to {country_name} culture, market, or language
+4. Focus on niches with REALISTIC CPM for {country_name} ad rates (don't inflate)
+5. Avoid generic "storytelling"/"history"/"facts" unless you have a very specific angle
+6. Think about what {language_name}-speaking audiences WANT that English channels DON'T cover
+7. Example channels MUST be real, currently active, in {language_name}, and >100K subs
+8. Do NOT repeat the same 8 niches for different regions — each region has distinct winners
 
-For each niche provide (content in {language_name}, EXCEPT brand/tool names which stay in English):
-- name: catchy niche name in {language_name}
+For each niche provide:
+- name: catchy niche name IN {language_name} (natural, native-speaker phrasing)
 - emoji: 1 emoji
-- seed: English search query for SEO/keyword lookup (3-5 words)
-- desc: 2-3 sentences explaining WHY it's valid NOW in {country_name} (what's driving demand)
-- cpm_est: realistic CPM range in USD for {country_name} (e.g. "$6-14", NOT "$20-50" for low-ad-rate regions)
-- competition: one of "VERY LOW" | "LOW" | "MEDIUM" | "HIGH" (be honest)
-- growth: growth multiplier last 12 months (e.g. "12x")
-- difficulty: 1-5 integer (1=easiest to start, 5=hardest)
-- virality: 1-5 integer (5=most viral potential)
-- monetization: 1-5 integer (5=highest monetization)
-- format: 1 sentence — production format
-- tools: 1 sentence — list of tools (English names: ChatGPT, ElevenLabs, CapCut, etc.)
-- tip: 1 sentence actionable pro tip in {language_name}
-- affiliate: 1 sentence affiliate/sponsor angle in {language_name}
-- color: unique hex color per niche (different from the others)
+- seed: English search query for SEO/keyword lookup (3-5 words, ONLY this field in English)
+- desc: 2-3 sentences IN {language_name} explaining WHY it's valid NOW in {country_name}
+- cpm_est: realistic CPM range in USD for {country_name} (e.g. "$6-14")
+- competition: one of "VERY LOW" | "LOW" | "MEDIUM" | "HIGH"
+- growth: growth multiplier last 12mo (e.g. "12x")
+- difficulty: 1-5 integer
+- virality: 1-5 integer
+- monetization: 1-5 integer
+- format: 1 sentence IN {language_name} — production format
+- tools: 1 sentence IN {language_name} — tool list (tool NAMES stay English: ChatGPT, ElevenLabs, CapCut)
+- tip: 1 sentence IN {language_name} — actionable pro tip
+- affiliate: 1 sentence IN {language_name} — affiliate/sponsor angle
+- color: unique hex color
 - accent: matching hex accent
-- example_channels: ARRAY of EXACTLY 3 real YouTube channel names currently thriving in this niche targeting {country_name} audiences. BE PRECISE — these will be searched on YouTube API. Prefer 100K-10M subs range. Use the EXACT channel display name (not @handle).
+- example_channels: ARRAY of EXACTLY 3 real YouTube channel names currently thriving in this niche in {country_name}. Prefer 100K-10M subs. Use EXACT channel display name. These are the ONLY field that can contain any language (use the channel's actual name).
 
-OUTPUT FORMAT: Return ONLY a valid JSON array of exactly 8 objects. No markdown code fences, no preamble, no commentary. Start with [ and end with ]."""
+OUTPUT FORMAT: Return ONLY a valid JSON array of exactly 8 objects. No markdown code fences, no preamble, no commentary. Start with [ and end with ].
+
+FINAL REMINDER: Re-read RULE #0. Every "name" field must be in {language_name}. If you're tempted to write "Brazilian X" or "German Y" in English, STOP and write it as a native {language_name} speaker would."""
 
 
 def _fetch_regional_niches_from_ai(country: str, language: str) -> list[dict] | None:
@@ -842,13 +938,19 @@ def _fetch_regional_niches_from_ai(country: str, language: str) -> list[dict] | 
         return None
 
     prompt = _build_regional_prompt(country, language)
+    lang_code = language.lower()[:2]
+    lang_name = LANGUAGE_FULL_NAMES.get(lang_code, language)
     try:
         response = chat(
             prompt,
-            system="You are a world-class YouTube niche research expert. Always return valid JSON when asked.",
+            system=(
+                f"You are a world-class YouTube niche research expert and a NATIVE {lang_name} speaker. "
+                f"When the user asks for output in {lang_name}, you NEVER use English words for niche "
+                f"names, descriptions, or strategy text. You always return valid JSON when asked."
+            ),
             max_tokens=6000,
-            temperature=0.85,  # higher creativity for diverse regional niches
-            timeout=180,
+            temperature=0.55,  # lower temp to force instruction-following on language
+            timeout=150,
         )
     except Exception as e:
         logger.warning(f"AI regional niches call failed: {e}")
@@ -911,6 +1013,118 @@ def _fetch_regional_niches_from_ai(country: str, language: str) -> list[dict] | 
     return normalized
 
 
+# Heuristic: English giveaway tokens that indicate AI ignored language instruction
+_ENGLISH_GIVEAWAYS = {
+    "brazilian", "german", "japanese", "korean", "french", "italian", "spanish",
+    "mexican", "argentinian", "chilean", "colombian", "british",
+    "analysis", "stories", "breakdowns", "journeys", "modifications",
+    "spotlights", "reviews", "tactics", "compilations", "tours", "recaps",
+    "the ", " the ", " of ", " in ", " for ", " with ", " and ",
+}
+
+
+def _looks_english(text: str) -> bool:
+    """Cheap heuristic: does this text look English?"""
+    if not text:
+        return False
+    lower = " " + text.lower() + " "
+    return any(token in lower for token in _ENGLISH_GIVEAWAYS)
+
+
+def _count_english_names(niches: list[dict]) -> int:
+    """Count how many niche names still look English."""
+    return sum(1 for n in niches if _looks_english(n.get("name", "")))
+
+
+def _force_translate_niches(niches: list[dict], language: str) -> list[dict]:
+    """
+    If AI returned English niches despite being asked for another language,
+    run a second AI pass to force-translate the text fields into the target.
+    """
+    lang_code = language.lower()[:2]
+    if lang_code == "en":
+        return niches
+    try:
+        from protocols.ai_client import chat
+    except Exception:
+        return niches
+
+    lang_name = LANGUAGE_FULL_NAMES.get(lang_code, language)
+    # Only translate text fields, preserve everything else
+    translatable = [
+        {
+            "rank": n["rank"],
+            "name": n.get("name", ""),
+            "desc": n.get("desc", ""),
+            "format": n.get("format", ""),
+            "tools": n.get("tools", ""),
+            "tip": n.get("tip", ""),
+            "affiliate": n.get("affiliate", ""),
+        }
+        for n in niches
+    ]
+
+    import json as _json
+    prompt = (
+        f"The following JSON array contains YouTube niche data that was supposed to be "
+        f"in {lang_name} but some or all text is in English. Translate ALL text fields "
+        f"(name, desc, format, tools, tip, affiliate) into natural, native {lang_name}. "
+        f"Rewrite as a native {lang_name} speaker would — do NOT literal-translate. "
+        f"Keep brand/tool names in English: ChatGPT, ElevenLabs, CapCut, YouTube, "
+        f"Shorts, AdSense, CPM, RPM, SaaS.\n\n"
+        f"Do NOT prefix niche names with country adjectives in English "
+        f"(no 'Brazilian X', 'German Y'). Instead, use natural {lang_name} phrasing.\n\n"
+        f"Input:\n{_json.dumps(translatable, ensure_ascii=False)}\n\n"
+        f"Return ONLY the JSON array with the same structure. No markdown, no commentary."
+    )
+
+    try:
+        response = chat(
+            prompt,
+            system=f"You are a professional {lang_name} translator and copywriter. You never leave English words in {lang_name} text.",
+            max_tokens=4000,
+            temperature=0.4,
+            timeout=120,
+        )
+    except Exception as e:
+        logger.warning(f"force translate failed: {e}")
+        return niches
+
+    text = (response or "").strip()
+    if text.startswith("```"):
+        text = text.split("```", 2)[1] if "```" in text[3:] else text[3:]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip("` \n")
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1:
+        return niches
+    try:
+        translated = _json.loads(text[start : end + 1])
+    except Exception:
+        return niches
+
+    if not isinstance(translated, list):
+        return niches
+
+    by_rank = {int(t.get("rank", 0)): t for t in translated if isinstance(t, dict)}
+    merged = []
+    for n in niches:
+        t = by_rank.get(n["rank"], {})
+        merged.append({
+            **n,
+            "name": t.get("name", n.get("name", "")) or n.get("name", ""),
+            "desc": t.get("desc", n.get("desc", "")) or n.get("desc", ""),
+            "format": t.get("format", n.get("format", "")) or n.get("format", ""),
+            "tools": t.get("tools", n.get("tools", "")) or n.get("tools", ""),
+            "tip": t.get("tip", n.get("tip", "")) or n.get("tip", ""),
+            "affiliate": t.get("affiliate", n.get("affiliate", "")) or n.get("affiliate", ""),
+        })
+    logger.info(f"Force-translated {len(merged)} niches to {language}")
+    return merged
+
+
 def _enrich_niches_with_channels(niches: list[dict], region_code: str) -> list[dict]:
     """For each niche, lookup example_channels on YouTube API and attach real URLs."""
     api_key = _get_youtube_api_key()
@@ -951,6 +1165,17 @@ def get_regional_niches(country: str, language: str, force_refresh: bool = False
 
     ai_niches = _fetch_regional_niches_from_ai(country, language)
     if ai_niches:
+        # Validate that the AI respected the language instruction.
+        # If more than 2 names look English when target isn't English,
+        # run a second AI pass to force-translate text fields.
+        if language.lower()[:2] != "en":
+            english_count = _count_english_names(ai_niches)
+            if english_count >= 2:
+                logger.warning(
+                    f"AI returned {english_count}/8 English niche names for {language} — force translating"
+                )
+                ai_niches = _force_translate_niches(ai_niches, language)
+
         enriched = _enrich_niches_with_channels(ai_niches, country)
         _REGIONAL_NICHES_CACHE[cache_key] = enriched
         logger.info(f"Regional niches generated for ({country},{language}): {len(enriched)} niches")
