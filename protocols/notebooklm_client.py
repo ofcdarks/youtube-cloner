@@ -59,8 +59,8 @@ def _build_prompts(niche_name: str) -> list[dict]:
     return [
         {
             "key": "parte1_dna_formato",
-            "label": "Parte 1/5 — Autopsia do Canal (DNA + Formato)",
-            "prompt": f"""PARTE 1 de 5 — AUTOPSIA DO CANAL
+            "label": "Parte 1/6 — Autopsia do Canal (DNA + Formato)",
+            "prompt": f"""PARTE 1 de 6 — AUTOPSIA DO CANAL
 
 Faca uma analise EXTREMAMENTE DETALHADA deste canal para criar um SOP de replicacao no nicho "{niche_name}".
 
@@ -84,8 +84,8 @@ IMPORTANTE: Use exemplos REAIS dos videos. Cite trechos especificos. Nao general
         },
         {
             "key": "parte2_roteiro_hooks",
-            "label": "Parte 2/5 — Engenharia de Roteiro + Hooks",
-            "prompt": f"""PARTE 2 de 5 — ENGENHARIA DE ROTEIRO
+            "label": "Parte 2/6 — Engenharia de Roteiro + Hooks",
+            "prompt": f"""PARTE 2 de 6 — ENGENHARIA DE ROTEIRO
 
 3. ANATOMIA DO ROTEIRO (analise 5+ videos)
 - HOOK (0-5s): Liste a PRIMEIRA FRASE de cada video analisado
@@ -110,8 +110,8 @@ Cite o TEXTO EXATO de cada hook encontrado.""",
         },
         {
             "key": "parte3_storytelling_regras",
-            "label": "Parte 3/5 — Storytelling + Regras de Ouro",
-            "prompt": """PARTE 3 de 5 — STORYTELLING + REGRAS DE OURO
+            "label": "Parte 3/6 — Storytelling + Regras de Ouro",
+            "prompt": """PARTE 3 de 6 — STORYTELLING + REGRAS DE OURO
 
 5. TECNICAS DE STORYTELLING — 5 exemplos CONCRETOS de cada:
 - OPEN LOOPS: misterios plantados que resolvem depois. Cite o trecho exato e quando resolve.
@@ -133,14 +133,14 @@ Seja detalhado. Cada regra com exemplo real.""",
         },
         {
             "key": "parte4_estrategia_competitivo",
-            "label": "Parte 4/5 — Estrategia + Inteligencia Competitiva",
-            "prompt": f"""PARTE 4 de 5 — ESTRATEGIA + INTELIGENCIA COMPETITIVA
+            "label": "Parte 4/6 — Estrategia + Inteligencia Competitiva",
+            "prompt": f"""PARTE 4 de 6 — ESTRATEGIA + INTELIGENCIA COMPETITIVA
 
 7. PILARES DE CONTEUDO: 5-7 categorias com nome, %, 3 exemplos reais, qual performa melhor
 
 8. FORMULA DE TITULOS: padroes repetidos, palavras de poder, 10 melhores titulos reais, template + 5 exemplos para "{niche_name}"
 
-9. THUMBNAIL: cores dominantes, tipografia, elementos graficos, composicao, CTR psychology, template passo-a-passo
+9. THUMBNAIL (resumo rapido — analise profunda vem na Parte 6): paleta hex dominante, familia tipografica, padrao de composicao (hero left/center/right), uso de rosto humano, densidade de texto
 
 10. SEO: tags, descricao template, hashtags, end screens, playlists, frequencia/timing
 
@@ -156,8 +156,8 @@ Use evidencias reais para cada ponto.""",
         },
         {
             "key": "parte5_sop_ia_template",
-            "label": "Parte 5/5 — Manual de Replicacao para IA",
-            "prompt": """PARTE 5 de 5 — MANUAL DE REPLICACAO PARA IA
+            "label": "Parte 5/6 — Manual de Replicacao para IA",
+            "prompt": """PARTE 5 de 6 — MANUAL DE REPLICACAO PARA IA
 
 15. SYSTEM PROMPT COMPLETO (300+ palavras) para IA gerar roteiros identicos:
 - Persona com backstory
@@ -184,6 +184,57 @@ Use evidencias reais para cada ponto.""",
 O hook prende em 5s? Tem 3+ open loops? Tom consistente? Spikes a cada 2-3min? CTA natural? Vocabulario no padrao? Ritmo alterna curto/longo? Duracao na media? Poderia ser confundido com video real do canal?
 
 INSTRUCAO: Minimo 1500 palavras nesta parte. Cada exemplo deve ser ESCRITO por voce no estilo exato do canal.""",
+        },
+        {
+            "key": "parte6_thumbs_alto_ctr",
+            "label": "Parte 6/6 — Biblioteca de Thumbs de Alto CTR",
+            "prompt": f"""PARTE 6 de 6 — BIBLIOTECA DE THUMBS DE ALTO CTR
+
+Analise visual EXTREMAMENTE DETALHADA das thumbnails do canal + concorrentes do nicho "{niche_name}". Objetivo: recriar thumbs que gerem CTR >= 8% desde o primeiro video.
+
+1. TOP 10 THUMBS DO CANAL ORIGINAL (da mais clicavel pra menos). Para CADA uma:
+- Titulo exato do video
+- Views aproximadas (se souber)
+- COMPOSICAO: posicao do hero subject (left/center/right), tamanho relativo em % do frame, POV (close/medio/wide), angulo
+- BACKGROUND: cenario, profundidade, luz (god rays, golden hour, neon, fogo, neblina)
+- PERSONAGEM (se houver): expressao facial, direcao do olhar, roupa/armadura/uniforme, etnia/genero, era historica
+- TEXTO OVERLAY: palavras exatas, numero de palavras, fonte (serif/sans/marker/handwritten), peso, cor principal + outline, tamanho relativo, posicao
+- PALETA DOMINANTE: 3 cores em HEX + mood (quente/frio/neutro)
+- ELEMENTOS GRAFICOS: setas, circulos, highlights, particulas, lens flare, grain
+- PSYCHOLOGY HOOK: o que faz essa thumb ser clicavel em 1 frase (curiosity gap, face reaction, contraste brutal, misterio, stakes altos...)
+
+2. PADROES REPETIDOS (o que se repete em 80%+ das thumbs do canal):
+- Arquetipo visual dominante (ex: "heroi em 3/4 view + background epico + texto serif dourado")
+- Paleta mestre: 3-5 cores hex que aparecem em quase todas
+- Familia tipografica identificada (nome especifico se possivel: Trajan, Cinzel, Impact, Permanent Marker...)
+- Regra de composicao (tercos, centralizado, assimetrico)
+- % que usam rosto humano close-up vs cena ampla
+- % que usam texto vs so imagem
+- Numero medio de palavras no texto (se houver)
+
+3. TOP 5 THUMBS DE CONCORRENTES DIRETOS do nicho (canais similares, mesmo publico, CTR comprovado). Para cada: mesma analise do item 1, MAIS o que elas fazem DIFERENTE do canal original e se esse diferencial e vantagem ou risco.
+
+4. PALETA MESTRE CONSOLIDADA — 5 cores em HEX com funcao:
+- Primary (dominante em fundos/grandes areas)
+- Secondary (contraste/sombra)
+- Accent (texto/highlight principal)
+- Warning (alertas, perigo, stakes — geralmente vermelho/laranja)
+- Neutral (branco/creme/preto pra respiro)
+
+5. TIPOGRAFIA MESTRE — 2 fontes (primaria pro titulo grande, secundaria pro subtitulo/tag). Nome da fonte, peso, estilo. Se nao conseguir identificar a exata, cite a familia (ex: "serif condensada tipo Trajan Pro").
+
+6. 5 TEMPLATES REPRODUZIVEIS — descreva 5 layouts que o canal repete e que eu posso recriar pra qualquer novo titulo:
+- Template nome (ex: "Hero + Serif Gold")
+- Descricao visual em 3 frases
+- Para que tipo de titulo funciona (ex: "titulos com nome de personagem historico")
+- Elementos fixos (posicao do texto, paleta, arquetipo)
+- Elementos variaveis (o que muda de video pra video)
+
+7. ANTI-PADROES — liste 5 coisas que o canal NUNCA faz nas thumbs (ex: "nunca usa emoji", "nunca usa fundo branco", "nunca centraliza o rosto").
+
+8. PROMPT BASE EM INGLES pra gerar novas thumbs (ImageFX/Midjourney/DALL-E) que replique o estilo exato do canal. Deve incluir: "cinematic movie poster YouTube thumbnail 1280x720", estilo, paleta, arquetipo, iluminacao, mood, "NO LOGO NO WATERMARK". ~80 palavras.
+
+IMPORTANTE: cite numeros, cores HEX reais, fontes especificas. Nada generico. Se nao tiver certeza da fonte, diga "familia serif condensada" em vez de inventar. Minimo 1500 palavras nesta parte.""",
         },
     ]
 
@@ -262,10 +313,10 @@ async def extract_dna(notebook_id: str, niche_name: str = "Canal") -> dict:
 
 
 def compile_sop(dna: dict, niche_name: str = "") -> str:
-    """Compile all 5 responses into a single SOP document."""
+    """Compile all 6 responses into a single SOP document."""
     sections = []
     sections.append(f"# SOP COMPLETO — {niche_name or 'Canal Analisado'}")
-    sections.append("Gerado via NotebookLM Deep Analysis (5 prompts sequenciais)\n")
+    sections.append("Gerado via NotebookLM Deep Analysis (6 prompts sequenciais)\n")
 
     order = [
         "parte1_dna_formato",
@@ -273,6 +324,7 @@ def compile_sop(dna: dict, niche_name: str = "") -> str:
         "parte3_storytelling_regras",
         "parte4_estrategia_competitivo",
         "parte5_sop_ia_template",
+        "parte6_thumbs_alto_ctr",
     ]
 
     total_words = 0
@@ -286,7 +338,7 @@ def compile_sop(dna: dict, niche_name: str = "") -> str:
             if content and not content.startswith("Erro:"):
                 sections.append(f"\n---\n\n## {label}\n\n{content}")
 
-    sections.append(f"\n---\n\n*Total: {total_words} palavras | {len([k for k in order if k in dna and not dna[k].get('content','').startswith('Erro:')])} de 5 partes extraidas*")
+    sections.append(f"\n---\n\n*Total: {total_words} palavras | {len([k for k in order if k in dna and not dna[k].get('content','').startswith('Erro:')])} de 6 partes extraidas*")
 
     return "\n".join(sections)
 
