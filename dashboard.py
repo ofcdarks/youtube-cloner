@@ -1654,6 +1654,177 @@ async def api_niches_lab_clear_cache(request: Request, user=Depends(require_admi
         return JSONResponse({"error": str(e)[:200]}, status_code=500)
 
 
+# ─── Channel Mockup (Modelar Canal) ─────────────────────────────────
+
+@app.post("/api/admin/generate-channel-mockup")
+@limiter.limit("5/minute")
+async def api_generate_channel_mockup(request: Request, user=Depends(require_admin)):
+    """
+    Generate a complete channel identity mockup for a project's niche.
+    Persists as a file with category='mockup' so the student can see it.
+    """
+    body = await request.json()
+    project_id = (body.get("project_id") or "").strip()
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    from database import get_project, save_file, get_files
+    from services import get_project_sop
+    from protocols.channel_mockup import generate_channel_mockup
+    import asyncio
+    import json as _json
+
+    proj = get_project(project_id)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    niche_name = proj.get("niche_chosen") or proj.get("name", "")
+    language = (proj.get("language") or "pt-BR").strip()
+    # Map our internal lang code to country (best-effort)
+    country_map = {"pt-BR": "BR", "es": "ES", "en": "US", "fr": "FR", "de": "DE", "it": "IT", "ja": "JP", "ko": "KR"}
+    country = country_map.get(language, "US")
+    sop_excerpt = (get_project_sop(project_id) or "")[:3000]
+
+    try:
+        mockup = await asyncio.to_thread(
+            generate_channel_mockup,
+            niche_name,
+            sop_excerpt,
+            language,
+            country,
+            "faceless",
+        )
+    except Exception as e:
+        logger.exception(f"generate-channel-mockup error: {e}")
+        return JSONResponse({"error": f"Falha ao gerar mockup: {str(e)[:200]}"}, status_code=500)
+
+    # Persist as a file (overwrite previous mockup if any)
+    try:
+        existing = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
+        if existing:
+            from database import get_db
+            with get_db() as conn:
+                for f in existing:
+                    conn.execute("DELETE FROM files WHERE id=?", (f["id"],))
+        save_file(
+            project_id,
+            "mockup",
+            f"Mockup do Canal - {niche_name}",
+            f"channel_mockup_{project_id}.json",
+            _json.dumps(mockup, ensure_ascii=False, indent=2),
+            visible_to_students=True,
+        )
+    except Exception as e:
+        logger.warning(f"generate-channel-mockup: failed to persist file: {e}")
+
+    return JSONResponse({"ok": True, "mockup": mockup})
+
+
+@app.get("/api/admin/get-channel-mockup")
+async def api_get_channel_mockup(request: Request, user=Depends(require_admin), project_id: str = ""):
+    """Return the saved mockup for a project, or null if none exists yet."""
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+    from database import get_files
+    import json as _json
+    files = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
+    if not files:
+        return JSONResponse({"ok": True, "mockup": None})
+    try:
+        mockup = _json.loads(files[0].get("content", "") or "{}")
+        return JSONResponse({"ok": True, "mockup": mockup})
+    except Exception as e:
+        return JSONResponse({"error": f"Mockup salvo invalido: {e}"}, status_code=500)
+
+
+@app.post("/api/admin/generate-mockup-image")
+@limiter.limit("20/minute")
+async def api_generate_mockup_image(request: Request, user=Depends(require_admin)):
+    """
+    Generate a single image via ImageFX for a mockup field (logo/banner/thumb).
+    Returns a data:image/png;base64 URL the frontend can render directly.
+    """
+    body = await request.json()
+    prompt = (body.get("prompt") or "").strip()
+    aspect = (body.get("aspect") or "LANDSCAPE").upper()
+    if not prompt:
+        return JSONResponse({"error": "prompt obrigatorio"}, status_code=400)
+
+    import asyncio
+    from protocols.imagefx_client import get_client, ImageFXError
+
+    try:
+        client = get_client()
+    except ImageFXError as e:
+        return JSONResponse({"error": str(e), "code": "NO_COOKIE"}, status_code=400)
+
+    try:
+        images = await asyncio.to_thread(client.generate, prompt, aspect, 1, 90)
+    except ImageFXError as e:
+        status = 401 if e.status in (401, 403) else (429 if e.status == 429 else 502)
+        return JSONResponse({"error": str(e), "code": f"IMAGEFX_{e.status}"}, status_code=status)
+    except Exception as e:
+        logger.exception(f"generate-mockup-image error: {e}")
+        return JSONResponse({"error": f"Erro inesperado: {str(e)[:200]}"}, status_code=500)
+
+    if not images:
+        return JSONResponse({"error": "Nenhuma imagem gerada"}, status_code=502)
+
+    return JSONResponse({"ok": True, "url": images[0]["url"], "seed": images[0].get("seed")})
+
+
+@app.post("/api/admin/imagefx-cookie")
+@limiter.limit("5/minute")
+async def api_imagefx_cookie_save(request: Request, user=Depends(require_admin)):
+    """Save (Fernet-encrypted) ImageFX cookie. Pass empty string to clear."""
+    body = await request.json()
+    cookie = (body.get("cookie") or "").strip()
+    from protocols.imagefx_client import set_imagefx_cookie
+    try:
+        set_imagefx_cookie(cookie)
+        return JSONResponse({"ok": True, "cleared": not cookie})
+    except Exception as e:
+        logger.exception(f"imagefx-cookie save error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+@app.get("/api/admin/imagefx-cookie/status")
+async def api_imagefx_cookie_status(request: Request, user=Depends(require_admin)):
+    """
+    Diagnostic: returns whether a cookie is saved and tries to fetch a session
+    to confirm it's still valid. Bypasses any cache.
+    """
+    from protocols.imagefx_client import get_imagefx_cookie, ImageFXClient, ImageFXError
+    cookie = get_imagefx_cookie()
+    if not cookie:
+        return JSONResponse({
+            "configured": False,
+            "valid": False,
+            "hint": "Cookie nao configurado. Cole o cookie do labs.google na pagina de Admin.",
+        })
+    masked = (cookie[:30] + "…") if len(cookie) > 30 else cookie
+    try:
+        client = ImageFXClient(cookie)
+        # Trigger a session fetch but don't generate an image (cheap call)
+        client._refresh_session_if_needed()
+        return JSONResponse({
+            "configured": True,
+            "valid": True,
+            "cookie_length": len(cookie),
+            "cookie_masked": masked,
+            "hint": "✅ Cookie valido — sessao ativa.",
+        })
+    except ImageFXError as e:
+        return JSONResponse({
+            "configured": True,
+            "valid": False,
+            "cookie_length": len(cookie),
+            "cookie_masked": masked,
+            "error": str(e),
+            "hint": "❌ Cookie invalido ou expirado. Atualize cole um novo do labs.google.",
+        })
+
+
 @app.get("/api/admin/gdrive/admin-root-status")
 async def api_gdrive_admin_root_status(request: Request, user=Depends(require_admin)):
     """
@@ -1885,6 +2056,16 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
     except Exception:
         api_keys["dataforseo"] = False
         api_keys["dataforseo_masked"] = ""
+
+    # Check ImageFX cookie (Fernet-encrypted in admin_settings)
+    try:
+        from protocols.imagefx_client import get_imagefx_cookie
+        ifx_cookie = get_imagefx_cookie()
+        api_keys["imagefx"] = bool(ifx_cookie)
+        api_keys["imagefx_masked"] = ("•" * 20) if ifx_cookie else ""
+    except Exception:
+        api_keys["imagefx"] = False
+        api_keys["imagefx_masked"] = ""
 
     # AI Usage stats
     ai_usage = {"total_tokens": 0, "total_cost": 0, "total_calls": 0, "by_project": [], "by_operation": []}
