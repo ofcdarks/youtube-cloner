@@ -2440,14 +2440,23 @@ async def api_generate_agent(request: Request, user=Depends(require_admin)):
         from pathlib import Path as _Path
         from datetime import datetime
 
-        ATOMACAO_DIR = _Path(__file__).parent.parent / "ATOMACAO CANAL FULL"
-        AGENT_TOOLS = ATOMACAO_DIR / "agent" / "tools"
-        AGENT_BASE = ATOMACAO_DIR / "agent" / "base" / "AGENT_BASE.md"
-        NICHE_CONFIG = ATOMACAO_DIR / "agent" / "niches" / "niche_configs.json"
-        STYLES_CONFIG = ATOMACAO_DIR / "agent" / "styles" / "visual_styles.json"
+        # Try bundled location first (production Docker), then external (local dev)
+        BUNDLED = _Path(__file__).parent / "atomacao_agent"
+        EXTERNAL = _Path(__file__).parent.parent / "ATOMACAO CANAL FULL" / "agent"
+
+        if (BUNDLED / "base" / "AGENT_BASE.md").exists():
+            AGENT_TOOLS = BUNDLED / "tools"
+            AGENT_BASE = BUNDLED / "base" / "AGENT_BASE.md"
+            NICHE_CONFIG = BUNDLED / "niches" / "niche_configs.json"
+            STYLES_CONFIG = BUNDLED / "styles" / "visual_styles.json"
+        else:
+            AGENT_TOOLS = EXTERNAL / "tools"
+            AGENT_BASE = EXTERNAL / "base" / "AGENT_BASE.md"
+            NICHE_CONFIG = EXTERNAL / "niches" / "niche_configs.json"
+            STYLES_CONFIG = EXTERNAL / "styles" / "visual_styles.json"
 
         if not AGENT_BASE.exists():
-            return JSONResponse({"error": "Template de agente nao encontrado. Verifique a pasta ATOMACAO CANAL FULL."}, status_code=500)
+            return JSONResponse({"error": "Template de agente nao encontrado. Verifique atomacao_agent/ ou ATOMACAO CANAL FULL/."}, status_code=500)
 
         # Find best matching niche from configs
         import json as _json

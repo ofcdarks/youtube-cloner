@@ -1,0 +1,154 @@
+{
+  "_meta": {
+    "version": "1.1",
+    "description": "5 estilos visuais cross-niche para VEO3. Selecionáveis independentemente do nicho.",
+    "usage": "python build_agent.py construcao --style cartoon_meme"
+  },
+
+  "cartoon_meme": {
+    "style_id": "cartoon_meme",
+    "label": "Cartoon Meme Storytelling",
+    "emoji": "🎨",
+    "description": "Personagens meme com rostos redondos brancos, contornos grossos, cenários cartoon detalhados. Estilo Cyanide & Happiness / Cas van de Pol.",
+    "style_category": "estilizados",
+    "veo3_injection": {
+      "character_rule": "ALL characters are CARTOON MEME-STYLE figures with ROUND WHITE FACES — simple circle heads with minimal features: two dot eyes, simple line mouth, exaggerated expressions. Bodies are simplified cartoon proportions with thick black outlines. Skin tone of face is FLAT WHITE/CREAM #f5f0e0. Hair is simple colored blocks (not individual strands). Hands have 4 simplified fingers. Characters communicate emotion through EXAGGERATED facial expressions and body language — wide open mouths for shock, squinting eyes for anger, streams of tears for sadness.",
+      "clothing_rule": "Characters wear SIMPLIFIED but recognizable clothing appropriate to the scene context — military fatigues for survival, casual clothes for everyday, work clothes for labor. Clothing has visible thick outlines and flat color fills with minimal shading. Clothing does NOT change within a scene but CAN get progressively dirtier/damaged across scenes.",
+      "environment_rule": "Backgrounds are HIGHLY DETAILED hand-drawn cartoon environments with visible pen/ink texture — detailed buildings, landscapes, interiors with props and objects. Style contrast: simple characters against rich detailed backgrounds. Color palette is MUTED and EARTHY — browns #8B7355, olive greens #6B8E23, dusty yellows #DAA520, warm grays #A0A0A0. Lighting is conveyed through color temperature shifts, not realistic shadows.",
+      "camera_rule": "Camera movements are SIMPLE and CLEAR — static wide shots for establishing, medium shots for dialogue/action, close-ups for emotional beats. NO complex camera moves. Slight zoom-ins for emphasis. Occasional thought-bubble or label overlays (text like 'You', 'Pain', 'Day 47') are part of the visual language.",
+      "text_overlays": "TEXT LABELS are part of the visual style — bold white text with black outline, used sparingly for emphasis, labels, or ironic commentary. Arrow annotations pointing at characters/objects ARE allowed. Keep text to 1-3 words maximum per overlay.",
+      "color_palette": {
+        "primary": ["#f5f0e0", "#8B7355", "#6B8E23", "#DAA520", "#A0A0A0"],
+        "accent": ["#CC3333", "#FF8C00", "#4A90D9"],
+        "shadows": "#3D3D3D",
+        "outlines": "#1a1a1a"
+      },
+      "forbidden": "photorealistic rendering; smooth gradients on characters; 3D shading on faces; anime/manga style; realistic human proportions; individual hair strands; detailed realistic hands with 5 fingers; modern UI overlays; lens flare; motion blur; realistic shadows on characters",
+      "repeat_phrase": "cartoon meme style with round white-faced characters, thick black outlines, exaggerated expressions, detailed hand-drawn background, muted earthy color palette"
+    },
+    "editor_meta": {
+      "color_grade": "warm",
+      "transition_style": "cut",
+      "sfx_profile": "cartoon",
+      "subtitle_style": "impact"
+    }
+  },
+
+  "stickman_premium": {
+    "style_id": "stickman_premium",
+    "label": "Stickman Premium Storytelling",
+    "emoji": "🖊️",
+    "description": "Stick figures elegantes com cabeça redonda preta, cenários ultra-detalhados e quentes. Mix de cinematic lighting com personagens minimalistas.",
+    "style_category": "estilizados",
+    "veo3_injection": {
+      "character_rule": "ALL characters are PREMIUM STICK FIGURES — completely BLACK ROUND HEADS (solid black circle, NO facial features except occasional small white dots for eyes). Bodies are THIN BLACK LINES for limbs and torso. NO skin visible — entire body is black line art. Some characters have DISTINCTIVE FEATURES: round glasses (thin wire circles), spiky hair silhouette, different body sizes. Proportions are elongated — long thin limbs, small round head. Hands are simplified 3-finger shapes. Characters express emotion through BODY LANGUAGE ONLY — posture, head tilt, arm position, walking speed.",
+      "clothing_rule": "Characters wear DETAILED REALISTIC clothing that contrasts with their stick-figure bodies — suits with lapels, ties, collars; casual shirts with folds; coats with buttons; accessories like watches, bags, hats. Clothing is the ONLY non-black element on the character. Clothing has proper fabric texture and wrinkles — this contrast between detailed clothing and simple body IS the visual signature.",
+      "environment_rule": "Backgrounds are EXTREMELY DETAILED and WARM — rich architectural interiors (libraries with individual books, offices with papers, mansions with furniture), outdoor scenes with depth and atmosphere. Style: warm illustrated environments with soft gradients, subtle textures, and atmospheric lighting. The visual contrast between SIMPLE BLACK STICK CHARACTERS and RICH DETAILED ENVIRONMENTS is the KEY aesthetic. Color palette shifts between WARM scenes (ambers #DAA520, browns #8B6914, creams #FFFDD0) and COOL dramatic scenes (blue-grays #4A6B8A, steel #708090, moonlight #C4D4E0).",
+      "camera_rule": "CINEMATIC compositions — dramatic perspectives, silhouettes against windows/horizons, depth with foreground/background layers. Slow push-ins for tension, wide establishing shots for scale, profile shots for contemplation. Lighting is sophisticated — desk lamps creating pools of warm light, city lights through windows, sunset gradients.",
+      "text_overlays": "NO text overlays on screen. Story is told entirely through visuals and narration. Occasional signs/text within the environment (store names, calendars, documents) are allowed as environmental elements only.",
+      "color_palette": {
+        "warm_scenes": ["#DAA520", "#8B6914", "#FFFDD0", "#CD853F", "#2F1B0E"],
+        "cool_scenes": ["#4A6B8A", "#708090", "#C4D4E0", "#1C2833", "#2C3E50"],
+        "grayscale": ["#E0E0E0", "#A0A0A0", "#606060", "#303030", "#101010"],
+        "character": "#000000"
+      },
+      "forbidden": "facial features on characters (no drawn eyes/nose/mouth); colored skin; anime style; Pixar style; realistic human proportions; thick bodies; 3D rendering; cartoonish environments; flat simple backgrounds; text overlays; neon colors",
+      "repeat_phrase": "premium stick figure with solid black round head and thin black limbs, wearing [specific detailed clothing], against hyper-detailed warm illustrated environment with atmospheric lighting"
+    },
+    "editor_meta": {
+      "color_grade": "warm",
+      "transition_style": "dissolve",
+      "sfx_profile": "cinematic",
+      "subtitle_style": "cinematic"
+    }
+  },
+
+  "chibi_dark_tech": {
+    "style_id": "chibi_dark_tech",
+    "label": "Chibi Dark Tech",
+    "emoji": "👾",
+    "description": "Personagens chibi com cabeça grande careca, hoodie escuro, paleta sombria tech. Estilo cyberpunk/dark web em cartoon fofo.",
+    "style_category": "estilizados",
+    "veo3_injection": {
+      "character_rule": "ALL characters are CHIBI-PROPORTIONED cartoon figures — OVERSIZED BALD/SHAVED HEADS (approximately 1/3 of total body height), small compact bodies. Head is SMOOTH and ROUND with PALE SKIN #d0d0d8. Eyes are LARGE and EXPRESSIVE — dark, slightly annoyed or focused expression by default. NO nose detail. Small simple mouth. Characters wear DARK HOODIES (charcoal #333333, dark gray #444444, or black #1a1a1a) as default clothing. Bodies are SHORT and COMPACT — chibi proportions (2-3 heads tall). Hands are simplified round shapes. EACH character is distinguished by subtle differences: hoodie color shade, accessories (earbuds, glasses, different sneakers).",
+      "clothing_rule": "DARK CASUAL TECH clothing — hoodies (always with hood down unless scene demands otherwise), dark jeans or joggers, sneakers (white soles as accent). Occasional accessories: headphones around neck, phone in hand, laptop bag. NO bright or colorful clothing. The wardrobe is MONOCHROMATIC DARK — the character blends into the dark environment.",
+      "environment_rule": "DARK and MOODY tech environments — dimly lit rooms with single light source (laptop screen, desk lamp, neon sign), rain-streaked windows showing night cityscape, dark cafes with warm accent lights, server rooms with blue LED glow, basement setups with multiple monitors. Color palette is COLD and DARK — deep blues #1a1a2e, dark purples #16213e, charcoal #0f0f23, with ACCENT POINTS of warm light (lamp amber #cc8833, neon signs in cyan #00d4ff or red #ff3344, screen glow #4488ff). Environments should feel INTIMATE and ISOLATED.",
+      "camera_rule": "CLOSE and INTIMATE framing — medium shots showing character at desk/screen, over-the-shoulder shots of screens, establishing shots of dark urban exteriors. Camera is mostly STATIC or with very subtle slow push-ins. Occasional POV shots of screens/interfaces. UI elements visible on screens (chat windows, code, dashboards, marketplaces) are part of the scene composition.",
+      "text_overlays": "SCREEN TEXT is part of the visual storytelling — text visible on laptop screens, phone screens, and monitors within the scene. Bold impactful text for statistics or reveals (like 'USER COMPLAINTS: +500%') appears as part of the environment (on screens, billboards, signs). Style: bold sans-serif, red or white for emphasis.",
+      "color_palette": {
+        "primary": ["#1a1a2e", "#16213e", "#0f0f23", "#333333", "#d0d0d8"],
+        "accent": ["#cc8833", "#00d4ff", "#ff3344", "#4488ff", "#44ff88"],
+        "screen_glow": "#4488ff",
+        "neon": ["#00d4ff", "#ff3344", "#ff6600"]
+      },
+      "forbidden": "bright daylight scenes; colorful clothing; realistic human proportions; anime sparkle effects; detailed facial features (keep minimal); outdoor nature scenes; warm cozy aesthetics; Pixar style; photorealism; crowds of people; bright backgrounds",
+      "repeat_phrase": "chibi character with oversized bald pale head, large dark eyes, wearing dark hoodie, in dimly-lit tech environment with [specific screen/device glow], cold dark blue-purple color palette"
+    },
+    "editor_meta": {
+      "color_grade": "moonlight",
+      "transition_style": "cut",
+      "sfx_profile": "tech",
+      "subtitle_style": "viral"
+    }
+  },
+
+  "faceless_mannequin_realistic": {
+    "style_id": "faceless_mannequin_realistic",
+    "label": "Hyper-Realistic Faceless Mannequin",
+    "emoji": "🤍",
+    "description": "Manequins brancos sem rosto em cenários fotorrealistas. Renderização 3D hiper-realista com iluminação cinematográfica.",
+    "style_category": "3d_realista",
+    "veo3_injection": {
+      "character_rule": "ALL characters are SMOOTH WHITE FEATURELESS MANNEQUINS — completely BLANK FACES with NO eyes, NO nose, NO mouth, NO eyebrows. Head is a smooth OVOID shape like a department store display mannequin. Skin material is MATTE WHITE PLASTIC/RESIN #d8d8d8 with subtle SEAM LINES visible at joints (neck, shoulders, elbows, wrists, knees, ankles). Body proportions are HUMAN-REALISTIC but clearly ARTIFICIAL — smooth jointless fingers without fingernails, no skin texture or pores. The mannequin material has a slight waxy sheen under direct light. ALL characters regardless of role (police, criminals, civilians, workers) are the SAME white mannequin material — differentiated ONLY by clothing and body language.",
+      "clothing_rule": "HYPER-REALISTIC detailed clothing that contrasts sharply with blank mannequin bodies — leather jackets with visible stitching and zippers, suits with fabric weave texture, police uniforms with badges and patches, casual wear with brand-accurate details, work wear with tool belts. Clothing is the PRIMARY way to identify character roles. Accessories are realistic: watches, rings, sunglasses, bags, phones. The CONTRAST between lifeless blank mannequin and detailed realistic clothing is the KEY visual signature.",
+      "environment_rule": "PHOTOREALISTIC environments shot as if by a high-end cinema camera — real-world locations rendered in 8K detail: city streets with wet reflections, luxury store interiors with glass and marble, police stations with fluorescent lighting, dark alleys with practical light sources, residential neighborhoods, office buildings. Environments must feel like REAL LOCATIONS — not sets or 3D renders. Lighting is CINEMATIC — motivated by practical sources (street lamps, car headlights, store windows, overhead fluorescents). Weather and time of day affect everything (rain reflections, night shadows, golden hour warmth).",
+      "camera_rule": "DOCUMENTARY/CINEMATIC camera work — handheld with subtle shake for tension, steady tracking for following characters, static wide shots for establishing locations. Shallow depth of field for dramatic close-ups. Dutch angles sparingly for tension. Camera behaves as if operated by a real human cinematographer — NO impossible angles, NO drone shots unless motivated, NO VFX-style moves.",
+      "text_overlays": "MINIMAL text — only diegetic text that exists in the environment (store signs, police tape, license plates, newspaper headlines, price tags). Occasional subtitle-style text at bottom for quotes or dialogue in bold green/white sans-serif. NO floating text or annotations.",
+      "color_palette": {
+        "primary": ["#d8d8d8", "#1a1a1a", "#333333", "#666666", "#999999"],
+        "warm_accent": ["#cc8833", "#DAA520", "#8B6914"],
+        "cool_accent": ["#4466aa", "#2244aa", "#003366"],
+        "police": ["#cc2200", "#0044cc"],
+        "night": ["#0a0a12", "#1a1a2e", "#2a2a3e"]
+      },
+      "forbidden": "ANY facial features on mannequins (eyes, nose, mouth, eyebrows); colored mannequin skin; cartoon or anime style; Pixar; stylized environments; unrealistic lighting; visible CGI artifacts; text overlays floating in space; gore or blood; mannequins with expressions; skin texture or pores; individual finger definition; hair (mannequins are smooth-headed)",
+      "repeat_phrase": "smooth featureless white mannequin with completely blank face — no eyes, no nose, no mouth — matte white plastic skin with subtle joint seam lines, wearing [specific hyper-realistic clothing], in photorealistic [specific real-world environment] with cinematic lighting"
+    },
+    "editor_meta": {
+      "color_grade": "teal_orange",
+      "transition_style": "dissolve",
+      "sfx_profile": "cinematic",
+      "subtitle_style": "cinematic"
+    }
+  },
+
+  "enchanted_miniature_3d": {
+    "style_id": "enchanted_miniature_3d",
+    "label": "Enchanted Miniature Macro 3D",
+    "emoji": "🤖",
+    "description": "Robôs miniatura artesanais de cobre/bronze em floresta encantada. Macro photography hiper-realista com tilt-shift, golden hour, cogumelos brilhantes. Estilo Forest Spirits/cottagecore fantasia.",
+    "style_category": "3d_realista",
+    "veo3_injection": {
+      "character_rule": "ALL characters are TINY ARTISAN ROBOTS (5-8cm scale) made of WEATHERED COPPER and BRONZE with visible GREEN PATINA. Head is rounded with two GLOWING WARM AMBER LED EYES that express emotion through brightness and color shifts. Body has EXPOSED GEARS on chest, visible screws and rivets, articulated 3-FINGER METAL HANDS with visible joints. Each robot wears a RED-AND-WHITE SPOTTED MUSHROOM CAP as a hat (Amanita muscaria style). Clothing is made of NATURAL MATERIALS: leaf aprons, moss capes, vine belts with miniature tools. Proportions are slightly chibi-adjacent (head ~30% larger than realistic) but rendered in PHOTOREALISTIC 3D. Occasional STEAM puffs from exhaust vents. A thin ANTENNA on top of head. Robots NEVER speak — they express through LED eye glow, mechanical gestures, body posture, and steam output.",
+      "clothing_rule": "Robots wear NATURAL FOREST MATERIALS as clothing — leaf aprons tied with vine string, moss-covered capes, bark-piece shoulder pads, acorn-cap buttons, woven grass belts with tiny copper tools hanging. Each robot has a CONSISTENT outfit that does NOT change within a video. Accessories include: tiny woven baskets, copper ladles, wooden spoons, leaf umbrellas, lanterns made from firefly jars. The CONTRAST between mechanical copper body and organic natural clothing IS the visual signature.",
+      "environment_rule": "ENCHANTED MINIATURE FOREST — everything at MACRO SCALE where a leaf is a table, an acorn is a pot, a dewdrop is a bathtub. Giant ancient trees with thick mossy roots, GLOWING MUSHROOMS (bioluminescent caps in warm amber/soft blue), moss-covered ground, tiny stone pathways between mushroom houses. Houses are built inside HOLLOW TREE STUMPS with round hobbit-style doors, mushroom-cap roofs, windows with warm orange glow. Light morning mist at ground level. Color palette: moss green #4A7C59, copper #B87333, gold #DAA520, amber #FFB84D, earth brown #3E2723, mushroom red #CC3333. GOLDEN HOUR LIGHTING is predominant — warm sun rays filtering through canopy leaves creating god-rays and dappled light patterns.",
+      "camera_rule": "MACRO PHOTOGRAPHY with ULTRA-SHALLOW DEPTH OF FIELD and TILT-SHIFT effect creating diorama/miniature feel. Camera is always at LOW ANGLE GROUND LEVEL — eye-level with the tiny robots. Movements are SLOW: gentle dolly-ins, soft pans, very slow tracking shots. Transitions between scenes use SMOOTH CROSSFADES (1-2 seconds), NEVER hard cuts. CRITICAL RULE: NEVER frame a close-up that crops out the surrounding environment — always maintain at least 30% visible scenery around the character to preserve last-frame consistency for the LCDF extension. Maximum zoom shows robot from waist up WITH background visible.",
+      "text_overlays": "NO text overlays whatsoever. NO titles, NO captions, NO labels, NO watermarks. The visual storytelling is entirely non-verbal. Any information is conveyed purely through visuals and sound.",
+      "color_palette": {
+        "primary": ["#B87333", "#CD7F32", "#4A7C59", "#DAA520", "#FFB84D"],
+        "accent": ["#CC3333", "#87CEEB", "#FFD700"],
+        "earth": ["#3E2723", "#5D4037", "#795548"],
+        "glow": ["#FFB84D", "#FFA726", "#FF8F00"],
+        "night": ["#1B5E20", "#004D40", "#0D47A1"]
+      },
+      "forbidden": "human characters; futuristic/clean/sci-fi robots; modern environments; anime or cartoon 2D style; text or logos on screen; robots speaking or having dialogue; clean shiny polished metal (always weathered/patina); cold blue lighting; fast camera movements; handheld shake; drone high angle shots; extreme close-up that loses environment context; hard cuts between scenes",
+      "repeat_phrase": "tiny artisan robot made of weathered copper and bronze with green patina, glowing warm amber LED eyes, red-and-white spotted mushroom cap hat, leaf apron and moss cape, exposed gears on chest, in enchanted mossy forest with giant mushrooms and ancient trees, macro photography, ultra-shallow depth of field, tilt-shift, warm golden hour lighting, medium shot showing full body and surrounding environment"
+    },
+    "editor_meta": {
+      "color_grade": "warm",
+      "transition_style": "dissolve",
+      "sfx_profile": "asmr_mechanical",
+      "subtitle_style": "none"
+    }
+  }
+}

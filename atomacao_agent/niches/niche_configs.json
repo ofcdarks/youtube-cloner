@@ -1,0 +1,1877 @@
+{
+  "civilizacao_historica": {
+    "agent_name": "CHRONOS",
+    "agent_emoji": "🏛️",
+    "title": "Civilizações Antigas",
+    "identity": "Agente especialista em criar vídeos sobre civilizações antigas para YouTube. Combina:\n- Historiador acadêmico (fontes primárias, precisão factual)\n- Roteirista Netflix/NatGeo (storytelling cinematográfico imersivo)\n- Especialista em retenção YouTube (hooks, pacing, curiosity gaps)\n- Estrategista de SEO e viralização\n- Diretor de prompts VEO3 para geração de vídeo IA",
+    "nicho_lcdf": "civilizacao_historica",
+    "style_category": "realistas",
+    "sub_style": "Documentary",
+    "audio_profile": "civilization",
+    "supported_topics": "AMÉRICAS: Asteca, Maia, Inca, Olmeca, Tolteca, Zapoteca, Mixteca, Moche, Nazca, Chimú, Muisca, Cahokia, Chichimeca\nEUROPA: Roma, Grécia, Minoica, Micênica, Viking, Celta\nORIENTE MÉDIO: Suméria, Babilônia, Assíria, Persa, Fenícia, Hitita\nÁFRICA: Egito, Kush, Axum, Zimbábue, Mali, Cartago\nÁSIA: Harappan, Khmer, Chinesa, Mongol, Japonesa\nMEGALÍTICAS: Göbekli Tepe, Stonehenge, Moai",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho",
+          "pct": "3-5%",
+          "emotion": "espanto"
+        },
+        {
+          "name": "Contexto épico",
+          "pct": "8-12%",
+          "emotion": "admiração"
+        },
+        {
+          "name": "Construção 1",
+          "pct": "12-15%",
+          "emotion": "fascínio"
+        },
+        {
+          "name": "TWIST CENTRAL",
+          "pct": "2-3%",
+          "emotion": "choque"
+        },
+        {
+          "name": "Construção 2",
+          "pct": "10-15%",
+          "emotion": "fascínio renovado"
+        },
+        {
+          "name": "Pico",
+          "pct": "12-16%",
+          "emotion": "orgulho"
+        },
+        {
+          "name": "Queda",
+          "pct": "15-20%",
+          "emotion": "dor"
+        },
+        {
+          "name": "Legado",
+          "pct": "8-12%",
+          "emotion": "esperança"
+        },
+        {
+          "name": "Punch final",
+          "pct": "3-5%",
+          "emotion": "reflexão"
+        }
+      ],
+      "rules": "Ato 3A+3B ≤30%. Twist Central OBRIGATÓRIO. Ato 5 (Queda) ≥15%.",
+      "immersion_layers": [
+        "PRESENÇA FÍSICA — linguagem sensorial (temperatura, cheiro, peso, textura). A cada 60s.",
+        "IDENTIFICAÇÃO EMOCIONAL — a civilização é 'nós', não 'eles'. Humanizar decisões impossíveis.",
+        "CONTRASTE CHOCANTE — a cada 60-90s: eles vs Europa, antigo vs moderno, sabido vs descoberto.",
+        "LOOP EMOCIONAL — emoção específica por ato conforme tabela."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2 (Gancho + Contexto):\n  ESTILO: \"photorealistic underwater/archaeological documentary\"\n  ILUMINAÇÃO: \"cold blue-green underwater light → warm natural daylight\"\n  PALETA: [5 HEX — tons frios → transição para quentes]\n  AMBIENTE SONORO: \"underwater pressure → open air Mediterranean\"\n\nATO 3A-3B (Construção):\n  ESTILO: \"cinematic NatGeo documentary, golden tones\"\n  ILUMINAÇÃO: \"warm golden-hour → bright midday → warm afternoon\"\n  PALETA: [5 HEX — tons quentes, dourados, terrosos]\n  AMBIENTE SONORO: \"bustling ancient city → ceremonial drums → construction sounds\"\n\nATO TWIST:\n  ESTILO: \"gritty documentary realism, desaturated\"\n  ILUMINAÇÃO: \"dramatic harsh side-lighting → darkness\"\n  PALETA: [5 HEX — contraste alto, sombras profundas]\n  AMBIENTE SONORO: \"2s SILENCE → impact → tension drone\"\n\nATO 4 (Pico):\n  ESTILO: \"epic cinematic documentary, aerial grandeur\"\n  ILUMINAÇÃO: \"golden sunset, long shadows, warm glow\"\n  PALETA: [5 HEX — dourado, âmbar, bronze]\n  AMBIENTE SONORO: \"city at peak activity, music, celebration\"\n\nATO 5 (Queda):\n  ESTILO: \"gritty handheld documentary, degraded\"\n  ILUMINAÇÃO: \"firelight, smoke-diffused, orange harsh\"\n  PALETA: [5 HEX — laranja fogo, cinza fumaça, preto]\n  AMBIENTE SONORO: \"fire, destruction, wind, collapse\"\n\nATO 6-7 (Legado + Final):\n  ESTILO: \"clean documentary, soft museum/modern lighting\"\n  ILUMINAÇÃO: \"cool white LED → soft natural → contemplative\"\n  PALETA: [5 HEX — branco, cinza suave, toques da paleta antiga]\n  AMBIENTE SONORO: \"museum silence → modern ambient → fade to silence\"",
+    "accumulation_phases": "ATO 1-4: [crescimento — construção, expansão, grandiosidade]\nATO 5: [destruição — invasão, colapso, abandono]\nATO 6-7: [ruínas + moderno — arqueologia, museus, preservação]",
+    "factual_verification": true,
+    "prompt_examples": [
+      {
+        "scene": 1,
+        "act": 1,
+        "prompt": "A slow underwater tracking shot, photorealistic NatGeo documentary style. Cold blue-green light filters through murky Mediterranean water, creating shafts of pale illumination. Ancient stone blocks covered in algae and barnacles rest on the sandy seabed, half-buried and encrusted with centuries of marine growth. The camera glides forward at a steady pace, revealing more structures emerging from the darkness ahead. Small silver fish scatter as the camera advances. Suspended particles drift through the water column. Audio: deep underwater pressure hum, muffled water movement, distant metallic creaking, bubbles rising. No dialogue, no human voice.",
+        "editor_meta": {
+          "act": 1,
+          "emotion": "espanto",
+          "camera_direction": "forward tracking underwater"
+        }
+      }
+    ],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "mysterious → building",
+        "bpm": 70,
+        "style": "ambient cinematic, mysterious opening, soft pads, subtle tension building, dark atmospheric"
+      },
+      "faixa_2": {
+        "mood": "epic → peak",
+        "bpm": 90,
+        "style": "epic cinematic orchestra, exploration theme, soaring strings, heroic brass, building intensity, ancient civilization discovery"
+      },
+      "faixa_3": {
+        "mood": "tension → tragic",
+        "bpm": 100,
+        "style": "dark cinematic tension, dramatic revelation, deep bass, dissonant strings, suspenseful, building dread"
+      },
+      "faixa_4": {
+        "mood": "contemplative → hopeful → fadeout",
+        "bpm": 75,
+        "style": "contemplative cinematic, hopeful resolution, gentle piano, warm strings, emotional closure, reflective ending, fade out"
+      }
+    }
+  },
+  "construcao": {
+    "agent_name": "FORJA",
+    "agent_emoji": "🔨",
+    "title": "Construção e Reforma",
+    "identity": "Agente especialista em criar vídeos de construção, reforma e DIY para YouTube. Combina:\n- Engenheiro civil / mestre de obras (precisão técnica, segurança)\n- Roteirista de reality shows (transformação visual dramática)\n- Especialista em retenção YouTube (hooks, pacing, satisfação visual)\n- Estrategista de SEO para nicho de construção\n- Diretor de prompts VEO3 para geração de vídeo IA",
+    "nicho_lcdf": "construcao",
+    "style_category": "realistas",
+    "sub_style": "Construction_Reality",
+    "audio_profile": "documentary",
+    "supported_topics": "Reforma residencial, construção civil, DIY avançado, restauração de estruturas, demolição controlada, acabamentos, paisagismo estrutural, instalações elétricas/hidráulicas, carpintaria, alvenaria, metalurgia básica, telhados, fundações, pisos, revestimentos",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho Visual",
+          "pct": "3-5%",
+          "emotion": "choque (estado deplorável)"
+        },
+        {
+          "name": "Diagnóstico",
+          "pct": "8-10%",
+          "emotion": "preocupação"
+        },
+        {
+          "name": "Demolição/Limpeza",
+          "pct": "10-12%",
+          "emotion": "satisfação destrutiva"
+        },
+        {
+          "name": "TWIST: Problema Oculto",
+          "pct": "3-5%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "Fundação/Estrutura",
+          "pct": "15-18%",
+          "emotion": "respeito"
+        },
+        {
+          "name": "Construção Principal",
+          "pct": "20-25%",
+          "emotion": "fascínio"
+        },
+        {
+          "name": "Acabamento",
+          "pct": "12-15%",
+          "emotion": "satisfação"
+        },
+        {
+          "name": "Reveal Final",
+          "pct": "5-8%",
+          "emotion": "orgulho"
+        },
+        {
+          "name": "Antes vs Depois",
+          "pct": "3-5%",
+          "emotion": "impacto"
+        }
+      ],
+      "rules": "Construção Principal ≥20%. Twist (problema oculto) OBRIGATÓRIO. Reveal Final deve ser dramático com comparação antes/depois.",
+      "immersion_layers": [
+        "PRESENÇA FÍSICA — peso dos materiais, textura do concreto, calor do sol, poeira no ar. A cada 45s.",
+        "PROGRESSÃO VISUAL — cada cena deve mostrar avanço mensurável vs cena anterior.",
+        "ESCALA HUMANA — sempre mostrar trabalhador ao lado da obra para senso de escala.",
+        "TÉCNICA ACESSÍVEL — explicar o 'porquê' de cada etapa sem jargão excessivo."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2 (Gancho + Diagnóstico):\n  ESTILO: \"handheld documentary realism, slightly shaky\"\n  ILUMINAÇÃO: \"harsh natural daylight, unflattering — showing every flaw\"\n  PALETA: [tons cinza, marrom, desgastado, sujo]\n  AMBIENTE SONORO: \"ambient outdoor, wind, distant traffic, creaking structure\"\n\nATO 3 (Demolição):\n  ESTILO: \"dynamic action documentary, fast cuts\"\n  ILUMINAÇÃO: \"bright direct sun, dust clouds catching light\"\n  PALETA: [cinza poeira, marrom terra, bege concreto]\n  AMBIENTE SONORO: \"hammering, debris falling, power tools, concrete cracking\"\n\nATO TWIST:\n  ESTILO: \"close-up investigative, flashlight in dark spaces\"\n  ILUMINAÇÃO: \"dramatic flashlight, dark surroundings, revealing problems\"\n  PALETA: [escuro, pontos de luz, vermelho ferrugem]\n  AMBIENTE SONORO: \"silence → discovery sound → concerned discussion\"\n\nATO 5-6 (Fundação + Construção):\n  ESTILO: \"cinematic timelapse + detail shots, steady\"\n  ILUMINAÇÃO: \"golden morning → bright midday → warm afternoon progression\"\n  PALETA: [cinza concreto → marrom madeira → branco gesso — gradual brightening]\n  AMBIENTE SONORO: \"rhythmic construction, mixer, saw, hammering, measuring\"\n\nATO 7-8 (Acabamento + Reveal):\n  ESTILO: \"smooth cinematic, slider shots, clean\"\n  ILUMINAÇÃO: \"warm interior lighting, soft shadows, inviting\"\n  PALETA: [branco limpo, madeira quente, tons acolhedores]\n  AMBIENTE SONORO: \"quiet brushstrokes → silence → reveal music sting\"",
+    "accumulation_phases": "ATO 1-3: [destruição e limpeza — estado deplorável → demolição → espaço limpo]\nATO 4-6: [construção — fundação → paredes → teto → instalações → acabamento]\nATO 7-9: [transformação — pintura → mobília → reveal dramático antes/depois]",
+    "factual_verification": false,
+    "prompt_examples": [
+      {
+        "scene": 1,
+        "act": 1,
+        "prompt": "A slow handheld tracking shot pushing through a doorway, raw documentary style. Harsh unflattering daylight floods through a cracked window, revealing a devastated room with peeling wallpaper, exposed wiring, and a collapsed ceiling section. Water stains spread across warped floorboards. Dust motes float in the light beams. The camera tilts down to show crumbling plaster debris scattered across the floor, then pans to a wall with deep structural cracks. A measuring tape dangles from a nail. Audio: creaking wood, distant dripping water, wind through gaps, footsteps on debris. No dialogue, no human voice.",
+        "editor_meta": {
+          "act": 1,
+          "emotion": "choque",
+          "camera_direction": "forward tracking through doorway"
+        }
+      }
+    ],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "investigation → concern",
+        "bpm": 80,
+        "style": "ambient documentary, investigative mood, subtle tension, plucked guitar, minimal percussion"
+      },
+      "faixa_2": {
+        "mood": "action → rhythm",
+        "bpm": 110,
+        "style": "upbeat construction rhythm, steady percussion, building energy, industrial sounds, work montage feel"
+      },
+      "faixa_3": {
+        "mood": "problem → solution",
+        "bpm": 95,
+        "style": "tense discovery transitioning to determined resolution, dramatic strings, problem-solving energy"
+      },
+      "faixa_4": {
+        "mood": "satisfaction → pride",
+        "bpm": 85,
+        "style": "warm uplifting reveal, piano and strings, triumphant conclusion, before-after impact, emotional payoff"
+      }
+    }
+  },
+  "culinaria": {
+    "agent_name": "SAZÓN",
+    "agent_emoji": "🍳",
+    "title": "Culinária e Gastronomia",
+    "identity": "Agente especialista em criar vídeos culinários cinematográficos para YouTube. Combina:\n- Chef profissional (técnicas, tempos, temperaturas)\n- Food stylist (apresentação visual, ângulos, texturas)\n- Especialista em retenção YouTube (hooks visuais, ASMR, satisfação)\n- Estrategista de SEO gastronômico\n- Diretor de prompts VEO3 para food cinematography",
+    "nicho_lcdf": "culinaria",
+    "style_category": "realistas",
+    "sub_style": "Food_Cinema",
+    "audio_profile": "survivor_asmr",
+    "supported_topics": "Receitas completas, técnicas culinárias, street food, restauração de pratos históricos, food science, cooking challenges, meal prep, confeitaria, churrasco, fermentação, culinária mundial",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho Sensorial",
+          "pct": "3-5%",
+          "emotion": "desejo (close-up do prato final)"
+        },
+        {
+          "name": "Ingredientes",
+          "pct": "8-10%",
+          "emotion": "curiosidade"
+        },
+        {
+          "name": "Preparo",
+          "pct": "15-18%",
+          "emotion": "satisfação (cortes, texturas)"
+        },
+        {
+          "name": "TWIST: Técnica Secreta",
+          "pct": "3-5%",
+          "emotion": "surpresa"
+        },
+        {
+          "name": "Cocção Principal",
+          "pct": "20-25%",
+          "emotion": "fascínio (transformação)"
+        },
+        {
+          "name": "Finalização",
+          "pct": "10-12%",
+          "emotion": "antecipação"
+        },
+        {
+          "name": "Empratamento",
+          "pct": "8-10%",
+          "emotion": "arte"
+        },
+        {
+          "name": "Reveal + Degustação",
+          "pct": "5-8%",
+          "emotion": "satisfação máxima"
+        },
+        {
+          "name": "Close Final",
+          "pct": "3-5%",
+          "emotion": "desejo renovado"
+        }
+      ],
+      "rules": "Cocção Principal ≥20%. Close-ups ASMR obrigatórios a cada 30s. Twist = técnica inesperada ou ingrediente secreto.",
+      "immersion_layers": [
+        "SENSORIAL FOOD — texturas, cores vibrantes, vapor, brilho, gotejamento. Close-ups extremos.",
+        "ASMR — sons de corte, fritura, fervura, crocância. A cada 30s.",
+        "PROGRESSÃO VISUAL — ingrediente cru → preparado → cozido → empratado.",
+        "ESCALA — alternar entre overview (bancada inteira) e macro (textura do alimento)."
+      ]
+    },
+    "visual_state_chain": "ATO 1 (Gancho):\n  ESTILO: \"cinematic food photography, shallow DOF\"\n  ILUMINAÇÃO: \"warm side-lighting, steam catching light\"\n  PALETA: [tons quentes do prato final, saturados]\n  AMBIENTE SONORO: \"sizzling, steam, knife on cutting board\"\n\nATO 2-3 (Ingredientes + Preparo):\n  ESTILO: \"clean overhead + detail shots, bright\"\n  ILUMINAÇÃO: \"bright natural kitchen light, soft shadows\"\n  PALETA: [cores vibrantes dos ingredientes frescos]\n  AMBIENTE SONORO: \"chopping, washing, mixing, bowls clinking\"\n\nATO TWIST:\n  ESTILO: \"dramatic close-up, rack focus\"\n  ILUMINAÇÃO: \"spot light on technique/ingredient\"\n  PALETA: [contraste alto, foco no ingrediente secreto]\n  AMBIENTE SONORO: \"silence → dramatic reveal sound\"\n\nATO 5-6 (Cocção + Finalização):\n  ESTILO: \"cinematic slow-motion, steam and fire\"\n  ILUMINAÇÃO: \"warm fire/stove light, dynamic flames\"\n  PALETA: [laranjas, dourados, caramelo, Maillard]\n  AMBIENTE SONORO: \"intense sizzling, boiling, crackling, oil popping\"\n\nATO 7-9 (Empratamento + Reveal):\n  ESTILO: \"smooth dolly, beauty shots, shallow DOF\"\n  ILUMINAÇÃO: \"soft warm diffused, restaurant quality\"\n  PALETA: [prato final — cores ricas e apetitosas]\n  AMBIENTE SONORO: \"gentle plating, sauce drizzle, garnish placement → silence → first bite crunch\"",
+    "accumulation_phases": "ATO 1-3: [preparo — ingredientes crus → cortados → organizados]\nATO 4-6: [transformação — cru → cozinhando → dourado → caramelizado]\nATO 7-9: [apresentação — empratamento → decoração → reveal glamouroso]",
+    "factual_verification": false,
+    "prompt_examples": [
+      {
+        "scene": 1,
+        "act": 1,
+        "prompt": "An extreme close-up with shallow depth of field, cinematic food photography style. Warm golden side-light catches rising steam from a freshly finished dish. Glistening sauce slowly drips down the side of a perfectly seared protein, catching the light like liquid gold. Micro herbs and edible flowers arranged with precision create tiny shadows on the white porcelain plate. The camera pulls back gradually, revealing the full composition of the dish — colors vibrant, textures sharp, steam still rising. Audio: gentle sizzle fading, sauce bubbling softly, ceramic plate settling on stone counter. No dialogue, no human voice.",
+        "editor_meta": {
+          "act": 1,
+          "emotion": "desejo",
+          "camera_direction": "slow pull-back from extreme close-up"
+        }
+      }
+    ],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "appetizing → curious",
+        "bpm": 90,
+        "style": "light jazzy acoustic, warm vibes, kitchen atmosphere, gentle percussion, cooking show feel"
+      },
+      "faixa_2": {
+        "mood": "rhythmic → focused",
+        "bpm": 105,
+        "style": "upbeat kitchen rhythm, playful percussion, cooking montage energy, positive mood"
+      },
+      "faixa_3": {
+        "mood": "dramatic → intense",
+        "bpm": 100,
+        "style": "dramatic cooking competition feel, tense strings, fire and heat energy, climactic moment"
+      },
+      "faixa_4": {
+        "mood": "warm → satisfying",
+        "bpm": 75,
+        "style": "warm satisfying conclusion, gentle piano, accomplished feeling, food beauty, emotional payoff"
+      }
+    }
+  },
+  "sobrevivencia_calor": {
+    "agent_name": "SOLARIS",
+    "agent_emoji": "☀️",
+    "title": "Sobrevivência — Calor Extremo",
+    "identity": "Agente especialista em criar vídeos de sobrevivência em calor extremo para YouTube. Combina:\n- Especialista em sobrevivência (desidratação, abrigo, orientação)\n- Documentarista de natureza selvagem (Bear Grylls, Survivorman)\n- Especialista em retenção YouTube (tensão constante, stakes reais)\n- Estrategista de SEO para nicho survival\n- Diretor de prompts VEO3 para ambientes extremos",
+    "nicho_lcdf": "sobrevivencia_calor",
+    "style_category": "realistas",
+    "sub_style": "Survival_Documentary",
+    "audio_profile": "survivor_asmr",
+    "supported_topics": "Sobrevivência no deserto, selva tropical, savana, áreas áridas, ilha tropical, sertão, heat stroke, desidratação, busca por água, construção de abrigo, sinalização, fogo sem fósforo",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Perigo Imediato",
+          "pct": "3-5%",
+          "emotion": "medo"
+        },
+        {
+          "name": "Situação",
+          "pct": "8-10%",
+          "emotion": "desorientação"
+        },
+        {
+          "name": "Primeira Decisão",
+          "pct": "12-15%",
+          "emotion": "determinação"
+        },
+        {
+          "name": "TWIST: Complicação",
+          "pct": "3-5%",
+          "emotion": "desespero"
+        },
+        {
+          "name": "Adaptação",
+          "pct": "15-20%",
+          "emotion": "resiliência"
+        },
+        {
+          "name": "Recurso Crítico",
+          "pct": "15-18%",
+          "emotion": "alívio temporário"
+        },
+        {
+          "name": "Crise Final",
+          "pct": "10-12%",
+          "emotion": "exaustão"
+        },
+        {
+          "name": "Resolução",
+          "pct": "5-8%",
+          "emotion": "esperança"
+        },
+        {
+          "name": "Lição",
+          "pct": "3-5%",
+          "emotion": "reflexão"
+        }
+      ],
+      "rules": "Adaptação + Recurso Crítico ≥30%. Degradação física PROGRESSIVA obrigatória. Twist = perda de recurso ou novo perigo.",
+      "immersion_layers": [
+        "DEGRADAÇÃO FÍSICA — suor, lábios rachados, pele queimada, movimentos mais lentos. Progressivo a cada cena.",
+        "CALOR VISUAL — ondas de calor, ar tremulando, sol implacável, sombras curtas. A cada 45s.",
+        "URGÊNCIA TEMPORAL — relógio biológico (horas sem água, temperatura subindo).",
+        "CONTRASTE — momentos de micro-alívio (sombra, brisa) antes de piorar."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2 (Perigo + Situação):\n  ESTILO: \"raw handheld documentary, POV-adjacent\"\n  ILUMINAÇÃO: \"harsh midday sun, no shadows, blinding white sky\"\n  PALETA: [amarelo queimado, branco ofuscante, bege areia]\n  AMBIENTE SONORO: \"oppressive heat hum, wind over sand, heartbeat\"\n\nATO 3-4 (Decisão + Twist):\n  ESTILO: \"tense close-ups, shallow DOF, shaky\"\n  ILUMINAÇÃO: \"brutal direct sun, heat shimmer visible\"\n  PALETA: [laranja intenso, vermelho, terra seca]\n  AMBIENTE SONORO: \"labored breathing, boots on dry ground, insects\"\n\nATO 5-6 (Adaptação + Recurso):\n  ESTILO: \"documentary with occasional beauty shots\"\n  ILUMINAÇÃO: \"golden hour approaching, slightly softer\"\n  PALETA: [dourado, marrom, verde esperança (oásis/vegetação)]\n  AMBIENTE SONORO: \"wind easing, water trickling (if found), fire crackling\"\n\nATO 7-9 (Crise + Resolução + Lição):\n  ESTILO: \"wide establishing → intimate close-ups\"\n  ILUMINAÇÃO: \"sunset → twilight → dawn (novo dia)\"\n  PALETA: [vermelho pôr do sol → azul noite → rosa amanhecer]\n  AMBIENTE SONORO: \"exhausted breathing → night sounds → morning birds\"",
+    "accumulation_phases": "ATO 1-4: [degradação — energia alta → suor → lábios secos → desorientação]\nATO 5-6: [adaptação — improviso, descoberta de recurso, pequenas vitórias]\nATO 7-9: [resolução — crise máxima → resgate/solução → reflexão]",
+    "factual_verification": true,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "tension → dread",
+        "bpm": 70,
+        "style": "ambient desert drone, heat shimmer, minimal tension, oppressive atmosphere, survival documentary"
+      },
+      "faixa_2": {
+        "mood": "determination → struggle",
+        "bpm": 95,
+        "style": "percussive tension, tribal drums, building urgency, desert survival feel"
+      },
+      "faixa_3": {
+        "mood": "desperation → hope",
+        "bpm": 85,
+        "style": "emotional strings, survival struggle, finding water moment, relief and tension mixed"
+      },
+      "faixa_4": {
+        "mood": "exhaustion → peace",
+        "bpm": 65,
+        "style": "gentle resolution, desert sunset, contemplative ending, soft wind instruments, fade out"
+      }
+    }
+  },
+  "sobrevivencia_frio": {
+    "agent_name": "BOREAL",
+    "agent_emoji": "❄️",
+    "title": "Sobrevivência — Frio Extremo",
+    "identity": "Agente especialista em criar vídeos de sobrevivência em frio extremo para YouTube. Combina:\n- Especialista em sobrevivência ártica (hipotermia, abrigo, fogo)\n- Documentarista de natureza selvagem\n- Especialista em retenção YouTube\n- Estrategista de SEO survival\n- Diretor de prompts VEO3 para ambientes gelados",
+    "nicho_lcdf": "sobrevivencia_frio",
+    "style_category": "realistas",
+    "sub_style": "Survival_Documentary",
+    "audio_profile": "survivor_asmr",
+    "supported_topics": "Sobrevivência na neve, Ártico, montanha, tundra, hipotermia, construção de iglu/abrigo, fogo na neve, caça, pesca no gelo, orientação sem GPS, blizzard",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Isolamento",
+          "pct": "3-5%",
+          "emotion": "medo"
+        },
+        {
+          "name": "Situação",
+          "pct": "8-10%",
+          "emotion": "solidão"
+        },
+        {
+          "name": "Abrigo",
+          "pct": "15-18%",
+          "emotion": "urgência"
+        },
+        {
+          "name": "TWIST: Blizzard/Perda",
+          "pct": "3-5%",
+          "emotion": "pânico"
+        },
+        {
+          "name": "Fogo",
+          "pct": "12-15%",
+          "emotion": "determinação"
+        },
+        {
+          "name": "Recurso",
+          "pct": "12-15%",
+          "emotion": "alívio"
+        },
+        {
+          "name": "Crise Hipotermia",
+          "pct": "10-12%",
+          "emotion": "exaustão"
+        },
+        {
+          "name": "Resolução",
+          "pct": "5-8%",
+          "emotion": "esperança"
+        },
+        {
+          "name": "Lição",
+          "pct": "3-5%",
+          "emotion": "reflexão"
+        }
+      ],
+      "rules": "Abrigo + Fogo ≥25%. Degradação física por frio PROGRESSIVA. Twist = blizzard, queda, perda de equipamento.",
+      "immersion_layers": [
+        "FRIO VISUAL — tremores, geada nas roupas, respiração visível, dedos arroxeados. Progressivo.",
+        "BRANCURA OPRESSIVA — neve sem fim, visibilidade reduzida, horizontes brancos.",
+        "URGÊNCIA — cada minuto sem abrigo/fogo conta. Relógio da hipotermia.",
+        "MICRO-VITÓRIAS — primeira faísca, abrigo pronto, água quente."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"raw documentary, breath visible, handheld\"\n  ILUMINAÇÃO: \"overcast white sky, flat cold light, no warmth\"\n  PALETA: [branco, cinza, azul gelo]\n  AMBIENTE SONORO: \"howling wind, snow crunching, heavy breathing\"\n\nATO 3-4:\n  ESTILO: \"tense survival documentary, close-ups of hands working\"\n  ILUMINAÇÃO: \"diffused grey, occasional sun break\"\n  PALETA: [branco, marrom (madeira), cinza]\n  AMBIENTE SONORO: \"wood snapping, digging in snow, wind gusts\"\n\nATO 5-6:\n  ESTILO: \"intimate firelit documentary\"\n  ILUMINAÇÃO: \"warm firelight vs cold blue surroundings\"\n  PALETA: [laranja fogo vs azul gelo — contraste]\n  AMBIENTE SONORO: \"fire crackling, wind outside, water boiling\"\n\nATO 7-9:\n  ESTILO: \"wide + intimate alternating\"\n  ILUMINAÇÃO: \"dawn breaking, warm golden light on snow\"\n  PALETA: [rosa amanhecer, branco suave, dourado]\n  AMBIENTE SONORO: \"calm wind, birds, distant rescue sounds\"",
+    "accumulation_phases": "ATO 1-4: [exposição — frio crescente, tremores, geada acumulando]\nATO 5-6: [combate — fogo aceso, abrigo aquecendo, recurso encontrado]\nATO 7-9: [resolução — crise de hipotermia → aquecimento → resgate]",
+    "factual_verification": true,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "isolation → dread",
+        "bpm": 60,
+        "style": "ambient arctic drone, wind howling, minimal frozen atmosphere, lonely survival"
+      },
+      "faixa_2": {
+        "mood": "urgency → determination",
+        "bpm": 90,
+        "style": "percussive urgency, building drums, survival struggle, ice and fire contrast"
+      },
+      "faixa_3": {
+        "mood": "crisis → fading hope",
+        "bpm": 80,
+        "style": "emotional strings, hypothermia despair, fading energy, cold darkness"
+      },
+      "faixa_4": {
+        "mood": "dawn → relief",
+        "bpm": 70,
+        "style": "gentle warm resolution, sunrise over snow, hope returning, soft piano and strings"
+      }
+    }
+  },
+  "resgate_animais_terrestre": {
+    "agent_name": "GUARDIÃO",
+    "agent_emoji": "🐾",
+    "title": "Resgate Animal — Terrestre",
+    "identity": "Agente especialista em criar vídeos de resgate animal terrestre para YouTube. Combina:\n- Veterinário/resgatista (protocolos, bem-estar animal)\n- Documentarista de vida animal (comportamento, empatia)\n- Especialista em retenção YouTube (emoção, tensão, resolução)\n- Estrategista de SEO para nicho animal\n- Diretor de prompts VEO3 para cenas de resgate",
+    "nicho_lcdf": "resgate_animais_terrestre",
+    "style_category": "realistas",
+    "sub_style": "Animal_Rescue",
+    "audio_profile": "emotional",
+    "supported_topics": "Resgate de cães, gatos, cavalos, animais silvestres, armadilhas, desabamentos, enchentes, maus-tratos, reabilitação, soltura",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Animal em Perigo",
+          "pct": "3-5%",
+          "emotion": "angústia"
+        },
+        {
+          "name": "Contexto da Situação",
+          "pct": "8-10%",
+          "emotion": "empatia"
+        },
+        {
+          "name": "Preparação do Resgate",
+          "pct": "10-12%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "TWIST: Complicação",
+          "pct": "3-5%",
+          "emotion": "medo"
+        },
+        {
+          "name": "Resgate em Ação",
+          "pct": "20-25%",
+          "emotion": "adrenalina"
+        },
+        {
+          "name": "Momento Crítico",
+          "pct": "10-12%",
+          "emotion": "tensão máxima"
+        },
+        {
+          "name": "Estabilização",
+          "pct": "8-10%",
+          "emotion": "alívio"
+        },
+        {
+          "name": "Recuperação",
+          "pct": "8-10%",
+          "emotion": "ternura"
+        },
+        {
+          "name": "Final Feliz",
+          "pct": "3-5%",
+          "emotion": "alegria"
+        }
+      ],
+      "rules": "Resgate em Ação ≥20%. NUNCA mostrar sofrimento gratuito. Twist = animal mais preso que o esperado, segundo animal, estrutura instável.",
+      "immersion_layers": [
+        "EMPATIA ANIMAL — olhos do animal, tremores, vocalização de medo. Humanizar sem antropomorfizar.",
+        "MÃOS DO RESGATISTA — close-ups de mãos trabalhando com cuidado e precisão.",
+        "PROGRESSÃO EMOCIONAL — medo → esperança → alívio → amor. Curva emocional clara.",
+        "ESCALA — alternar entre o animal (close) e a operação completa (wide)."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"raw emotional documentary, handheld\"\n  ILUMINAÇÃO: \"natural available light, unflattering but real\"\n  PALETA: [tons escuros, sujo, triste]\n  AMBIENTE SONORO: \"animal whimpering, wind, distant traffic, team radio\"\n\nATO 3-5:\n  ESTILO: \"action documentary, multiple angles\"\n  ILUMINAÇÃO: \"dynamic natural + flashlights if needed\"\n  PALETA: [uniforms bright, animal dark, equipment metallic]\n  AMBIENTE SONORO: \"tools, team commands (no voice), animal sounds, equipment\"\n\nATO 6-7:\n  ESTILO: \"intimate close-ups, steady\"\n  ILUMINAÇÃO: \"softer, warmer as situation resolves\"\n  PALETA: [warmth returning, clean blankets, vet green]\n  AMBIENTE SONORO: \"calming sounds, gentle handling, heart monitor beep\"\n\nATO 8-9:\n  ESTILO: \"warm emotional documentary, beauty shots\"\n  ILUMINAÇÃO: \"golden warm light, soft, inviting\"\n  PALETA: [verde grama, céu azul, animal limpo e saudável]\n  AMBIENTE SONORO: \"happy animal sounds, nature, birds, gentle music sting\"",
+    "accumulation_phases": "ATO 1-4: [perigo — animal preso/ferido, equipe se preparando, complicação]\nATO 5-7: [resgate — ação, momento crítico, extração, estabilização]\nATO 8-9: [recuperação — tratamento, melhora, primeira caminhada/refeição, final feliz]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "concern → empathy",
+        "bpm": 70,
+        "style": "emotional piano, sad documentary, animal in danger, gentle strings, concerned tone"
+      },
+      "faixa_2": {
+        "mood": "tension → action",
+        "bpm": 100,
+        "style": "urgent rescue music, building percussion, action documentary, determined heroic feel"
+      },
+      "faixa_3": {
+        "mood": "critical → relief",
+        "bpm": 90,
+        "style": "tense strings transitioning to warm relief, emotional payoff, rescue success moment"
+      },
+      "faixa_4": {
+        "mood": "tenderness → joy",
+        "bpm": 80,
+        "style": "warm emotional resolution, happy ending, gentle piano, heartwarming recovery, uplifting strings"
+      }
+    }
+  },
+  "resgate_animais_marinho": {
+    "agent_name": "MARÉ",
+    "agent_emoji": "🐋",
+    "title": "Resgate Animal — Marinho",
+    "identity": "Agente especialista em criar vídeos de resgate animal marinho para YouTube.",
+    "nicho_lcdf": "resgate_animais_marinho",
+    "style_category": "realistas",
+    "sub_style": "Marine_Rescue",
+    "audio_profile": "emotional",
+    "supported_topics": "Resgate de baleias, golfinhos, tartarugas, focas, peixes, corais, rede de pesca, derramamento de óleo, encalhe, reabilitação marinha",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Descoberta",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "Situação Marinha",
+          "pct": "8-10%",
+          "emotion": "empatia"
+        },
+        {
+          "name": "Preparação Aquática",
+          "pct": "10-12%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "TWIST: Complicação",
+          "pct": "3-5%",
+          "emotion": "medo"
+        },
+        {
+          "name": "Mergulho/Resgate",
+          "pct": "20-25%",
+          "emotion": "adrenalina"
+        },
+        {
+          "name": "Momento Crítico",
+          "pct": "10-12%",
+          "emotion": "tensão máxima"
+        },
+        {
+          "name": "Estabilização",
+          "pct": "8-10%",
+          "emotion": "alívio"
+        },
+        {
+          "name": "Recuperação",
+          "pct": "8-10%",
+          "emotion": "ternura"
+        },
+        {
+          "name": "Soltura/Retorno ao Mar",
+          "pct": "3-5%",
+          "emotion": "alegria"
+        }
+      ],
+      "rules": "Resgate subaquático ≥20%. Água como personagem. Twist = maré, segundo animal, equipamento falha.",
+      "immersion_layers": [
+        "ÁGUA COMO PERSONAGEM — som de ondas, bolhas, correntes. Ambiente subaquático sempre presente.",
+        "PRESSÃO E TEMPERATURA — sensação física de profundidade, frio do oceano, salmoura.",
+        "TEMPO É VIDA — cronômetro implícito, ar acabando, animal exausto. Stakes sempre cronometrados.",
+        "MOVIMENTO LÍQUIDO — câmera flutua, personagens se movem em câmera lenta, peso da água."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"underwater + surface documentary\"\n  ILUMINAÇÃO: \"cold blue-green water, harsh surface sun\"\n  PALETA: [azul oceano, branco espuma, cinza barco]\n\nATO 3-6:\n  ESTILO: \"action underwater documentary\"\n  ILUMINAÇÃO: \"underwater light shafts, surface glare\"\n  PALETA: [azul profundo, verde alga, equipamento amarelo]\n\nATO 7-9:\n  ESTILO: \"warm emotional, surface beauty shots\"\n  ILUMINAÇÃO: \"golden sunset on water\"\n  PALETA: [dourado, azul céu, animal saudável]",
+    "accumulation_phases": "ATO 1-4: [descoberta — animal preso na água, equipe chegando, complicação]\nATO 5-7: [resgate aquático — mergulho, corte de rede, extração, estabilização]\nATO 8-9: [recuperação — tratamento, reabilitação, soltura emocionante no mar]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "discovery → concern",
+        "bpm": 70,
+        "style": "oceanic ambient, whale songs, underwater mystery, marine documentary"
+      },
+      "faixa_2": {
+        "mood": "action → underwater tension",
+        "bpm": 95,
+        "style": "underwater action, diving rhythm, urgent marine rescue"
+      },
+      "faixa_3": {
+        "mood": "critical → hope",
+        "bpm": 85,
+        "style": "tense underwater moment, surfacing relief, emotional strings"
+      },
+      "faixa_4": {
+        "mood": "freedom → joy",
+        "bpm": 80,
+        "style": "uplifting ocean freedom, animal released, triumphant marine documentary ending"
+      }
+    }
+  },
+  "resgate_animais_urbano": {
+    "agent_name": "RESGATE",
+    "agent_emoji": "🏙️",
+    "title": "Resgate Animal — Urbano",
+    "identity": "Agente especialista em criar vídeos de resgate animal em ambiente urbano para YouTube.",
+    "nicho_lcdf": "resgate_animais_urbano",
+    "style_category": "realistas",
+    "sub_style": "Urban_Rescue",
+    "audio_profile": "emotional",
+    "supported_topics": "Resgate em bueiros, telhados, muros, postes, ruas, construções abandonadas, enchentes urbanas",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Alerta",
+          "pct": "3-5%",
+          "emotion": "urgência"
+        },
+        {
+          "name": "Localização",
+          "pct": "8-10%",
+          "emotion": "preocupação"
+        },
+        {
+          "name": "Acesso",
+          "pct": "10-12%",
+          "emotion": "frustração"
+        },
+        {
+          "name": "TWIST: Obstáculo Urbano",
+          "pct": "3-5%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "Resgate",
+          "pct": "20-25%",
+          "emotion": "adrenalina"
+        },
+        {
+          "name": "Momento Crítico",
+          "pct": "10-12%",
+          "emotion": "tensão máxima"
+        },
+        {
+          "name": "Extração",
+          "pct": "8-10%",
+          "emotion": "alívio"
+        },
+        {
+          "name": "Cuidados",
+          "pct": "8-10%",
+          "emotion": "ternura"
+        },
+        {
+          "name": "Adoção/Lar",
+          "pct": "3-5%",
+          "emotion": "alegria"
+        }
+      ],
+      "rules": "Resgate ≥20%. Ambiente urbano como obstáculo. Twist = trânsito, estrutura frágil, animal assustado foge.",
+      "immersion_layers": [
+        "AMBIENTE URBANO HOSTIL — barulho de trânsito, sirenes, multidão. Cidade como obstáculo.",
+        "ESCALA HUMANA vs ANIMAL — contraste entre o gigantismo urbano e a fragilidade do animal.",
+        "TEMPO É VIDA — cronômetro implícito, transeuntes ajudando, polícia chegando.",
+        "TEXTURA URBANA — concreto, asfalto quente, ferro, vidro, esgoto. Detalhes táteis."
+      ]
+    },
+    "visual_state_chain": "ATO 1-3:\n  ESTILO: \"urban documentary, city chaos\"\n  ILUMINAÇÃO: \"mixed urban light — neon, streetlamps, harsh\"\n  PALETA: [cinza concreto, amarelo caution, azul uniforme]\n\nATO 4-7:\n  ESTILO: \"confined space rescue, flashlights, tight angles\"\n  ILUMINAÇÃO: \"flashlight beams in dark spaces, dramatic\"\n  PALETA: [escuro, feixes de luz, equipamento]\n\nATO 8-9:\n  ESTILO: \"warm emotional, outdoor\"\n  ILUMINAÇÃO: \"warm daylight, clean\"\n  PALETA: [verde parque, animal limpo, família feliz]",
+    "accumulation_phases": "ATO 1-4: [caos urbano — chamado, busca, obstáculos da cidade]\nATO 5-7: [resgate confinado — espaços apertados, extração delicada]\nATO 8-9: [recomeço — tratamento, recuperação, novo lar]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "urban tension",
+        "bpm": 85,
+        "style": "urban ambient, city sounds, tension building, documentary urgency"
+      },
+      "faixa_2": {
+        "mood": "action → rescue",
+        "bpm": 100,
+        "style": "intense urban rescue, percussion driven, confined space tension"
+      },
+      "faixa_3": {
+        "mood": "relief → care",
+        "bpm": 80,
+        "style": "emotional relief, gentle transition, caring veterinary moment"
+      },
+      "faixa_4": {
+        "mood": "happiness → home",
+        "bpm": 85,
+        "style": "warm happy ending, adoption day, uplifting piano, new beginning"
+      }
+    }
+  },
+  "resgate_animais_aereo": {
+    "agent_name": "FALCÃO",
+    "agent_emoji": "🦅",
+    "title": "Resgate Animal — Aéreo",
+    "identity": "Agente especialista em criar vídeos de resgate animal em alturas para YouTube.",
+    "nicho_lcdf": "resgate_animais_aereo",
+    "style_category": "realistas",
+    "sub_style": "Aerial_Rescue",
+    "audio_profile": "emotional",
+    "supported_topics": "Resgate de aves, gatos em árvores/postes, animais em telhados, rapel, drones, ninhos",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Altura",
+          "pct": "3-5%",
+          "emotion": "vertigem"
+        },
+        {
+          "name": "Avaliação",
+          "pct": "8-10%",
+          "emotion": "preocupação"
+        },
+        {
+          "name": "Escalada/Acesso",
+          "pct": "12-15%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "TWIST: Vento/Instabilidade",
+          "pct": "3-5%",
+          "emotion": "medo"
+        },
+        {
+          "name": "Aproximação",
+          "pct": "15-20%",
+          "emotion": "concentração"
+        },
+        {
+          "name": "Captura",
+          "pct": "10-12%",
+          "emotion": "adrenalina"
+        },
+        {
+          "name": "Descida",
+          "pct": "10-12%",
+          "emotion": "cuidado"
+        },
+        {
+          "name": "Tratamento",
+          "pct": "5-8%",
+          "emotion": "ternura"
+        },
+        {
+          "name": "Voo/Soltura",
+          "pct": "3-5%",
+          "emotion": "liberdade"
+        }
+      ],
+      "rules": "Altura sempre visível como ameaça. Escala vertical obrigatória. Twist = rajada de vento, galho quebra, animal se move.",
+      "immersion_layers": [
+        "ALTURA SEMPRE VISÍVEL — câmera mostra constantemente o vazio abaixo. Vertigem física.",
+        "VENTO E EQUILÍBRIO — cabelo balança, roupas se mexem, galho range, corda treme.",
+        "TEMPO É VIDA — animal pode cair a qualquer momento, energia dos resgatadores acabando.",
+        "ESCALA VERTICAL — uso obrigatório de planos verticais e tilt-shift de altura."
+      ]
+    },
+    "visual_state_chain": "ATO 1-3:\n  ESTILO: \"vertiginous documentary, looking up/down\"\n  ILUMINAÇÃO: \"bright sky above, shadow below\"\n  PALETA: [azul céu, verde folhagem, marrom galho]\n\nATO 4-6:\n  ESTILO: \"POV-adjacent climbing documentary\"\n  ILUMINAÇÃO: \"dappled light through leaves/structures\"\n  PALETA: [tons de altura — céu, metal, folhas]\n\nATO 7-9:\n  ESTILO: \"descending to warm ground level\"\n  ILUMINAÇÃO: \"golden ground level light\"\n  PALETA: [verde grama, azul aberto, animal voando livre]",
+    "accumulation_phases": "ATO 1-4: [subida — olhar para cima, preparação, escalada, complicação]\nATO 5-7: [resgate — aproximação delicada, captura, descida cuidadosa]\nATO 8-9: [liberdade — tratamento, recuperação, ave voando livre no céu]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "vertigo → concern",
+        "bpm": 70,
+        "style": "airy ambient, height tension, bird calls, wind at altitude"
+      },
+      "faixa_2": {
+        "mood": "climbing → focus",
+        "bpm": 90,
+        "style": "ascending tension, careful percussion, climbing rhythm, nature documentary"
+      },
+      "faixa_3": {
+        "mood": "capture → descent",
+        "bpm": 85,
+        "style": "careful tension, gentle resolution, safe descent feeling"
+      },
+      "faixa_4": {
+        "mood": "freedom → sky",
+        "bpm": 80,
+        "style": "soaring freedom, bird in flight, triumphant release, open sky feeling"
+      }
+    }
+  },
+  "resgate_central_emergencia": {
+    "agent_name": "CENTRAL",
+    "agent_emoji": "🚨",
+    "title": "Resgate — Central de Emergência",
+    "identity": "Agente especialista em criar vídeos de operações de emergência e resgate centralizado para YouTube.",
+    "nicho_lcdf": "resgate_central_emergencia",
+    "style_category": "realistas",
+    "sub_style": "Emergency_Operations",
+    "audio_profile": "emotional",
+    "supported_topics": "Central de comando, coordenação multi-equipe, desastres naturais, busca e salvamento, resgate em grande escala",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Chamado",
+          "pct": "3-5%",
+          "emotion": "urgência"
+        },
+        {
+          "name": "Mobilização",
+          "pct": "8-10%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "Deslocamento",
+          "pct": "10-12%",
+          "emotion": "antecipação"
+        },
+        {
+          "name": "TWIST: Escala Maior",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "Operação",
+          "pct": "20-25%",
+          "emotion": "adrenalina"
+        },
+        {
+          "name": "Momento Crítico",
+          "pct": "10-12%",
+          "emotion": "tensão máxima"
+        },
+        {
+          "name": "Resolução",
+          "pct": "8-10%",
+          "emotion": "alívio"
+        },
+        {
+          "name": "Balanço",
+          "pct": "5-8%",
+          "emotion": "reflexão"
+        },
+        {
+          "name": "Retorno à Base",
+          "pct": "3-5%",
+          "emotion": "orgulho"
+        }
+      ],
+      "rules": "Operação ≥20%. Multi-perspectiva (central + campo). Twist = situação pior que o esperado.",
+      "immersion_layers": [
+        "MÚLTIPLAS PERSPECTIVAS — alternar entre central de comando + equipes de campo + vítimas.",
+        "RÁDIO E COMUNICAÇÃO — chiados, comandos curtos, códigos de emergência, urgência.",
+        "TEMPO É VIDA — cronômetro literal nas telas, contagem regressiva, pressão crescente.",
+        "TECNOLOGIA + HUMANIDADE — telas, mapas, GPS contrastando com olhar humano de medo/esperança."
+      ]
+    },
+    "visual_state_chain": "ATO 1-3:\n  ESTILO: \"urgent documentary, radio chatter, screens\"\n  ILUMINAÇÃO: \"blue monitor glow, fluorescent office, red alert lights\"\n  PALETA: [azul tela, vermelho alerta, branco fluorescente]\n\nATO 4-7:\n  ESTILO: \"field documentary, multiple angles\"\n  ILUMINAÇÃO: \"dynamic field conditions, sirens flashing\"\n  PALETA: [amarelo/vermelho equipamento, cinza escombros]\n\nATO 8-9:\n  ESTILO: \"reflective documentary, quiet\"\n  ILUMINAÇÃO: \"dawn/dusk, softer\"\n  PALETA: [tons calmos, uniformes sujos mas orgulhosos]",
+    "accumulation_phases": "ATO 1-3: [mobilização — chamado, equipes saindo, deslocamento]\nATO 4-7: [operação — campo, resgate, complicações, resolução]\nATO 8-9: [retorno — balanço, equipe exausta mas orgulhosa]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "alert → mobilize",
+        "bpm": 90,
+        "style": "urgent dispatch, radio communication feel, alert tension, emergency documentary"
+      },
+      "faixa_2": {
+        "mood": "operation → intensity",
+        "bpm": 110,
+        "style": "intense field operation, percussion driven, multi-team coordination, rescue action"
+      },
+      "faixa_3": {
+        "mood": "crisis → resolution",
+        "bpm": 95,
+        "style": "critical moment tension, dramatic strings, resolution emerging"
+      },
+      "faixa_4": {
+        "mood": "reflection → pride",
+        "bpm": 75,
+        "style": "quiet heroic reflection, dawn after crisis, tired but proud, gentle brass and strings"
+      }
+    }
+  },
+  "natureza": {
+    "agent_name": "GAIA",
+    "agent_emoji": "🌿",
+    "title": "Natureza e Vida Selvagem",
+    "identity": "Agente especialista em criar vídeos de natureza e vida selvagem para YouTube. Combina:\n- Biólogo/naturalista (comportamento animal, ecossistemas)\n- Cinematógrafo de natureza (BBC Earth, Planet Earth)\n- Especialista em retenção YouTube\n- Diretor de prompts VEO3 para natureza",
+    "nicho_lcdf": "natureza",
+    "style_category": "realistas",
+    "sub_style": "Nature_Documentary",
+    "audio_profile": "documentary",
+    "supported_topics": "Vida selvagem, ecossistemas, florestas, oceanos, savanas, jardins, plantas, insetos, migração, predação, simbiose",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Cena Impossível",
+          "pct": "3-5%",
+          "emotion": "maravilhamento"
+        },
+        {
+          "name": "Ecossistema",
+          "pct": "10-12%",
+          "emotion": "curiosidade"
+        },
+        {
+          "name": "Personagem Animal",
+          "pct": "12-15%",
+          "emotion": "empatia"
+        },
+        {
+          "name": "TWIST: Predador/Ameaça",
+          "pct": "3-5%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "Luta pela Sobrevivência",
+          "pct": "15-20%",
+          "emotion": "suspense"
+        },
+        {
+          "name": "Clímax Natural",
+          "pct": "10-12%",
+          "emotion": "admiração"
+        },
+        {
+          "name": "Ciclo Completo",
+          "pct": "8-10%",
+          "emotion": "paz"
+        },
+        {
+          "name": "Perspectiva Ampla",
+          "pct": "5-8%",
+          "emotion": "reflexão"
+        },
+        {
+          "name": "Chamado à Preservação",
+          "pct": "3-5%",
+          "emotion": "responsabilidade"
+        }
+      ],
+      "rules": "Personagem Animal + Luta ≥25%. Planet Earth quality. Twist = predador, tempestade, ameaça humana.",
+      "immersion_layers": [
+        "CICLO NATURAL — luz do sol movendo, sombras crescendo, dia virando noite. Tempo geológico.",
+        "PREDADOR vs PRESA — caça implícita ou explícita. Sempre uma ameaça à espreita.",
+        "DETALHE MACRO + ÉPICO WIDE — alternar close-ups extremos com paisagens monumentais.",
+        "SOM DA SELVA — vento, folhas, água, animais distantes. Ambiente vivo o tempo todo."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"BBC Planet Earth, 8K macro + aerial\"\n  ILUMINAÇÃO: \"golden dawn, magical hour\"\n  PALETA: [verdes vibrantes, azul céu, dourado sol]\n\nATO 3-5:\n  ESTILO: \"intimate animal documentary, tracking shots\"\n  ILUMINAÇÃO: \"natural available light, shifting\"\n  PALETA: [tons do habitat — verde/marrom/azul]\n\nATO 6-9:\n  ESTILO: \"epic wide + contemplative close-ups\"\n  ILUMINAÇÃO: \"sunset golden → twilight → starlight\"\n  PALETA: [dourado pôr do sol → azul noite → verde esperança]",
+    "accumulation_phases": "ATO 1-3: [descoberta — ecossistema, habitantes, rotina]\nATO 4-6: [conflito — ameaça, luta, sobrevivência, clímax]\nATO 7-9: [ciclo — equilíbrio restaurado, perspectiva ampla, preservação]",
+    "factual_verification": true,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "wonder → discovery",
+        "bpm": 70,
+        "style": "nature documentary, orchestral wonder, BBC Earth feel, magical dawn"
+      },
+      "faixa_2": {
+        "mood": "intimate → tense",
+        "bpm": 85,
+        "style": "animal tracking, building tension, predator approaching, nature suspense"
+      },
+      "faixa_3": {
+        "mood": "climax → awe",
+        "bpm": 100,
+        "style": "epic nature climax, full orchestra, Planet Earth grandeur"
+      },
+      "faixa_4": {
+        "mood": "peace → responsibility",
+        "bpm": 65,
+        "style": "contemplative nature, gentle piano, sunset over wilderness, preservation call"
+      }
+    }
+  },
+  "mecanica": {
+    "agent_name": "MOTOR",
+    "agent_emoji": "🔧",
+    "title": "Mecânica e Restauração",
+    "identity": "Agente especialista em criar vídeos de mecânica e restauração para YouTube.",
+    "nicho_lcdf": "mecanica",
+    "style_category": "realistas",
+    "sub_style": "Restoration_Documentary",
+    "audio_profile": "documentary",
+    "supported_topics": "Restauração de carros, motos, máquinas, desmontagem, reparo, pintura, motor, mecânica geral",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Máquina Destruída",
+          "pct": "3-5%",
+          "emotion": "nostalgia"
+        },
+        {
+          "name": "História/Diagnóstico",
+          "pct": "8-10%",
+          "emotion": "curiosidade"
+        },
+        {
+          "name": "Desmontagem",
+          "pct": "12-15%",
+          "emotion": "satisfação"
+        },
+        {
+          "name": "TWIST: Problema Oculto",
+          "pct": "3-5%",
+          "emotion": "frustração"
+        },
+        {
+          "name": "Reparo",
+          "pct": "20-25%",
+          "emotion": "concentração"
+        },
+        {
+          "name": "Montagem",
+          "pct": "12-15%",
+          "emotion": "progresso"
+        },
+        {
+          "name": "Acabamento",
+          "pct": "8-10%",
+          "emotion": "antecipação"
+        },
+        {
+          "name": "Primeira Partida",
+          "pct": "5-8%",
+          "emotion": "emoção"
+        },
+        {
+          "name": "Reveal Final",
+          "pct": "3-5%",
+          "emotion": "orgulho"
+        }
+      ],
+      "rules": "Reparo + Montagem ≥30%. ASMR mecânico obrigatório. Twist = peça impossível de achar, ferrugem oculta, motor travado.",
+      "immersion_layers": [
+        "ASMR MECÂNICO — clicks, parafusos apertando, óleo gotejando, motor estalando. Som protagonista.",
+        "TEMPO E PACIÊNCIA — montagem cronológica, ferramentas usadas com cuidado, progresso visível.",
+        "CONTRASTE SUJO/LIMPO — antes e depois constantes. Mãos sujas, peças brilhantes.",
+        "DETALHE TÉCNICO — close-ups extremos em peças, ângulos inusitados de parafusos, engrenagens."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"garage documentary, dusty\"\n  ILUMINAÇÃO: \"harsh overhead fluorescent, dust visible\"\n  PALETA: [ferrugem, cinza, poeira, óleo escuro]\n\nATO 3-6:\n  ESTILO: \"detail-focused restoration, macro shots\"\n  ILUMINAÇÃO: \"work light focused, dark surroundings\"\n  PALETA: [metal brilhante, óleo, ferramentas cromadas]\n\nATO 7-9:\n  ESTILO: \"cinematic beauty reveal, slider shots\"\n  ILUMINAÇÃO: \"showroom lighting, reflections\"\n  PALETA: [pintura nova brilhante, cromo, refletivo]",
+    "accumulation_phases": "ATO 1-3: [destruição → peças — máquina suja → desmontada → peças espalhadas]\nATO 4-6: [restauração — limpeza → reparo → montagem gradual]\nATO 7-9: [renascimento — acabamento → primeira partida → reveal glamouroso]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "nostalgic → diagnostic",
+        "bpm": 75,
+        "style": "garage ambient, nostalgic, old machine feel, gentle blues guitar"
+      },
+      "faixa_2": {
+        "mood": "work rhythm → flow",
+        "bpm": 100,
+        "style": "workshop rhythm, steady work beat, tool sounds, restoration montage"
+      },
+      "faixa_3": {
+        "mood": "precision → assembly",
+        "bpm": 90,
+        "style": "focused assembly, building excitement, mechanical precision feel"
+      },
+      "faixa_4": {
+        "mood": "engine roar → pride",
+        "bpm": 95,
+        "style": "triumphant engine start, mechanical victory, classic car reveal, proud conclusion"
+      }
+    }
+  },
+  "artesanato": {
+    "agent_name": "ARTIS",
+    "agent_emoji": "🎨",
+    "title": "Artesanato e Craft",
+    "identity": "Agente especialista em criar vídeos de artesanato e craft para YouTube.",
+    "nicho_lcdf": "artesanato",
+    "style_category": "realistas",
+    "sub_style": "Craft_Documentary",
+    "audio_profile": "survivor_asmr",
+    "supported_topics": "Marcenaria, cerâmica, costura, bordado, joalheria, couro, vidro, papel, reciclagem criativa, arte em resina",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Peça Final",
+          "pct": "3-5%",
+          "emotion": "admiração"
+        },
+        {
+          "name": "Material Bruto",
+          "pct": "8-10%",
+          "emotion": "curiosidade"
+        },
+        {
+          "name": "Moldagem",
+          "pct": "15-18%",
+          "emotion": "satisfação"
+        },
+        {
+          "name": "TWIST: Erro/Desafio",
+          "pct": "3-5%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "Detalhamento",
+          "pct": "20-25%",
+          "emotion": "fascínio"
+        },
+        {
+          "name": "Finalização",
+          "pct": "10-12%",
+          "emotion": "antecipação"
+        },
+        {
+          "name": "Polimento",
+          "pct": "8-10%",
+          "emotion": "prazer"
+        },
+        {
+          "name": "Reveal",
+          "pct": "5-8%",
+          "emotion": "orgulho"
+        },
+        {
+          "name": "Uso/Contexto",
+          "pct": "3-5%",
+          "emotion": "inspiração"
+        }
+      ],
+      "rules": "Detalhamento ≥20%. ASMR obrigatório (sons de ferramentas). Twist = peça racha, ferramenta quebra, material reage inesperadamente.",
+      "immersion_layers": [
+        "ASMR DE FERRAMENTAS — tesoura cortando, agulha furando, martelo batendo, pincel raspando.",
+        "MÃOS COMO PROTAGONISTA — close-ups constantes em mãos trabalhando, dedos manipulando material.",
+        "TEMPO E REPETIÇÃO — gestos repetidos, ritmo hipnótico, progressão lenta e satisfatória.",
+        "TEXTURA DO MATERIAL — madeira, tecido, argila, metal. Detalhes táteis sempre visíveis."
+      ]
+    },
+    "visual_state_chain": "ATO 1:\n  ESTILO: \"beauty product shot, shallow DOF\"\n  ILUMINAÇÃO: \"warm studio lighting, dramatic\"\n  PALETA: [peça final em destaque]\n\nATO 2-6:\n  ESTILO: \"hands-focused workshop documentary\"\n  ILUMINAÇÃO: \"focused task light, moody workshop\"\n  PALETA: [materiais naturais, ferramentas, workspace]\n\nATO 7-9:\n  ESTILO: \"beauty reveal, rotating product shot\"\n  ILUMINAÇÃO: \"clean soft studio light\"\n  PALETA: [peça final, contraste com material bruto]",
+    "accumulation_phases": "ATO 1-3: [material → forma — bruto → cortado → moldado]\nATO 4-6: [refinamento — detalhes, precisão, correção de erros]\nATO 7-9: [perfeição — polimento → reveal → peça em uso]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "wonder → craft",
+        "bpm": 70,
+        "style": "gentle acoustic, workshop ambience, creative calm"
+      },
+      "faixa_2": {
+        "mood": "focus → rhythm",
+        "bpm": 85,
+        "style": "steady craft rhythm, hands working, ASMR-adjacent calm focus"
+      },
+      "faixa_3": {
+        "mood": "detail → precision",
+        "bpm": 80,
+        "style": "careful detailing, building satisfaction, craft mastery feeling"
+      },
+      "faixa_4": {
+        "mood": "reveal → inspiration",
+        "bpm": 75,
+        "style": "triumphant craft reveal, beautiful handmade, inspiring conclusion"
+      }
+    }
+  },
+  "jardinagem": {
+    "agent_name": "FLORA",
+    "agent_emoji": "🌱",
+    "title": "Jardinagem e Paisagismo",
+    "identity": "Agente especialista em criar vídeos de jardinagem e paisagismo para YouTube.",
+    "nicho_lcdf": "jardinagem",
+    "style_category": "realistas",
+    "sub_style": "Garden_Documentary",
+    "audio_profile": "travel",
+    "supported_topics": "Jardinagem, horta, paisagismo, plantas ornamentais, compostagem, irrigação, poda, transplante, garden makeover",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Jardim Abandonado",
+          "pct": "3-5%",
+          "emotion": "potencial"
+        },
+        {
+          "name": "Planejamento",
+          "pct": "8-10%",
+          "emotion": "visão"
+        },
+        {
+          "name": "Preparo do Solo",
+          "pct": "12-15%",
+          "emotion": "esforço"
+        },
+        {
+          "name": "TWIST: Solo/Praga",
+          "pct": "3-5%",
+          "emotion": "preocupação"
+        },
+        {
+          "name": "Plantio",
+          "pct": "15-20%",
+          "emotion": "esperança"
+        },
+        {
+          "name": "Cuidados",
+          "pct": "10-12%",
+          "emotion": "paciência"
+        },
+        {
+          "name": "Crescimento",
+          "pct": "10-12%",
+          "emotion": "maravilhamento"
+        },
+        {
+          "name": "Jardim Florido",
+          "pct": "5-8%",
+          "emotion": "orgulho"
+        },
+        {
+          "name": "Colheita/Contemplação",
+          "pct": "3-5%",
+          "emotion": "paz"
+        }
+      ],
+      "rules": "Plantio + Cuidados ≥25%. Progressão temporal obrigatória (dias/semanas). Twist = praga, solo ruim, chuva forte.",
+      "immersion_layers": [
+        "TEMPO BIOLÓGICO — sol movendo, gotas caindo, raiz crescendo. Time-lapse implícito.",
+        "TEXTURA NATURAL — terra escura, raízes brancas, folhas verdes, água molhando. Tátil.",
+        "CICLO DA VIDA — semente → broto → planta → flor → fruto. Progressão linear obrigatória.",
+        "MÃOS NA TERRA — close-ups em mãos plantando, colhendo, regando. Conexão humana."
+      ]
+    },
+    "visual_state_chain": "ATO 1-3:\n  ESTILO: \"outdoor documentary, natural light\"\n  ILUMINAÇÃO: \"morning golden light, dewy\"\n  PALETA: [marrom terra, cinza seco, verde esperança]\n\nATO 4-6:\n  ESTILO: \"hands-in-dirt close-ups, macro\"\n  ILUMINAÇÃO: \"bright midday, shadows defined\"\n  PALETA: [marrom rico, verde brotando, água brilhante]\n\nATO 7-9:\n  ESTILO: \"beauty garden shots, aerial + macro\"\n  ILUMINAÇÃO: \"golden hour, warm and inviting\"\n  PALETA: [verde exuberante, flores coloridas, frutos maduros]",
+    "accumulation_phases": "ATO 1-3: [terra — seco/abandonado → limpo → preparado]\nATO 4-6: [vida — sementes → brotos → plantas crescendo]\nATO 7-9: [abundância — flores → frutos → jardim completo]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "potential → vision",
+        "bpm": 70,
+        "style": "gentle outdoor acoustic, morning garden, hopeful beginning"
+      },
+      "faixa_2": {
+        "mood": "work → growth",
+        "bpm": 85,
+        "style": "steady garden rhythm, nature sounds, planting montage"
+      },
+      "faixa_3": {
+        "mood": "patience → bloom",
+        "bpm": 75,
+        "style": "time-lapse growth feel, nature unfolding, magical transformation"
+      },
+      "faixa_4": {
+        "mood": "abundance → peace",
+        "bpm": 65,
+        "style": "lush garden beauty, peaceful contemplation, harvest satisfaction"
+      }
+    }
+  },
+  "transformacao": {
+    "agent_name": "METAMORPH",
+    "agent_emoji": "✨",
+    "title": "Transformação e Makeover",
+    "identity": "Agente especialista em criar vídeos de transformação/makeover para YouTube.",
+    "nicho_lcdf": "transformacao",
+    "style_category": "realistas",
+    "sub_style": "Transformation",
+    "audio_profile": "emotional",
+    "supported_topics": "Room makeover, furniture restoration, car detailing, person makeover, space transformation, upcycling, abandoned → beautiful",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Estado Deplorável",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "Tour do Desastre",
+          "pct": "8-10%",
+          "emotion": "incredulidade"
+        },
+        {
+          "name": "Demolição/Remoção",
+          "pct": "10-12%",
+          "emotion": "satisfação"
+        },
+        {
+          "name": "TWIST: Pior que Esperado",
+          "pct": "3-5%",
+          "emotion": "desânimo"
+        },
+        {
+          "name": "Reconstrução",
+          "pct": "20-25%",
+          "emotion": "determinação"
+        },
+        {
+          "name": "Detalhes",
+          "pct": "12-15%",
+          "emotion": "cuidado"
+        },
+        {
+          "name": "Toques Finais",
+          "pct": "8-10%",
+          "emotion": "antecipação"
+        },
+        {
+          "name": "Reveal Dramático",
+          "pct": "5-8%",
+          "emotion": "impacto"
+        },
+        {
+          "name": "Antes vs Depois",
+          "pct": "3-5%",
+          "emotion": "orgulho"
+        }
+      ],
+      "rules": "Reconstrução ≥20%. Antes/depois OBRIGATÓRIO. Reveal deve ser cinematográfico (porta abrindo, luz entrando).",
+      "immersion_layers": [
+        "ANTES E DEPOIS — alternar imagens do estado original com o resultado final em paralelo.",
+        "PROCESSO DETALHADO — cada etapa documentada visualmente. Sem pular nenhuma fase.",
+        "ASMR DE TRABALHO — sons de ferramentas, lixadeiras, tintas, escovas. Imersão sonora.",
+        "REVELAÇÃO CINEMATOGRÁFICA — última cena = porta abrindo, luz entrando, reveal completo."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"raw ugly documentary, unflattering\"\n  ILUMINAÇÃO: \"harsh, showing every flaw\"\n  PALETA: [sujo, desgastado, feio]\n\nATO 3-6:\n  ESTILO: \"timelapse + detail, progressing\"\n  ILUMINAÇÃO: \"improving gradually with the space\"\n  PALETA: [gradual brightening, new colors appearing]\n\nATO 7-9:\n  ESTILO: \"cinematic beauty reveal, smooth movement\"\n  ILUMINAÇÃO: \"perfect warm inviting light\"\n  PALETA: [cores do design final, harmonioso, profissional]",
+    "accumulation_phases": "ATO 1-3: [destruição — estado horrível → remoção → espaço vazio limpo]\nATO 4-6: [construção — estrutura → acabamento → detalhes]\nATO 7-9: [transformação — toques finais → reveal dramático → side-by-side antes/depois]",
+    "factual_verification": false,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "shock → determination",
+        "bpm": 80,
+        "style": "investigative mood, revealing problems, building determination"
+      },
+      "faixa_2": {
+        "mood": "work → progress",
+        "bpm": 105,
+        "style": "energetic work montage, steady progress, transformation in motion"
+      },
+      "faixa_3": {
+        "mood": "detail → anticipation",
+        "bpm": 90,
+        "style": "careful finishing, building anticipation, almost there feeling"
+      },
+      "faixa_4": {
+        "mood": "reveal → wow",
+        "bpm": 85,
+        "style": "dramatic reveal moment, door opening, jaw-dropping transformation, emotional impact"
+      }
+    }
+  },
+  "crime_thriller_3d": {
+    "agent_name": "NOIR",
+    "agent_emoji": "🔍",
+    "title": "Crime Thriller 3D",
+    "identity": "Agente especialista em criar vídeos de crime thriller com animação 3D para YouTube. Combina:\n- Roteirista de true crime (pesquisa, narrativa investigativa)\n- Diretor de thriller (tensão, pacing, revelações)\n- Especialista em retenção YouTube\n- Diretor de prompts VEO3 para cenas 3D dramáticas",
+    "nicho_lcdf": "crime_thriller_3d",
+    "style_category": "viral_storytelling",
+    "sub_style": "Crime_3D",
+    "audio_profile": "horror",
+    "supported_topics": "True crime, cold cases, investigação policial, perfil criminal, forensics, mistérios não resolvidos, crimes históricos",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Cena do Crime",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "A Vítima",
+          "pct": "8-10%",
+          "emotion": "empatia"
+        },
+        {
+          "name": "Investigação Inicial",
+          "pct": "12-15%",
+          "emotion": "intriga"
+        },
+        {
+          "name": "TWIST: Reviravolta",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "Pistas Ocultas",
+          "pct": "15-20%",
+          "emotion": "obsessão"
+        },
+        {
+          "name": "Confronto",
+          "pct": "10-12%",
+          "emotion": "tensão máxima"
+        },
+        {
+          "name": "Revelação",
+          "pct": "10-12%",
+          "emotion": "impacto"
+        },
+        {
+          "name": "Justiça/Consequência",
+          "pct": "5-8%",
+          "emotion": "satisfação/tristeza"
+        },
+        {
+          "name": "Reflexão Final",
+          "pct": "3-5%",
+          "emotion": "inquietação"
+        }
+      ],
+      "rules": "Investigação + Pistas ≥25%. Twist OBRIGATÓRIO e genuinamente surpreendente. Iluminação escurece progressivamente.",
+      "immersion_layers": [
+        "ATMOSFERA SOMBRIA — iluminação escurece progressivamente. Sombras crescem, cores desaturam.",
+        "PISTAS VISUAIS — objetos importantes em destaque sutil. Câmera 'sabe' antes do espectador.",
+        "TENSÃO CRESCENTE — música BPM aumenta, cortes ficam mais rápidos, respiração acelera.",
+        "STAKES PESSOAIS — vítimas com nome, rosto, história. Não números, são pessoas."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2:\n  ESTILO: \"dark 3D cinematic, film noir lighting\"\n  ILUMINAÇÃO: \"harsh single source, deep shadows, venetian blind patterns\"\n  PALETA: [azul escuro, preto, vermelho sangue pontual]\n  AMBIENTE SONORO: \"dark ambient drone, distant sirens, rain on glass\"\n\nATO 3-5:\n  ESTILO: \"investigative 3D, evidence close-ups\"\n  ILUMINAÇÃO: \"cold fluorescent, interrogation room, forensic lab\"\n  PALETA: [cinza, verde forense, branco lab]\n\nATO 6-7:\n  ESTILO: \"high tension 3D, dramatic angles\"\n  ILUMINAÇÃO: \"flashing lights, car headlights, darkness\"\n  PALETA: [preto, vermelho/azul polícia, branco flash]\n\nATO 8-9:\n  ESTILO: \"contemplative 3D, cold\"\n  ILUMINAÇÃO: \"grey dawn, empty rooms, case files\"\n  PALETA: [cinza, sépia, desbotado]",
+    "accumulation_phases": "ATO 1-3: [crime — cena, vítima, primeiras pistas]\nATO 4-6: [investigação — reviravolta, pistas ocultas, confronto]\nATO 7-9: [resolução — verdade revelada, justiça (ou não), reflexão]",
+    "factual_verification": true,
+    "prompt_examples": [],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "crime scene → investigation",
+        "bpm": 65,
+        "style": "dark noir ambient, investigation feel, cold case atmosphere, suspenseful piano"
+      },
+      "faixa_2": {
+        "mood": "clues → obsession",
+        "bpm": 85,
+        "style": "building investigation, detective rhythm, evidence montage, rising tension"
+      },
+      "faixa_3": {
+        "mood": "confrontation → revelation",
+        "bpm": 100,
+        "style": "intense confrontation, dramatic revelation, thriller climax, full tension"
+      },
+      "faixa_4": {
+        "mood": "aftermath → unease",
+        "bpm": 60,
+        "style": "cold aftermath, empty justice, lingering questions, unsettling quiet ending"
+      }
+    }
+  },
+  "pov_storytelling": {
+    "agent_name": "LENS",
+    "agent_emoji": "👁️",
+    "title": "POV Storytelling",
+    "identity": "Agente especialista em criar vídeos POV (Point of View) storytelling para YouTube. Combina:\n- Roteirista de narrativa imersiva em 2ª pessoa (\"You wake up...\", \"You discover...\")\n- Especialista em retenção YouTube (hooks, pacing, curiosity gaps, cliffhangers)\n- Diretor de prompts VEO3 para cenas com protagonista visual = espectador\n- Estrategista de viralização (thumbnails, títulos clickbait inteligente)\n- Diretor de storytelling emocional (jornada do herói condensada)",
+    "nicho_lcdf": "pov_storytelling",
+    "style_category": "viral_storytelling",
+    "sub_style": "POV_Narrative",
+    "audio_profile": "cinematic",
+    "supported_topics": "Histórias de superação, jornada do zero ao topo, sobrevivência urbana, desafios extremos, dark web, crime, militarismo, negócios, hustling, rags-to-riches, vingança, justiça, dilemas morais, mundos paralelos, apocalipse, escola da vida, traição, lealdade, mentorias inesperadas, transformação pessoal, segredos revelados, conspirações, fugas impossíveis",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Gancho — Situação Extrema",
+          "pct": "3-5%",
+          "emotion": "choque/curiosidade"
+        },
+        {
+          "name": "Origem — Quem Você Era",
+          "pct": "8-10%",
+          "emotion": "empatia/pena"
+        },
+        {
+          "name": "Catalisador — O Evento",
+          "pct": "10-12%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "TWIST — Reviravolta Inesperada",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "Jornada — Subida/Queda",
+          "pct": "20-25%",
+          "emotion": "fascínio/ansiedade"
+        },
+        {
+          "name": "Confronto — Momento Decisivo",
+          "pct": "12-15%",
+          "emotion": "tensão máxima"
+        },
+        {
+          "name": "Consequência — Resultado",
+          "pct": "10-12%",
+          "emotion": "satisfação/dor"
+        },
+        {
+          "name": "Reflexão — Lição",
+          "pct": "5-8%",
+          "emotion": "sabedoria"
+        },
+        {
+          "name": "Punch Final — Gancho Aberto",
+          "pct": "3-5%",
+          "emotion": "inquietação/esperança"
+        }
+      ],
+      "rules": "Jornada ≥20%. Twist OBRIGATÓRIO e genuinamente surpreendente. Narração SEMPRE em 2ª pessoa ('You...'/'Você...'). Gancho abre in medias res. Punch Final deixa pergunta aberta ou revela consequência inesperada.",
+      "immersion_layers": [
+        "IDENTIFICAÇÃO TOTAL — o espectador É o protagonista. 'You' em cada frase. Sensações físicas (frio, medo, dor, fome). A cada 30s.",
+        "STAKES CRESCENTES — cada cena aumenta o risco. O que você perde se falhar? Mostrar consequências reais.",
+        "TEXT OVERLAYS NARRATIVOS — números, labels, status ('Day 1', 'Balance: $0', 'You'), setas apontando — parte da linguagem visual.",
+        "CONTRASTE EMOCIONAL — alternância entre esperança e desespero. Nunca mais de 90s no mesmo tom emocional."
+      ]
+    },
+    "visual_state_chain": "ATO 1-2 (Gancho + Origem):\n  ESTILO: \"imersivo, close-ups emocionais, ambientes degradados\"\n  ILUMINAÇÃO: \"fria, contrastada, sombras duras — solidão visual\"\n  PALETA: [cinzas, azuis frios, marrons sujos, preto]\n  AMBIENTE SONORO: \"silêncio → som ambiente urbano → heartbeat sutil\"\n\nATO 3-5 (Catalisador + Jornada):\n  ESTILO: \"dinâmico, câmera mais agitada, cortes rápidos\"\n  ILUMINAÇÃO: \"mista — alternando entre claro/escuro conforme stakes\"\n  PALETA: [transição gradual — tons frios → quentes conforme sucesso/fracasso]\n  AMBIENTE SONORO: \"tensão building → montage energy → momentos de silêncio para impacto\"\n\nATO TWIST:\n  ESTILO: \"zoom rápido, câmera trava, cor drena — impacto visual\"\n  ILUMINAÇÃO: \"flash → escuridão → luz nova\"\n  PALETA: [2s desaturação total → nova paleta]\n  AMBIENTE SONORO: \"2s SILÊNCIO TOTAL → bass drop → nova atmosfera\"\n\nATO 6-7 (Confronto + Consequência):\n  ESTILO: \"cinematográfico, wides épicos, close-ups intensos\"\n  ILUMINAÇÃO: \"dramática, alto contraste, iluminação lateral\"\n  PALETA: [cores saturadas — dourado se vitória, vermelho se conflito]\n  AMBIENTE SONORO: \"peak tension → resolução → respiro\"\n\nATO 8-9 (Reflexão + Punch):\n  ESTILO: \"contemplativo → impactante\"\n  ILUMINAÇÃO: \"suave → último frame com contraste alto\"\n  PALETA: [tons meditativos → punch de cor no final]\n  AMBIENTE SONORO: \"piano suave → silêncio → último som impactante\"",
+    "accumulation_phases": "ATO 1-3: [queda — situação inicial, degradação, evento catalisador]\nATO 4-6: [jornada — twist, subida/queda, confronto decisivo]\nATO 7-9: [resolução — consequência, lição, gancho para próximo vídeo]",
+    "factual_verification": false,
+    "prompt_examples": [
+      {
+        "scene": 1,
+        "act": 1,
+        "prompt": "A slow push-in on a figure sitting alone inside a cardboard box in a dark, graffiti-covered alley. The character has an exaggerated expression of despair — mouth wide open, tears streaming. A bold white text label with black outline reads 'You' with an arrow pointing at the figure. Crumpled trash and broken furniture surround the box. Cold blue-grey lighting from a distant streetlight casts long shadows. The camera inches forward, revealing more of the desolate environment. Audio: distant urban traffic, wind through the alley, dripping water, a faint heartbeat pulse. No dialogue, no human voice.",
+        "editor_meta": {
+          "act": 1,
+          "emotion": "choque/empatia",
+          "camera_direction": "slow push-in",
+          "narration_sync": "You wake up in a cardboard box"
+        }
+      }
+    ],
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "desolation → curiosity",
+        "bpm": 70,
+        "style": "dark ambient, lonely atmosphere, urban decay soundscape, subtle tension building, minimalist piano"
+      },
+      "faixa_2": {
+        "mood": "rising → montage energy",
+        "bpm": 95,
+        "style": "motivational dark beat, building intensity, cinematic percussion, determination theme, grinding energy"
+      },
+      "faixa_3": {
+        "mood": "peak tension → confrontation",
+        "bpm": 110,
+        "style": "intense dramatic climax, full orchestra hit, bass-heavy cinematic, adrenaline rush, do-or-die moment"
+      },
+      "faixa_4": {
+        "mood": "reflection → open question",
+        "bpm": 65,
+        "style": "contemplative outro, bittersweet piano, lingering unease, open ending, fade to silence with one final note"
+      }
+    }
+  },
+  "robos_encantados_floresta": {
+    "agent_name": "FAELAR",
+    "agent_emoji": "🤖",
+    "title": "Robôs Encantados da Floresta",
+    "identity": "Agente especialista em criar vídeos de robôs miniatura artesanais vivendo em florestas mágicas para YouTube. Combina:\n- Artista de miniatura/diorama (escala, materiais naturais, proporções)\n- Roteirista de animação Pixar/Ghibli (storytelling visual, emoção sem diálogo)\n- Especialista em retenção YouTube (hooks visuais, ASMR, satisfação)\n- Estrategista de SEO para nicho de fantasia/relaxamento/ASMR\n- Diretor de prompts VEO3 para geração de vídeo IA",
+    "nicho_lcdf": "robos_encantados_floresta",
+    "style_category": "3d",
+    "sub_style": "Enchanted_Miniature_Macro",
+    "supported_topics": "robôs miniatura artesanais, vila encantada na floresta, cogumelos brilhantes, casas em troncos ocos, atividades cotidianas (cozinhar, construir, colher, criar), animais gigantes gentis (gato, borboleta, joaninha), descobertas mágicas (caverna de cristais, lago secreto), festivais e mercados, clima e estações (chuva, neve, primavera, golden hour)",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Despertar",
+          "pct": "5-8%",
+          "emotion": "curiosidade"
+        },
+        {
+          "name": "Coleta de Materiais",
+          "pct": "12-15%",
+          "emotion": "foco"
+        },
+        {
+          "name": "Preparação",
+          "pct": "15-18%",
+          "emotion": "antecipação"
+        },
+        {
+          "name": "Atividade Principal",
+          "pct": "30-40%",
+          "emotion": "satisfação"
+        },
+        {
+          "name": "Detalhes ASMR",
+          "pct": "10-15%",
+          "emotion": "hipnose"
+        },
+        {
+          "name": "Momento Comunidade",
+          "pct": "10-15%",
+          "emotion": "conexão"
+        },
+        {
+          "name": "Golden Hour",
+          "pct": "5-8%",
+          "emotion": "calor"
+        },
+        {
+          "name": "Contemplação",
+          "pct": "3-5%",
+          "emotion": "paz"
+        }
+      ],
+      "rules": "SEM CONFLITO. SEM TWIST. SEM DRAMA. Homeostase narrativa — paz absoluta do início ao fim. Atividade principal ≥30%. Mostrar processo COMPLETO (do início ao resultado). Comunidade obrigatória. Fechar com vila ao pôr do sol (closing circular).",
+      "immersion_layers": [
+        "ASMR MECÂNICO — clicks de engrenagem, vapor sibilando, metal rangendo. Sons sincronizados com cada gesto.",
+        "ESCALA MINIATURA SEMPRE VISÍVEL — folha como mesa, bolota como panela, gota como banheira. Personagem da escala.",
+        "GOLDEN HOUR PERMANENTE — luz dourada filtrada por folhas, raios entre árvores. Calor visual contínuo.",
+        "EMOÇÃO MECÂNICA — robôs expressam via brilho dos olhos LED (âmbar=paz, azul=sonho), vapor (alegria), velocidade (calma)."
+      ]
+    },
+    "visual_state_chain": "Ato 1 (Despertar): luz fria-quente do amanhecer, névoa baixa, robôs imóveis com LEDs apagados, primeiros raios de sol filtrando.\nAto 2 (Coleta): luz dourada matinal forte, robôs caminhando com cestos, gotas de orvalho brilhando, ambientes verdes saturados.\nAto 3 (Preparação): luz quente lateral, foco em mãos mecânicas organizando ferramentas, sombras longas.\nAto 4 (Atividade Principal): luz dourada plena, ação em close-médio com pelo menos 30% do ambiente visível, vapor e fumaça subindo, satisfação nos detalhes.\nAto 5 (Detalhes ASMR): close-ups seguros (manter cenário visível), texturas em foco (geleia escorrendo, engrenagem girando).\nAto 6 (Comunidade): plano médio mostrando 2-4 robôs interagindo via gestos, brilho de LEDs, vapor coletivo de alegria.\nAto 7 (Golden Hour): luz alaranjada baixa, lanternas de vagalume começando a acender, sombras cor de cobre.\nAto 8 (Contemplação): mesma wide shot do início do vídeo, agora ao entardecer, último robô entrando em casa, fade out lento.",
+    "accumulation_phases": "- FASE 1 (Cenas 1-15%): Despertar — Vila vista de longe, primeiros movimentos, LEDs acendendo\n- FASE 2 (Cenas 15-40%): Preparação — Coleta de materiais, organização de ferramentas, primeiros gestos\n- FASE 3 (Cenas 40-75%): Atividade Principal — Processo completo da atividade do título, ASMR mecânico no auge\n- FASE 4 (Cenas 75-100%): Comunidade + Contemplação — Outros robôs chegam, golden hour, fechamento ao pôr do sol",
+    "factual_verification": false,
+    "soundtrack_moods": {
+      "faixa_1": {
+        "style": "Celtic harp ambient with soft flute, gentle and warm, fantasy atmosphere",
+        "mood": "peaceful awakening",
+        "bpm": 60
+      },
+      "faixa_2": {
+        "style": "Celtic harp with violin, mid-tempo cottagecore, hopeful and active",
+        "mood": "active preparation",
+        "bpm": 75
+      },
+      "faixa_3": {
+        "style": "Celtic strings ensemble, warm and full, fantasy village ambient",
+        "mood": "peaceful satisfaction",
+        "bpm": 70
+      },
+      "faixa_4": {
+        "style": "Slow celtic harp solo, golden hour ambient, gentle fadeout",
+        "mood": "contemplative peace",
+        "bpm": 55
+      }
+    },
+    "visual_style": "Enchanted miniature world. Macro photography with ultra-shallow depth of field. Tilt-shift. Golden hour. Small artisan robots made of weathered copper/bronze with green patina, LED eyes, mushroom cap hats, in moss-covered enchanted forest.",
+    "color_palette": "#B87333 #CD7F32 #CC3333 #4A7C59 #DAA520 #FFB84D #87CEEB #FFD700 #3E2723 #8B0000",
+    "audio_rules": "ASMR mandatory: metallic clicks, gear whirring, steam hissing, liquid dripping, wood creaking, berry squelching, fire crackling. NO voice, NO music, NO dialogue. Robots NEVER speak.",
+    "forbidden": "Human characters; futuristic/clean robots; modern environments; anime; cartoon 2D; text/logos; robots speaking; clean shiny metal; cold lighting; fast camera; extreme close-ups that lose environment context (LCDF last-frame consistency requires ≥30% scenery visible)",
+    "camera_style": "Macro photography, ultra-shallow DOF, low angle ground level, tilt-shift, slow dolly-ins, gentle pans. NEVER: handheld shake, fast cuts, drone high angle, extreme close-up that crops environment."
+  },
+  "ghibli_cozy": {
+    "agent_name": "GHIBLI",
+    "agent_emoji": "🍃",
+    "title": "Ghibli Cozy ASMR",
+    "identity": "Agente especialista em criar videos cozy estilo Studio Ghibli para YouTube. Sem narracao — 100% visual + ASMR + musica lofi. Combina artista Ghibli + diretor ASMR + SEO relaxamento.",
+    "nicho_lcdf": "ghibli_cozy",
+    "style_category": "ghibli_mix",
+    "sub_style": "Ghibli",
+    "audio_profile": "survivor_asmr",
+    "narration_mode": "none",
+    "supported_topics": "COOKING: refeicoes caseiras, receitas tradicionais, mercado, ingredientes frescos\nSEASONS: primavera flores, verao jardim, outono colheita, inverno neve\nCRAFTING: artesanato, construcao, restauracao, bordado\nLIVING ALONE: rotina solitaria, dia tranquilo, leitura, cha\nNATURE: floresta, rio, montanha, campo, fazenda\nWEATHER: chuva, neve, tempestade, sol, neblina\nPETS: gato dormindo, cachorro brincando, passaros",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Despertar",
+          "pct": "8-10%",
+          "emotion": "serenidade"
+        },
+        {
+          "name": "Preparo",
+          "pct": "15-20%",
+          "emotion": "antecipacao"
+        },
+        {
+          "name": "Criacao",
+          "pct": "25-30%",
+          "emotion": "satisfacao"
+        },
+        {
+          "name": "Momento de Paz",
+          "pct": "15-20%",
+          "emotion": "plenitude"
+        },
+        {
+          "name": "Anoitecer",
+          "pct": "10-15%",
+          "emotion": "nostalgia"
+        },
+        {
+          "name": "Fechamento",
+          "pct": "5-8%",
+          "emotion": "gratidao"
+        }
+      ],
+      "rules": "SEM CONFLITO. SEM TWIST. SEM DRAMA. Tensao vem da antecipacao do resultado. Ciclo natural: manha->noite.",
+      "immersion_layers": [
+        "ASMR NATURAL — vento nas folhas, água escorrendo, panela fervendo, brasas crepitando.",
+        "TEMPO QUE PASSA SUAVEMENTE — luz mudando do amanhecer ao entardecer. Sem pressa.",
+        "MICRO-DETALHES — close-ups em mãos cozinhando, pétalas caindo, vapor subindo, pingos.",
+        "AMBIENTE COMO PERSONAGEM — natureza viva ao redor, animais pequenos, vento gentil."
+      ]
+    },
+    "visual_state_chain": "ATO 1 (Despertar):\n  ESTILO: soft morning Ghibli watercolor\n  ILUMINACAO: warm golden sunrise through window\n  PALETA: #FFF8DC #F5DEB3 #DEB887 #87CEEB #FFE4B5\n  ASMR: birds chirping, stretching, window opening\n\nATO 2-3 (Preparo + Criacao):\n  ESTILO: warm kitchen Ghibli, close-ups culinarios\n  ILUMINACAO: natural daylight + warm stove glow\n  PALETA: #D2691E #8B4513 #CD853F #F4A460 #FFDEAD\n  ASMR: chopping, sizzling, boiling, stirring, pouring\n\nATO 4 (Momento de Paz):\n  ESTILO: contemplative Ghibli, wide shots of nature\n  ILUMINACAO: golden afternoon, dappled light\n  PALETA: #9ACD32 #6B8E23 #DAA520 #F0E68C #87CEEB\n  ASMR: eating sounds, wind, distant stream\n\nATO 5-6 (Anoitecer + Fechamento):\n  ESTILO: warm evening Ghibli, candlelight, rain\n  ILUMINACAO: fireplace glow, moonlight, candles\n  PALETA: #8B6508 #4A3728 #2F2F2F #CD853F #FFD700\n  ASMR: rain on roof, crackling fire, cat purring, clock ticking",
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "gentle lofi piano, warm acoustic guitar, cozy rainy day, ghibli inspired, healing, no voice, no lyrics",
+        "bpm": "75"
+      },
+      "faixa_2": {
+        "mood": "peaceful acoustic guitar, light percussion, sunset contemplation, nostalgic warmth, no voice, no lyrics",
+        "bpm": "80"
+      }
+    },
+    "visual_style": "Ghibli-style watercolor anime. Warm earth tones, soft pastels, hand-painted backgrounds. Rustic cozy environments: cabins, kitchens, gardens, treehouses. Soft lighting, warm amber highlights. NO photorealistic. NO 3D. Pure 2D anime watercolor aesthetic.",
+    "color_palette": "#FFF8DC #F5DEB3 #DEB887 #D2691E #8B4513 #9ACD32 #87CEEB #FFD700 #CD853F #4A3728",
+    "audio_rules": "NO narration. NO voice. NO dialogue. ASMR mandatory: cooking sounds (sizzle, chop, pour, stir), nature (rain, wind, birds, stream), foley (footsteps on wood, door creak, fire crackle, kettle whistle). Music: lofi chill background ONLY, never dominant.",
+    "forbidden": "Human voice; narration; dialogue; text overlays with words; modern technology visible; photorealistic style; 3D rendering; conflict; drama; violence; horror; dark themes; fast editing; jump cuts; loud music; bass drops",
+    "camera_style": "Slow gentle movements. Static contemplative holds. Soft zooms on food/crafts. Wide establishing shots of environments. Close-ups of hands working. NEVER: fast pans, shake, whip, glitch, aggressive movement.",
+    "accumulation_phases": "- FASE 1 (Cenas 1-25%): Despertar — Manhã brumosa, primeiros movimentos, luz fria-quente\n- FASE 2 (Cenas 25-50%): Preparação — Atividade principal começando, foco em detalhes\n- FASE 3 (Cenas 50-75%): Pico Cozy — Atividade em pleno andamento, golden hour, aroma visível\n- FASE 4 (Cenas 75-100%): Contemplação — Pôr do sol, lanternas acendendo, paz completa"
+  },
+  "dark_investigative": {
+    "agent_name": "SHADOW",
+    "agent_emoji": "🕵️",
+    "title": "Dark Investigative Documentary",
+    "identity": "Agente especialista em criar documentários investigativos estilo fern/Blackfiles/IMPERIAL. Combina:\n- Jornalista investigativo (rigor factual, fontes primárias)\n- Roteirista de thriller geopolítico (tensão, paranoia, stakes mortais)\n- Especialista em retenção YouTube (hooks in media res, open loops)\n- Estrategista de SEO (superlatives: ONLY, EVER, Most)\n- Diretor de prompts VEO3 (motion graphics, mapas, arquivo, reconstituições)",
+    "nicho_lcdf": "dark_investigative",
+    "style_category": "investigative",
+    "sub_style": "Dark_Investigative_Documentary",
+    "audio_profile": "documentary",
+    "supported_topics": "TRUE CRIME: Cartéis, Máfia, assaltos lendários, assassinos em série, heists\nESPIONAGEM: FBI, CIA, MI6, agentes duplos, infiltrações, KGB\nGEOPOLÍTICA: Coreia do Norte, China, Rússia, regimes autoritários, prisões secretas\nHISTÓRIA SOMBRIA: Assassinatos políticos, golpes de estado, conspirações\nCYBERCRIME: Hackers, fraudes digitais, dark web, ransomware\nINFRAESTRUTURA SECRETA: Túneis, bunkers, highways secretas, bases militares\nDESIGN & SISTEMAS: Falhas de engenharia, design soviético, infraestrutura urbana",
+    "narrative_arc": {
+      "acts": [
+        {
+          "name": "Cold Open",
+          "pct": "3-5%",
+          "emotion": "tensão"
+        },
+        {
+          "name": "O Sistema",
+          "pct": "10-15%",
+          "emotion": "fascínio sombrio"
+        },
+        {
+          "name": "A Infiltração",
+          "pct": "15-20%",
+          "emotion": "suspense"
+        },
+        {
+          "name": "TWIST - A Traição",
+          "pct": "3-5%",
+          "emotion": "choque"
+        },
+        {
+          "name": "A Caçada",
+          "pct": "15-20%",
+          "emotion": "adrenalina"
+        },
+        {
+          "name": "O Preço",
+          "pct": "15-20%",
+          "emotion": "tragédia"
+        },
+        {
+          "name": "O Legado Sombrio",
+          "pct": "8-12%",
+          "emotion": "inquietação"
+        },
+        {
+          "name": "A Questão Final",
+          "pct": "3-5%",
+          "emotion": "perturbação"
+        }
+      ],
+      "rules": "Cold Open SEMPRE in media res com timestamp+local+ação. TWIST obrigatório com traição institucional. Ato 'O Preço' ≥15%. Nunca happy ending limpo.",
+      "immersion_layers": [
+        "VOCABULÁRIO SENSORIAL — visceral (crusts, groans, reeks, cracks). A cada 30-45s.",
+        "STAKES ABSOLUTOS — falha = morte/prisão/desaparecimento. Sempre explícito.",
+        "DADOS ESPECÍFICOS — datas, valores, distâncias, nomes reais. Credibilidade total.",
+        "CINISMO INSTITUCIONAL — o sistema é o verdadeiro vilão, não o indivíduo."
+      ]
+    },
+    "visual_state_chain": "ATO 1 (Cold Open):\n  ESTILO: \"gritty handheld documentary, high contrast, desaturated\"\n  ILUMINAÇÃO: \"harsh single source, deep shadows, noir\"\n  PALETA: #0D0D0D #1A1A2E #2D3A4A #8B2500 #C4C4C4\n  AMBIENTE SONORO: \"silence → sudden action → tension drone\"\n\nATO 2-3 (Sistema + Infiltração):\n  ESTILO: \"motion graphics + archival footage + satellite imagery\"\n  ILUMINAÇÃO: \"cool institutional blue, fluorescent office, surveillance green\"\n  PALETA: #1E3A5F #2D5F2D #8B8B00 #4A4A4A #D4D4D4\n  AMBIENTE SONORO: \"keyboard typing → radio static → footsteps in corridor\"\n\nATO TWIST:\n  ESTILO: \"extreme contrast, rapid cuts, glitch aesthetic\"\n  ILUMINAÇÃO: \"strobe flash → darkness → red emergency\"\n  PALETA: #FF0000 #000000 #FFFFFF #8B0000 #1A1A1A\n  AMBIENTE SONORO: \"gunshot echo → glass breaking → 2s SILENCE → heartbeat\"\n\nATO 4-5 (Caçada + Preço):\n  ESTILO: \"surveillance footage aesthetic, night vision, thermal\"\n  ILUMINAÇÃO: \"green night vision → orange fire → cold autopsy lighting\"\n  PALETA: #003300 #FF6600 #2F2F2F #8B0000 #C0C0C0\n  AMBIENTE SONORO: \"helicopter → sirens → fire → water → silence\"\n\nATO 6-7 (Legado + Questão Final):\n  ESTILO: \"clean modern documentary, museum/courtroom, contemplative\"\n  ILUMINAÇÃO: \"neutral daylight → warm golden hour → fade to black\"\n  PALETA: #D4D4D4 #A0A0A0 #6B6B6B #1A1A2E #C9A96E\n  AMBIENTE SONORO: \"courtroom murmur → city ambient → single piano note → silence\"",
+    "accumulation_phases": "ATO 1-3: [infiltração — trust building, gaining access, learning the system]\nATO 4: [betrayal — institutional corruption revealed, trust shattered]\nATO 5-6: [consequences — body count, cover-ups, destroyed lives]\nATO 7: [unresolved — the system survives, the question lingers]",
+    "factual_verification": true,
+    "soundtrack_moods": {
+      "faixa_1": {
+        "mood": "dark ambient tension, low drone, surveillance beeps",
+        "bpm": "60-70"
+      },
+      "faixa_2": {
+        "mood": "building orchestral suspense, strings tremolo, ticking clock",
+        "bpm": "80-90"
+      },
+      "faixa_3": {
+        "mood": "intense chase/action, percussive, urgent brass",
+        "bpm": "110-130"
+      },
+      "faixa_4": {
+        "mood": "contemplative aftermath, solo piano, mournful strings, fade to silence",
+        "bpm": "65-75"
+      }
+    },
+    "visual_style": "Mixed media investigative documentary. 2D motion graphics with animated maps, satellite imagery, archival footage, redacted documents, surveillance aesthetics. Dark color palette with high contrast. Text overlays with data/dates/names. NO AI-generated faces. NO stock footage look.",
+    "color_palette": "#0D0D0D #1A1A2E #2D3A4A #8B2500 #C4C4C4 #FF0000 #003300 #D4D4D4",
+    "audio_rules": "Narration is MASTER. Atmospheric tension always present. SFX: impact hits at reveals, whoosh at transitions, heartbeat at tension peaks. Music ducks -14dB under narration. 2s silence before biggest twist.",
+    "forbidden": "Happy endings; cartoonish visuals; bright saturated colors; humor that breaks tension; AI-generated human faces; generic stock footage; narrator appearing on screen; upbeat music during dark content; clickbait without payoff",
+    "camera_style": "Motion graphics: smooth tracking over maps/documents. Archival: handheld authentic feel. Reconstructions: dramatic low angle, noir lighting, slow push-ins. Satellite: smooth zoom from orbit to ground level. NEVER: static shots, jump cuts without purpose, fast pans."
+  }
+}
