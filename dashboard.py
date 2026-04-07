@@ -1882,133 +1882,322 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
             if thumb_url
             else '<div class="placeholder thumb-ph">Thumb não gerada</div>'
         )
+        views = esc(v.get("views_estimate") or "")
+        duration = esc(v.get("duration") or "")
         videos_html += f"""
         <div class="video-card">
-            <div class="video-thumb">{thumb}</div>
+            <div class="video-thumb">{thumb}<span class="duration-badge">{duration}</span></div>
             <div class="video-meta">
+                <div class="video-num">VÍDEO {i + 1:02d}</div>
                 <div class="video-title">{esc(v.get("title") or "")}</div>
-                <div class="video-views">{esc(v.get("views_estimate") or "")} views previstos · {esc(v.get("duration") or "")}</div>
+                <div class="video-views">▶ {views} views previstos</div>
             </div>
         </div>"""
 
-    weaknesses_html = "".join(f'<li>{esc(w)}</li>' for w in weaknesses[:6])
+    weaknesses_html = "".join(f'<li><span class="check">✓</span> {esc(w)}</li>' for w in weaknesses[:6])
     tags_html = "".join(f'<span class="tag">{esc(t)}</span>' for t in tags[:20])
     hashtags_html = "".join(f'<span class="hashtag">{esc(h)}</span>' for h in hashtags[:15])
     keywords_html = "".join(f'<span class="keyword">{esc(k)}</span>' for k in keywords[:15])
 
-    # Pre-build conditional sections (Python 3.11 forbids backslashes inside f-string expressions)
-    disclaimer_section = f'<div class="disclaimer">{disclaimer}</div>' if disclaimer else ""
-    description_section = f'<section><h3>📝 Descrição do Canal</h3><p>{description}</p></section>' if description else ""
+    # Pre-build conditional blocks (Python 3.11 forbids backslashes inside f-string expressions)
+    disclaimer_block = f'<div class="disclaimer-card"><div class="disclaimer-icon">⚠</div><div class="disclaimer-text">{disclaimer}</div></div>' if disclaimer else ""
+    description_block = f'<section class="block"><div class="block-eyebrow">01 · POSICIONAMENTO</div><h2 class="block-title">A promessa do canal</h2><p class="block-body">{description}</p></section>' if description else ""
 
-    superior_inner = f'<p>{whats_better}</p>'
+    superior_inner = ""
+    if whats_better:
+        superior_inner += f'<p class="block-body">{whats_better}</p>'
     if weaknesses_html:
-        superior_inner += f'<ul class="weaknesses">{weaknesses_html}</ul>'
+        superior_inner += f'<div class="weaknesses-title">Fraquezas do mercado que você corrige</div><ul class="weaknesses">{weaknesses_html}</ul>'
     if strategy_edge:
-        superior_inner += f'<div class="strategy">📈 {strategy_edge}</div>'
-    superior_section = (
-        f'<section><h3>🏆 Por que este canal é superior</h3>{superior_inner}</section>'
+        superior_inner += f'<div class="strategy-callout"><div class="strategy-label">📈 ESTRATÉGIA DE CRESCIMENTO</div><div class="strategy-body">{strategy_edge}</div></div>'
+    superior_block = (
+        f'<section class="block"><div class="block-eyebrow">03 · DIFERENCIAL COMPETITIVO</div><h2 class="block-title">Por que este canal vai dominar</h2>{superior_inner}</section>'
         if (whats_better or weaknesses_html)
         else ""
     )
 
-    tags_section = f'<section><h3>🏷️ Tags YouTube</h3><div>{tags_html}</div></section>' if tags_html else ""
-    hashtags_section = f'<section><h3>#️⃣ Hashtags</h3><div>{hashtags_html}</div></section>' if hashtags_html else ""
-    keywords_section = f'<section><h3>🔑 Keywords</h3><div>{keywords_html}</div></section>' if keywords_html else ""
+    tags_row = f'<div class="seo-row"><div class="seo-label">🏷️ Tags YouTube · {len(tags)}</div><div class="seo-chips">{tags_html}</div></div>' if tags_html else ""
+    hashtags_row = f'<div class="seo-row"><div class="seo-label">#️⃣ Hashtags · {len(hashtags)}</div><div class="seo-chips">{hashtags_html}</div></div>' if hashtags_html else ""
+    keywords_row = f'<div class="seo-row"><div class="seo-label">🔑 Keywords · {len(keywords)}</div><div class="seo-chips">{keywords_html}</div></div>' if keywords_html else ""
+    seo_block = f'<section class="block"><div class="block-eyebrow">04 · SEO PACK</div><h2 class="block-title">Otimização para o algoritmo</h2><p class="block-body small">Conjunto pronto pra colar no YouTube Studio. Tudo no idioma do canal e calibrado pro nicho.</p>{tags_row}{hashtags_row}{keywords_row}</section>' if (tags_html or hashtags_html or keywords_html) else ""
 
     handle = channel_name.lower().replace(" ", "")
-    sub_extra = f" → {sub_12} (12m)" if sub_12 else ""
+    sub_6_display = sub_est or "—"
+    sub_12_display = sub_12 or "—"
+
+    from datetime import datetime as _dt
+    today_br = _dt.now().strftime("%d/%m/%Y")
+
+    project_label = esc((proj or {}).get("name") or m.get("channel_name") or "")
+    lang_upper = language.upper()
+
+    # Cover hero — uses banner image as background if available
+    if images.get("banner"):
+        hero_bg = f'background-image: linear-gradient(180deg, rgba(10,10,15,0.55) 0%, rgba(10,10,15,0.95) 100%), url("{esc(images.get("banner"))}"); background-size: cover; background-position: {banner_pos};'
+    else:
+        hero_bg = f'background: linear-gradient(135deg, {primary}, #0a0a0f);'
+
+    seo_page = (
+        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name}</div></div>{seo_block}<div class="page-footer"><div>{channel_name}</div><div>Página 04</div></div></div>'
+        if seo_block
+        else ""
+    )
 
     html_doc = f"""<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Identidade do Canal — {channel_name}</title>
+<title>Identidade Estratégica — {channel_name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * {{ box-sizing: border-box; }}
-  html, body {{ margin: 0; padding: 0; font-family: -apple-system, 'Segoe UI', Inter, Roboto, sans-serif; color: #111; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
-  .page {{ max-width: 820px; margin: 0 auto; padding: 32px 36px 60px; }}
-  header.cover {{ background: linear-gradient(135deg, {primary}, {accent}); color: #fff; padding: 28px 32px; border-radius: 14px; margin-bottom: 22px; }}
-  header.cover h1 {{ margin: 0 0 4px; font-size: 28px; letter-spacing: -0.02em; }}
-  header.cover .sub {{ font-size: 13px; opacity: 0.92; }}
-  header.cover .lang-badge {{ display: inline-block; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,0.25); font-size: 11px; font-weight: 600; margin-top: 8px; }}
-  .disclaimer {{ background: #fff8e1; border-left: 4px solid {accent}; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: #7a5b00; margin-bottom: 22px; line-height: 1.5; }}
-  .banner-wrap {{ width: 100%; aspect-ratio: 5.4/1; max-height: 260px; min-height: 130px; overflow: hidden; border-radius: 12px; background: #111; margin-bottom: 18px; }}
-  .banner-wrap img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
-  .channel-header {{ display: flex; align-items: center; gap: 18px; padding: 12px 0 22px; border-bottom: 1px solid #eee; margin-bottom: 22px; }}
-  .channel-header .logo {{ width: 86px; height: 86px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, {primary}, {accent}); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 32px; }}
-  .channel-header .logo img {{ width: 135%; height: 135%; object-fit: cover; }}
-  .channel-header h2 {{ margin: 0 0 4px; font-size: 22px; }}
-  .channel-header .stats {{ font-size: 12px; color: #666; }}
-  .channel-header .stats strong {{ color: #16a34a; }}
-  .channel-header .tagline {{ font-size: 13px; color: #444; margin-top: 4px; font-style: italic; }}
-  section {{ margin-bottom: 24px; page-break-inside: avoid; }}
-  section h3 {{ font-size: 14px; color: {primary}; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid {primary}; }}
-  section p {{ margin: 0 0 8px; line-height: 1.6; font-size: 13px; color: #222; }}
-  .videos-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
-  .video-card {{ border: 1px solid #eee; border-radius: 10px; overflow: hidden; background: #fafafa; }}
-  .video-thumb {{ width: 100%; aspect-ratio: 16/9; background: #111; }}
+  html, body {{ margin: 0; padding: 0; font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #f5f5f7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+  .doc {{ max-width: 880px; margin: 0 auto; background: #fff; box-shadow: 0 20px 80px rgba(0,0,0,0.08); }}
+  .page {{ padding: 60px 64px 90px; min-height: 1100px; position: relative; }}
+  .page-break {{ page-break-before: always; }}
+
+  /* COVER */
+  .cover {{ {hero_bg} background-color: #0a0a0f; color: #fff; padding: 80px 64px 50px; min-height: 1100px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }}
+  .cover-top {{ display: flex; justify-content: space-between; align-items: flex-start; }}
+  .cover-brand {{ display: flex; align-items: center; gap: 10px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.85; font-weight: 600; }}
+  .cover-brand-dot {{ width: 8px; height: 8px; border-radius: 50%; background: {accent}; box-shadow: 0 0 14px {accent}; }}
+  .cover-date {{ font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.7; }}
+  .cover-center {{ flex: 1; display: flex; flex-direction: column; justify-content: center; }}
+  .cover-eyebrow {{ font-size: 12px; letter-spacing: 0.4em; text-transform: uppercase; color: {accent}; font-weight: 700; margin-bottom: 18px; }}
+  .cover-title {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 76px; line-height: 0.95; letter-spacing: -0.02em; font-weight: 600; margin: 0 0 18px; text-shadow: 0 4px 30px rgba(0,0,0,0.6); }}
+  .cover-tagline {{ font-size: 18px; line-height: 1.5; font-weight: 300; max-width: 580px; opacity: 0.92; font-style: italic; }}
+  .cover-divider {{ width: 60px; height: 3px; background: {accent}; margin: 28px 0; border-radius: 2px; }}
+  .cover-meta {{ display: flex; gap: 36px; margin-top: 32px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500; opacity: 0.85; }}
+  .cover-meta span strong {{ display: block; color: {accent}; font-size: 14px; margin-bottom: 4px; font-weight: 700; letter-spacing: 0.05em; }}
+  .cover-bottom {{ padding-top: 28px; border-top: 1px solid rgba(255,255,255,0.18); display: flex; justify-content: space-between; align-items: center; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.6; }}
+
+  /* INNER PAGE */
+  .page-header {{ display: flex; justify-content: space-between; align-items: center; padding-bottom: 22px; margin-bottom: 38px; border-bottom: 1px solid #ececef; }}
+  .ph-brand {{ display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #888; font-weight: 600; }}
+  .ph-brand-dot {{ width: 6px; height: 6px; border-radius: 50%; background: {primary}; }}
+  .ph-channel {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 16px; color: #1a1a1a; font-weight: 600; }}
+  .page-footer {{ position: absolute; bottom: 30px; left: 64px; right: 64px; display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: #aaa; padding-top: 14px; border-top: 1px solid #ececef; }}
+
+  /* BLOCKS */
+  .block {{ margin-bottom: 50px; }}
+  .block-eyebrow {{ font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: {primary}; font-weight: 700; margin-bottom: 12px; }}
+  .block-title {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 38px; line-height: 1.05; letter-spacing: -0.01em; font-weight: 600; color: #0f0f12; margin: 0 0 22px; }}
+  .block-body {{ font-size: 14px; line-height: 1.75; color: #2a2a30; margin: 0 0 14px; font-weight: 400; }}
+  .block-body.small {{ font-size: 12px; color: #666; margin-bottom: 22px; }}
+
+  /* DISCLAIMER */
+  .disclaimer-card {{ display: flex; gap: 14px; align-items: flex-start; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fcd34d; border-left: 4px solid {accent}; border-radius: 10px; padding: 16px 20px; margin-bottom: 32px; }}
+  .disclaimer-icon {{ font-size: 22px; line-height: 1; color: #b45309; }}
+  .disclaimer-text {{ font-size: 12px; line-height: 1.6; color: #78350f; font-weight: 500; }}
+
+  /* IDENTITY CARD */
+  .identity-card {{ border-radius: 14px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.06); border: 1px solid #ececef; margin-bottom: 38px; }}
+  .identity-banner {{ width: 100%; aspect-ratio: 5.4/1; max-height: 280px; min-height: 150px; overflow: hidden; background: #0f0f12; }}
+  .identity-banner img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+  .identity-row {{ display: flex; align-items: center; gap: 22px; padding: 24px 28px; background: #fff; }}
+  .identity-logo {{ width: 92px; height: 92px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, {primary}, {accent}); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 36px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); border: 3px solid #fff; }}
+  .identity-logo img {{ width: 135%; height: 135%; object-fit: cover; }}
+  .identity-name {{ flex: 1; min-width: 0; }}
+  .identity-name h3 {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 30px; line-height: 1; font-weight: 700; margin: 0 0 4px; color: #0f0f12; letter-spacing: -0.01em; }}
+  .identity-handle {{ font-size: 12px; color: #888; font-weight: 500; }}
+  .identity-tag {{ font-size: 13px; color: #444; margin-top: 6px; font-style: italic; line-height: 1.5; }}
+  .identity-cta {{ padding: 10px 22px; border-radius: 22px; background: #0f0f12; color: #fff; font-size: 12px; font-weight: 700; flex-shrink: 0; }}
+
+  /* KPI STATS */
+  .stats-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 38px; }}
+  .stat-card {{ border: 1px solid #ececef; border-radius: 12px; padding: 22px 20px; background: linear-gradient(180deg, #fff, #fafafb); position: relative; }}
+  .stat-card::before {{ content: ''; position: absolute; top: 0; left: 0; width: 38px; height: 3px; background: {primary}; border-radius: 0 0 3px 0; }}
+  .stat-label {{ font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #888; font-weight: 700; margin-bottom: 10px; }}
+  .stat-value {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 32px; line-height: 1; font-weight: 700; color: #0f0f12; }}
+  .stat-sub {{ font-size: 10px; color: #aaa; margin-top: 4px; }}
+  .stat-card.accent {{ background: linear-gradient(180deg, {primary}, #1a1a2e); border: none; }}
+  .stat-card.accent::before {{ background: {accent}; }}
+  .stat-card.accent .stat-label {{ color: rgba(255,255,255,0.65); }}
+  .stat-card.accent .stat-value {{ color: #fff; }}
+  .stat-card.accent .stat-sub {{ color: rgba(255,255,255,0.55); }}
+
+  /* VIDEOS */
+  .videos-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
+  .video-card {{ border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid #ececef; box-shadow: 0 4px 16px rgba(0,0,0,0.04); page-break-inside: avoid; }}
+  .video-thumb {{ width: 100%; aspect-ratio: 16/9; background: #0f0f12; position: relative; overflow: hidden; }}
   .video-thumb img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
-  .video-meta {{ padding: 10px 12px; }}
-  .video-title {{ font-weight: 600; font-size: 12px; color: #111; line-height: 1.4; margin-bottom: 4px; }}
-  .video-views {{ font-size: 11px; color: #777; }}
-  .placeholder {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #888; font-size: 11px; background: repeating-linear-gradient(45deg, #f5f5f5, #f5f5f5 8px, #ececec 8px, #ececec 16px); }}
-  .weaknesses {{ margin: 0; padding-left: 18px; }}
-  .weaknesses li {{ font-size: 12px; line-height: 1.5; margin-bottom: 4px; color: #333; }}
-  .strategy {{ background: #f0fdf4; border-left: 3px solid #16a34a; padding: 10px 14px; border-radius: 6px; font-size: 12px; color: #14532d; margin-top: 10px; line-height: 1.5; font-style: italic; }}
-  .tag, .hashtag, .keyword {{ display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 11px; margin: 2px 3px 2px 0; }}
+  .duration-badge {{ position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.85); color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }}
+  .video-meta {{ padding: 14px 16px 16px; }}
+  .video-num {{ font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: {primary}; font-weight: 800; margin-bottom: 6px; }}
+  .video-title {{ font-weight: 600; font-size: 13px; color: #0f0f12; line-height: 1.4; margin-bottom: 8px; }}
+  .video-views {{ font-size: 11px; color: #999; font-weight: 500; }}
+  .placeholder {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 11px; background: repeating-linear-gradient(45deg, #f5f5f7, #f5f5f7 8px, #ececef 8px, #ececef 16px); }}
+
+  /* WEAKNESSES + STRATEGY */
+  .weaknesses-title {{ font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #c2410c; font-weight: 700; margin: 22px 0 12px; }}
+  .weaknesses {{ list-style: none; padding: 0; margin: 0 0 22px; }}
+  .weaknesses li {{ font-size: 13px; line-height: 1.6; color: #2a2a30; padding: 10px 0; border-bottom: 1px solid #f0f0f3; display: flex; gap: 10px; align-items: flex-start; }}
+  .weaknesses li:last-child {{ border-bottom: none; }}
+  .check {{ color: #16a34a; font-weight: 800; flex-shrink: 0; font-size: 14px; }}
+  .strategy-callout {{ background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #86efac; border-left: 4px solid #16a34a; border-radius: 10px; padding: 18px 22px; margin-top: 22px; }}
+  .strategy-label {{ font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: #166534; font-weight: 800; margin-bottom: 8px; }}
+  .strategy-body {{ font-size: 13px; line-height: 1.65; color: #14532d; font-weight: 500; font-style: italic; }}
+
+  /* SEO PACK */
+  .seo-row {{ margin-bottom: 26px; }}
+  .seo-label {{ font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #555; font-weight: 700; margin-bottom: 10px; }}
+  .seo-chips {{ display: flex; flex-wrap: wrap; gap: 6px; }}
+  .tag, .hashtag, .keyword {{ display: inline-block; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; }}
   .tag {{ background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }}
   .hashtag {{ background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }}
   .keyword {{ background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }}
-  footer {{ margin-top: 40px; padding-top: 14px; border-top: 1px solid #eee; font-size: 10px; color: #999; text-align: center; }}
-  .print-bar {{ position: fixed; top: 12px; right: 12px; background: #111; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 12px; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,0.3); }}
-  .print-bar button {{ margin-left: 10px; padding: 6px 12px; background: {accent}; color: #111; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }}
-  @media print {{ .print-bar {{ display: none; }} .page {{ padding: 0; max-width: none; }} body {{ background: #fff; }} }}
+
+  /* BACK COVER */
+  .back-cover {{ background: #0f0f12; color: #fff; min-height: 800px; padding: 180px 64px 80px; text-align: center; }}
+  .back-eyebrow {{ font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase; color: {accent}; font-weight: 700; margin-bottom: 24px; }}
+  .back-title {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 48px; font-weight: 600; margin: 0 0 22px; line-height: 1.05; letter-spacing: -0.01em; }}
+  .back-text {{ font-size: 15px; line-height: 1.75; max-width: 520px; margin: 0 auto 40px; color: rgba(255,255,255,0.78); font-weight: 300; }}
+  .back-line {{ width: 60px; height: 3px; background: {accent}; margin: 0 auto 40px; border-radius: 2px; }}
+  .back-meta {{ font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.5); }}
+
+  /* PRINT BAR */
+  .print-bar {{ position: fixed; top: 16px; right: 16px; background: #0f0f12; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 12px; z-index: 9999; box-shadow: 0 12px 40px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 14px; }}
+  .print-bar button {{ padding: 8px 16px; background: {accent}; color: #0f0f12; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 12px; }}
+
+  @media print {{
+    body {{ background: #fff; }}
+    .print-bar {{ display: none; }}
+    .doc {{ box-shadow: none; max-width: none; }}
+    .page {{ padding: 50px 50px 80px; }}
+    .cover {{ padding: 70px 50px 50px; }}
+    .back-cover {{ padding: 160px 50px 70px; }}
+    .page-footer {{ left: 50px; right: 50px; }}
+    section {{ page-break-inside: avoid; }}
+    .video-card {{ page-break-inside: avoid; }}
+  }}
+  @page {{ size: A4; margin: 0; }}
 </style>
 </head>
 <body>
 <div class="print-bar">
   💡 Use "Salvar como PDF" no diálogo de impressão
-  <button onclick="window.print()">📄 Imprimir / Salvar PDF</button>
+  <button onclick="window.print()">📄 Salvar PDF</button>
 </div>
-<div class="page">
-  <header class="cover">
-    <h1>{channel_name}</h1>
-    <div class="sub">{tagline}</div>
-    <div class="lang-badge">🌐 {language}</div>
-  </header>
 
-  {disclaimer_section}
+<div class="doc">
 
-  <div class="banner-wrap">{banner_html}</div>
-
-  <div class="channel-header">
-    <div class="logo">{logo_html}</div>
-    <div>
-      <h2>{channel_name}</h2>
-      <div class="stats">@{handle} · <strong>{sub_est} inscritos previstos (6m){sub_extra}</strong> · {len(videos)} vídeos</div>
-      <div class="tagline">{tagline}</div>
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-top">
+      <div class="cover-brand"><div class="cover-brand-dot"></div>Identidade Estratégica de Canal</div>
+      <div class="cover-date">{today_br}</div>
+    </div>
+    <div class="cover-center">
+      <div class="cover-eyebrow">Documento Confidencial · Mentoria</div>
+      <h1 class="cover-title">{channel_name}</h1>
+      <div class="cover-divider"></div>
+      <div class="cover-tagline">{tagline}</div>
+      <div class="cover-meta">
+        <span><strong>{lang_upper}</strong>Idioma</span>
+        <span><strong>{sub_6_display}</strong>Inscritos · 6m</span>
+        <span><strong>{sub_12_display}</strong>Inscritos · 12m</span>
+        <span><strong>{len(videos)}</strong>Vídeos iniciais</span>
+      </div>
+    </div>
+    <div class="cover-bottom">
+      <div>Projeto · {project_label}</div>
+      <div>Preparado pela Mentoria</div>
     </div>
   </div>
 
-  {description_section}
+  <!-- PAGE 2 — IDENTIDADE -->
+  <div class="page page-break">
+    <div class="page-header">
+      <div class="ph-brand"><div class="ph-brand-dot"></div>Identidade Visual</div>
+      <div class="ph-channel">{channel_name}</div>
+    </div>
 
-  <section>
-    <h3>🎬 Vídeos Iniciais (do SOP)</h3>
-    <div class="videos-grid">{videos_html}</div>
-  </section>
+    {disclaimer_block}
 
-  {superior_section}
+    <div class="block">
+      <div class="block-eyebrow">02 · IDENTIDADE VISUAL</div>
+      <h2 class="block-title">Como o canal aparece no YouTube</h2>
+      <p class="block-body small">Mockup completo do canal — banner, logo, header e os 4 vídeos iniciais. Pronto pra você reproduzir no canal real.</p>
 
-  {tags_section}
-  {hashtags_section}
-  {keywords_section}
+      <div class="identity-card">
+        <div class="identity-banner">{banner_html}</div>
+        <div class="identity-row">
+          <div class="identity-logo">{logo_html}</div>
+          <div class="identity-name">
+            <h3>{channel_name} ✓</h3>
+            <div class="identity-handle">@{handle} · {len(videos)} vídeos</div>
+            <div class="identity-tag">{tagline}</div>
+          </div>
+          <div class="identity-cta">Inscrever-se</div>
+        </div>
+      </div>
 
-  <footer>Identidade gerada pelo YT Channel Cloner — {language}</footer>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Inscritos · 6 meses</div>
+          <div class="stat-value">{sub_6_display}</div>
+          <div class="stat-sub">Estimativa SOP</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-label">Inscritos · 12 meses</div>
+          <div class="stat-value">{sub_12_display}</div>
+          <div class="stat-sub">Crescimento projetado</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Idioma do canal</div>
+          <div class="stat-value">{lang_upper}</div>
+          <div class="stat-sub">Otimizado pro algoritmo</div>
+        </div>
+      </div>
+    </div>
+
+    {description_block}
+
+    <div class="page-footer">
+      <div>{channel_name}</div>
+      <div>02</div>
+    </div>
+  </div>
+
+  <!-- PAGE 3 — VIDEOS -->
+  <div class="page page-break">
+    <div class="page-header">
+      <div class="ph-brand"><div class="ph-brand-dot"></div>Vídeos Iniciais</div>
+      <div class="ph-channel">{channel_name}</div>
+    </div>
+
+    <div class="block">
+      <div class="block-eyebrow">02 · CONTEÚDO INICIAL</div>
+      <h2 class="block-title">Os 4 primeiros vídeos do canal</h2>
+      <p class="block-body small">Títulos derivados diretamente do SOP do nicho, com thumbs cinematográficas e estimativas de views baseadas na força de cada hook.</p>
+      <div class="videos-grid">{videos_html}</div>
+    </div>
+
+    {superior_block}
+
+    <div class="page-footer">
+      <div>{channel_name}</div>
+      <div>03</div>
+    </div>
+  </div>
+
+  <!-- PAGE 4 — SEO -->
+  {seo_page}
+
+  <!-- BACK COVER -->
+  <div class="back-cover page-break">
+    <div class="back-eyebrow">Próximo passo</div>
+    <h2 class="back-title">Agora é executar.</h2>
+    <p class="back-text">Use este documento como blueprint. Cada elemento foi desenhado pra que seu canal nasça posicionado pra dominar o nicho desde o primeiro upload.</p>
+    <div class="back-line"></div>
+    <div class="back-meta">Documento gerado em {today_br}</div>
+  </div>
+
 </div>
+
 <script>
-  // Auto-trigger print after images load (so PDF includes them)
   window.addEventListener('load', function() {{
-    setTimeout(function() {{ window.print(); }}, 600);
+    setTimeout(function() {{ window.print(); }}, 800);
   }});
 </script>
 </body>
