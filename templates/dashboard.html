@@ -300,6 +300,16 @@
                         <div class="idea-check" onclick="toggleUsed({{ idea_id }})" title="Marcar como usado" role="button" tabindex="0" aria-label="Marcar como usado">{{ check_icon|safe }}</div>
                         <div class="idea-num">{{ num }}</div>
                         <div class="idea-title" onclick="showIdeaDetails({{ idea_id }})" style="cursor:pointer" title="Ver detalhes regionais">{{ title }}</div>
+                        {% set tlen = title|length %}
+                        {% if tlen > 100 %}
+                        <div style="font-size:11px;padding:3px 8px;border-radius:4px;background:#ef444422;color:#ef4444;white-space:nowrap;font-weight:700;border:1px solid #ef444440" title="EXCEDE limite do YouTube (100 chars). Use /api/admin/fix-long-titles para corrigir.">⚠ {{ tlen }}/100</div>
+                        {% elif tlen >= 95 %}
+                        <div style="font-size:11px;padding:3px 8px;border-radius:4px;background:#f59e0b22;color:#f59e0b;white-space:nowrap;font-weight:600" title="Proximo do limite do YouTube (100 chars)">{{ tlen }}/100</div>
+                        {% elif tlen >= 70 %}
+                        <div style="font-size:11px;padding:3px 8px;border-radius:4px;background:#22c55e22;color:#22c55e;white-space:nowrap;font-weight:500" title="Bom tamanho (YouTube limite: 100 chars)">{{ tlen }}/100</div>
+                        {% else %}
+                        <div style="font-size:11px;padding:3px 8px;border-radius:4px;background:#64748b22;color:#94a3b8;white-space:nowrap" title="Titulo curto (YouTube limite: 100 chars)">{{ tlen }}/100</div>
+                        {% endif %}
                         <div class="idea-pillar">{{ pillar }}</div>
                         <div class="idea-score" style="color:{{ sc }}" title="{{ rating }}">{{ score if score > 0 else '-' }}</div>
                         {% if idea.search_volume and idea.search_volume != 0 %}
