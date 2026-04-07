@@ -48,13 +48,19 @@ router = APIRouter(tags=["student"])
 
 
 def _get_student_resources(student_id: int) -> list[dict]:
-    """Get resources available to a student (global + targeted)."""
+    """Get resources available to a student (global + targeted).
+
+    target_student_id semantics:
+      - NULL = available to all students (new default)
+      - 0 = legacy value also treated as "all students" for backward compat
+      - <positive int> = specific student only
+    """
     try:
         from database import get_db
         with get_db() as conn:
             rows = conn.execute("""
                 SELECT * FROM admin_resources
-                WHERE active=1 AND (target_student_id=0 OR target_student_id=?)
+                WHERE active=1 AND (target_student_id IS NULL OR target_student_id=0 OR target_student_id=?)
                 ORDER BY created_at DESC
             """, (student_id,)).fetchall()
         return [dict(r) for r in rows]

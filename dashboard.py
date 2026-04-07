@@ -640,11 +640,12 @@ async def admin_student_detail(request: Request, student_id: int, user=Depends(r
         a["project_language"] = proj.get("language", "pt-BR") if proj else ""
 
     # Get resources for this student
+    # target_student_id semantics: NULL (or legacy 0) = all students | <int> = specific student
     student_resources = []
     try:
         with get_db() as conn:
             student_resources = [dict(r) for r in conn.execute(
-                "SELECT * FROM admin_resources WHERE active=1 AND (target_student_id=0 OR target_student_id=?) ORDER BY created_at DESC",
+                "SELECT * FROM admin_resources WHERE active=1 AND (target_student_id IS NULL OR target_student_id=0 OR target_student_id=?) ORDER BY created_at DESC",
                 (student_id,),
             ).fetchall()]
     except Exception:
@@ -2384,7 +2385,16 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
 @app.post("/api/admin/upload-resource")
 @limiter.limit("10/minute")
 async def api_upload_resource(request: Request, user=Depends(require_admin)):
-    """Upload a resource file for students to download."""
+    """Upload a resource file for students to download.
+
+    target_student_id semantics:
+      - NULL (or 0 on input) = available to ALL students
+      - <positive int> = restricted to that specific student (must exist in users table)
+
+    target_project_id semantics:
+      - '' = not tied to a specific project
+      - '<project_id>' = restricted to students assigned to that project
+    """
     from database import get_db
     from datetime import datetime
 
@@ -2395,11 +2405,23 @@ async def api_upload_resource(request: Request, user=Depends(require_admin)):
     category = form.get("category", "general").strip()
     badge_color = form.get("badge_color", "#7c3aed").strip()
     badge_icon = form.get("badge_icon", "📦").strip()
-    target_student = int(form.get("target_student_id", 0) or 0)
+    # target_student=0 means "all students" — must be stored as NULL to satisfy
+    # FOREIGN KEY constraint (id=0 does not exist in users table)
+    try:
+        _raw_target = int(form.get("target_student_id", 0) or 0)
+    except (ValueError, TypeError):
+        _raw_target = 0
+    target_student: int | None = _raw_target if _raw_target > 0 else None
     target_project = form.get("target_project_id", "").strip()
 
     if not file or not label:
         return JSONResponse({"error": "Arquivo e label obrigatorios"}, status_code=400)
+
+    # Validate target_student exists (if specific)
+    if target_student is not None:
+        from database import get_user
+        if not get_user(target_student):
+            return JSONResponse({"error": f"Aluno {target_student} nao encontrado"}, status_code=404)
 
     # Save file to output/resources/
     resources_dir = OUTPUT_DIR / "resources"
@@ -2411,14 +2433,25 @@ async def api_upload_resource(request: Request, user=Depends(require_admin)):
     content = await file.read()
     file_path.write_bytes(content)
 
-    with get_db() as conn:
-        conn.execute(
-            "INSERT INTO admin_resources (label, description, filename, file_path, file_size, category, badge_color, badge_icon, target_student_id, target_project_id, active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)",
-            (label, description, file.filename, str(safe_name), len(content), category, badge_color, badge_icon, target_student, target_project, datetime.now().isoformat()),
-        )
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO admin_resources (label, description, filename, file_path, file_size, category, badge_color, badge_icon, target_student_id, target_project_id, active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)",
+                (label, description, file.filename, str(safe_name), len(content), category, badge_color, badge_icon, target_student, target_project, datetime.now().isoformat()),
+            )
+    except Exception as exc:
+        # Clean up orphan file if DB insert failed
+        try:
+            if file_path.exists():
+                file_path.unlink()
+        except Exception:
+            pass
+        logger.exception("upload-resource INSERT failed: %s", exc)
+        raise
 
-    logger.info(f"Resource uploaded: {label} ({len(content)} bytes)")
-    return JSONResponse({"ok": True, "filename": file.filename, "size": len(content)})
+    scope = "TODOS os alunos" if target_student is None else f"aluno {target_student}"
+    logger.info(f"Resource uploaded: {label} ({len(content)} bytes) → {scope}")
+    return JSONResponse({"ok": True, "filename": file.filename, "size": len(content), "target": scope})
 
 
 @app.post("/api/admin/delete-resource")
