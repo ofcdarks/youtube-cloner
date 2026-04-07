@@ -99,6 +99,9 @@ EXEMPLOS DE STYLE GUIDES POR NICHO:
 - Crime/mistério: "Silhueta de figura misteriosa + cidade noturna + elemento simbólico (faca/máscara/símbolo), paleta fria teal/azul/vermelho sangue, texto sans bold condensed vermelho ou branco com glow, mood sombrio-tenso"
 - Tech/futurista: "Dispositivo futurista + elementos holográficos + neon ciano/roxo, paleta cyberpunk, texto sans bold geometric"
 - Faceless de curiosidades: "Objeto/cena misteriosa centralizada + texto bold curiosity-gap (números, perguntas), paleta saturada"
+- POV/cenário hipotético (estilo "POV: You're a..."): "ARQUÉTIPO MUITO ESPECÍFICO — NÃO confundir com cinematográfico. Estilo de annotation/scribble: personagem central em foto realista CRUA (não cinematográfica, mais documental), expressão neutra ou de tensão sutil, background simples relacionado ao cenário (uniforme militar, escritório, prisão, multidão, etc). TEXT OVERLAY estilo SCRIBBLE/HAND-DRAWN: 2-4 palavras curtas em FONTE BOLD MARKER ou HANDWRITTEN (estilo Permanent Marker, Caveat Brush, ou Impact riscado) em VERMELHO BRILHANTE ou BRANCO com outline preto, arranjadas em camadas (uma palavra por linha), com SETAS DESENHADAS À MÃO em preto ou vermelho apontando pro personagem ou pro elemento chave, círculos rabiscados destacando partes da imagem. Paleta: cores realistas naturais (não cinematográficas), apenas o texto + setas em vermelho/branco vibrante. Mood: documentário cru + meme curiosity-gap. Exemplos: 'You Don\\'t EXIST' com seta apontando pro soldado, 'Always WATCHING' apontando pro hacker encapuzado, 'NEVER GETTING OUT' apontando pro prisioneiro. NÃO use cinematic lighting, NÃO use god rays, NÃO use tipografia serifada clássica — isso é o OPOSTO do estilo POV."
+
+DETECÇÃO DE NICHO POV: Se o título do canal ou o seed_titles começar com "POV:", "What It's Like to Be", "Tu Vida Como", "Tu Vida en", ou similar, OBRIGATORIAMENTE use o style guide POV acima. NÃO use o estilo cinematográfico padrão pra esse tipo de canal.
 
 Cada thumbnail deve ter MÚLTIPLAS CAMADAS visuais:
 
@@ -150,8 +153,8 @@ OUTPUT JSON exato (preencha TODOS os campos):
   "disclaimer": "Aviso curto NO IDIOMA {language}: este canal é faceless e usa IA para reconstituir cenas/narrações com fins educativos. (~30-50 palavras)",
   "subscriber_estimate": "Estimativa REALISTA mas motivadora de inscritos em 6 meses postando 2-3x por semana com qualidade consistente (ex: '8K', '15K', '25K'). Pode mostrar potencial — mas não invente. Range típico de canal bem executado: 5K-30K em 6 meses.",
   "subscriber_estimate_12m": "Estimativa em 12 meses (ex: '40K', '85K', '150K'). Mostre o potencial real de execução disciplinada. Range típico: 30K-150K em 1 ano. Apenas casos virais excepcionais passam disso — não use 500K+.",
-  "rpm_estimate": "RPM MÉDIO realista do nicho no país {country} em USD (ex: '$2.50', '$8.00'). Use só o número médio típico.",
-  "rpm_max": "RPM MÁXIMO realista do nicho no país {country} em USD (ex: '$5.00', '$18.00'). Geralmente 1.8-2.5x o RPM médio. Considera vídeos com tópicos premium (finance, tech, B2B) e épocas de alta CPM (Q4).",
+  "rpm_estimate": "OBRIGATÓRIO. RPM MÉDIO realista do nicho no país {country} em USD. Formato: '$2.50', '$8.00'. NUNCA deixe vazio.",
+  "rpm_max": "OBRIGATÓRIO. RPM MÁXIMO realista do nicho no país {country} em USD. Deve ser ~2x o rpm_estimate (1.8-2.5x). Formato: '$5.00', '$18.00'. NUNCA deixe vazio — se não souber o exato, use o dobro do rpm_estimate.",
   "rpm_currency": "USD",
   "monthly_views_estimate": "Estimativa de views MENSAIS quando o canal estiver maduro (depois de 6 meses postando 2-3x por semana). Calcule: ~10-12 vídeos por mês × média de views por vídeo. Para 15K inscritos: ~80K-150K views/mês. Para 50K inscritos: ~300K-600K views/mês. Use formato '120K', '450K', '1.2M'. Seja realista mas mostre o potencial.",
   "adsense_monthly_estimate": "Estimativa de receita AdSense mensal em USD baseada em monthly_views × RPM × 0.55 (YouTube fica com 45%). Ex: 200K views × $3 RPM × 0.55 = ~$330/mês. Calcule e retorne formato '$330', '$1,200', '$4,500'. Esta é uma SUPOSIÇÃO baseada em médias de mercado.",

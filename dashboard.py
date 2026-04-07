@@ -1941,8 +1941,6 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     sub_12_display = sub_12 or "—"
     rpm_avg_raw = m.get("rpm_estimate") or ""
     rpm_max_raw = m.get("rpm_max") or ""
-    rpm_avg_display = esc(rpm_avg_raw or "—")
-    rpm_max_display = esc(rpm_max_raw or "—")
     rpm_currency = esc(m.get("rpm_currency") or "USD")
     monthly_views_display = esc(m.get("monthly_views_estimate") or "—")
     adsense_display = esc(m.get("adsense_monthly_estimate") or "—")
@@ -1962,7 +1960,14 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
             return 0.0
 
     rpm_avg_num = _parse_rpm(rpm_avg_raw)
-    rpm_max_num = _parse_rpm(rpm_max_raw) or (rpm_avg_num * 2 if rpm_avg_num else 0)
+    # Fallback: if AI didn't return rpm_max, default to 2x the avg
+    rpm_max_num = _parse_rpm(rpm_max_raw)
+    if rpm_max_num == 0 and rpm_avg_num > 0:
+        rpm_max_num = round(rpm_avg_num * 2, 2)
+
+    rpm_avg_display = esc(rpm_avg_raw or (f"${rpm_avg_num:.2f}" if rpm_avg_num else "—"))
+    rpm_max_display = esc(rpm_max_raw or (f"${rpm_max_num:.2f}" if rpm_max_num else "—"))
+
     creator_share = 0.55  # YouTube keeps 45%
 
     def _format_views(n: float) -> str:
@@ -2130,16 +2135,20 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   .path-1k-header {{ margin-bottom: 20px; }}
   .path-1k-eyebrow {{ font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: {accent}; font-weight: 800; margin-bottom: 8px; }}
   .path-1k-title {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 24px; line-height: 1.2; font-weight: 600; margin: 0; color: #fff; letter-spacing: -0.01em; }}
-  .path-1k-grid {{ display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 14px; }}
-  .path-1k-card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 16px 18px; }}
+  .path-1k-grid {{ display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 16px; align-items: stretch; }}
+  .path-1k-card {{ background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 18px 18px; display: flex; flex-direction: column; justify-content: center; }}
   .path-1k-card.best {{ background: linear-gradient(135deg, rgba({accent_rgb},0.22), rgba(255,255,255,0.04)); border-color: {accent}; }}
-  .path-1k-card-label {{ font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.6); font-weight: 700; margin-bottom: 8px; }}
+  .path-1k-card-label {{ font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.65); font-weight: 700; margin-bottom: 10px; }}
   .path-1k-card.best .path-1k-card-label {{ color: {accent}; }}
-  .path-1k-card-value {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 32px; line-height: 1; font-weight: 700; color: #fff; margin-bottom: 6px; }}
+  .path-1k-card-value {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 38px; line-height: 1; font-weight: 700; color: #fff; margin-bottom: 6px; }}
   .path-1k-card-sub {{ font-size: 10px; color: rgba(255,255,255,0.55); }}
-  .path-1k-formula {{ background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; justify-content: center; }}
-  .path-1k-formula-label {{ font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.5); font-weight: 700; margin-bottom: 6px; }}
-  .path-1k-formula-body {{ font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: rgba(255,255,255,0.85); line-height: 1.5; }}
+
+  /* MEDAL — first $1000 achievement */
+  .path-1k-medal {{ background: linear-gradient(135deg, rgba({accent_rgb},0.18), rgba(0,0,0,0.4)); border: 2px solid {accent}; border-radius: 14px; padding: 18px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; position: relative; box-shadow: inset 0 0 30px rgba({accent_rgb},0.15); }}
+  .medal-ring {{ width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba({accent_rgb},0.95), rgba({accent_rgb},0.55) 60%, rgba({accent_rgb},0.3)); display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba({accent_rgb},0.4), inset 0 -8px 20px rgba(0,0,0,0.3), inset 0 4px 12px rgba(255,255,255,0.3); border: 3px solid rgba(255,255,255,0.4); }}
+  .medal-amount {{ font-family: 'Cormorant Garamond', Georgia, serif; font-size: 36px; font-weight: 700; color: #1a0f00; line-height: 1; text-shadow: 0 1px 2px rgba(255,255,255,0.4); }}
+  .medal-label {{ font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(26,15,0,0.75); font-weight: 800; margin-top: 4px; }}
+  .medal-badge {{ font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: {accent}; font-weight: 800; padding: 5px 12px; border: 1px solid {accent}; border-radius: 999px; background: rgba(0,0,0,0.4); }}
 
   /* REALITY NOTE */
   .reality-note {{ background: #fff8eb; border: 1px solid #fde68a; border-left: 3px solid #d97706; border-radius: 8px; padding: 12px 16px; font-size: 11px; line-height: 1.55; color: #78350f; margin-top: 8px; margin-bottom: 38px; }}
@@ -2288,23 +2297,26 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
       <!-- Path to first $1000 -->
       <div class="path-1k">
         <div class="path-1k-header">
-          <div class="path-1k-eyebrow">META · PRIMEIROS US$ 1.000</div>
+          <div class="path-1k-eyebrow">PRIMEIRA GRANDE META</div>
           <h3 class="path-1k-title">Quanto o canal precisa entregar para o primeiro $1K?</h3>
         </div>
         <div class="path-1k-grid">
+          <div class="path-1k-medal">
+            <div class="medal-ring">
+              <div class="medal-amount">$1.000</div>
+              <div class="medal-label">PRIMEIRA META</div>
+            </div>
+            <div class="medal-badge">🏆 ALCANÇADO</div>
+          </div>
           <div class="path-1k-card">
-            <div class="path-1k-card-label">Cenário Médio</div>
+            <div class="path-1k-card-label">Cenário Médio · RPM {rpm_avg_display}</div>
             <div class="path-1k-card-value">{views_for_1k_avg_display}</div>
-            <div class="path-1k-card-sub">views totais · RPM {rpm_avg_display}</div>
+            <div class="path-1k-card-sub">views totais necessárias</div>
           </div>
           <div class="path-1k-card best">
-            <div class="path-1k-card-label">Cenário Pico</div>
+            <div class="path-1k-card-label">Cenário Pico · RPM {rpm_max_display}</div>
             <div class="path-1k-card-value">{views_for_1k_max_display}</div>
-            <div class="path-1k-card-sub">views totais · RPM {rpm_max_display}</div>
-          </div>
-          <div class="path-1k-formula">
-            <div class="path-1k-formula-label">Fórmula</div>
-            <div class="path-1k-formula-body">$1.000 ÷ (RPM × 0.55) × 1.000<br><span style="opacity:.7">YouTube fica com 45% · creator recebe 55%</span></div>
+            <div class="path-1k-card-sub">views totais necessárias</div>
           </div>
         </div>
       </div>
