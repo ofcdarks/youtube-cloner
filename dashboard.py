@@ -1924,6 +1924,8 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     handle = channel_name.lower().replace(" ", "")
     sub_6_display = sub_est or "—"
     sub_12_display = sub_12 or "—"
+    rpm_display = esc(m.get("rpm_estimate") or "—")
+    rpm_currency = esc(m.get("rpm_currency") or "USD")
 
     from datetime import datetime as _dt
     today_br = _dt.now().strftime("%d/%m/%Y")
@@ -1938,7 +1940,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
         hero_bg = f'background: linear-gradient(135deg, {primary}, #0a0a0f);'
 
     seo_page = (
-        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name}</div></div>{seo_block}<div class="page-footer"><div>{channel_name}</div><div>Página 04</div></div></div>'
+        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name} · LACASADARK</div></div>{seo_block}<div class="page-footer"><div>{channel_name}</div><div>Página 04</div></div></div>'
         if seo_block
         else ""
     )
@@ -1947,7 +1949,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Identidade Estratégica — {channel_name}</title>
+<title>LACASADARK · Identidade Estratégica — {channel_name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * {{ box-sizing: border-box; }}
@@ -2004,7 +2006,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   .identity-cta {{ padding: 10px 22px; border-radius: 22px; background: #0f0f12; color: #fff; font-size: 12px; font-weight: 700; flex-shrink: 0; }}
 
   /* KPI STATS */
-  .stats-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 38px; }}
+  .stats-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 38px; }}
   .stat-card {{ border: 1px solid #ececef; border-radius: 12px; padding: 22px 20px; background: linear-gradient(180deg, #fff, #fafafb); position: relative; }}
   .stat-card::before {{ content: ''; position: absolute; top: 0; left: 0; width: 38px; height: 3px; background: {primary}; border-radius: 0 0 3px 0; }}
   .stat-label {{ font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #888; font-weight: 700; margin-bottom: 10px; }}
@@ -2047,6 +2049,11 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   .hashtag {{ background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }}
   .keyword {{ background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }}
 
+  /* REALITY NOTE */
+  .reality-note {{ background: #fff8eb; border: 1px solid #fde68a; border-left: 3px solid #d97706; border-radius: 8px; padding: 12px 16px; font-size: 11px; line-height: 1.55; color: #78350f; margin-top: 8px; margin-bottom: 38px; }}
+  .reality-note strong {{ color: #92400e; font-weight: 700; }}
+  .reality-note em {{ font-style: italic; color: #92400e; }}
+
   /* BACK COVER */
   .back-cover {{ background: #0f0f12; color: #fff; min-height: 800px; padding: 180px 64px 80px; text-align: center; }}
   .back-eyebrow {{ font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase; color: {accent}; font-weight: 700; margin-bottom: 24px; }}
@@ -2084,11 +2091,11 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   <!-- COVER -->
   <div class="cover">
     <div class="cover-top">
-      <div class="cover-brand"><div class="cover-brand-dot"></div>Identidade Estratégica de Canal</div>
+      <div class="cover-brand"><div class="cover-brand-dot"></div>LACASADARK · Mentoria</div>
       <div class="cover-date">{today_br}</div>
     </div>
     <div class="cover-center">
-      <div class="cover-eyebrow">Documento Confidencial · Mentoria</div>
+      <div class="cover-eyebrow">Documento Confidencial · Identidade Estratégica</div>
       <h1 class="cover-title">{channel_name}</h1>
       <div class="cover-divider"></div>
       <div class="cover-tagline">{tagline}</div>
@@ -2096,12 +2103,12 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
         <span><strong>{lang_upper}</strong>Idioma</span>
         <span><strong>{sub_6_display}</strong>Inscritos · 6m</span>
         <span><strong>{sub_12_display}</strong>Inscritos · 12m</span>
-        <span><strong>{len(videos)}</strong>Vídeos iniciais</span>
+        <span><strong>{rpm_display}</strong>RPM médio</span>
       </div>
     </div>
     <div class="cover-bottom">
       <div>Projeto · {project_label}</div>
-      <div>Preparado pela Mentoria</div>
+      <div>LACASADARK</div>
     </div>
   </div>
 
@@ -2109,7 +2116,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   <div class="page page-break">
     <div class="page-header">
       <div class="ph-brand"><div class="ph-brand-dot"></div>Identidade Visual</div>
-      <div class="ph-channel">{channel_name}</div>
+      <div class="ph-channel">{channel_name} · LACASADARK</div>
     </div>
 
     {disclaimer_block}
@@ -2134,21 +2141,28 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
 
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-label">Inscritos · 6 meses</div>
+          <div class="stat-label">Inscritos · 6m</div>
           <div class="stat-value">{sub_6_display}</div>
-          <div class="stat-sub">Estimativa SOP</div>
+          <div class="stat-sub">Estimativa conservadora</div>
         </div>
         <div class="stat-card accent">
-          <div class="stat-label">Inscritos · 12 meses</div>
+          <div class="stat-label">Inscritos · 12m</div>
           <div class="stat-value">{sub_12_display}</div>
-          <div class="stat-sub">Crescimento projetado</div>
+          <div class="stat-sub">Pé no chão</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Idioma do canal</div>
+          <div class="stat-label">RPM Médio</div>
+          <div class="stat-value">{rpm_display}</div>
+          <div class="stat-sub">{rpm_currency} · típico do nicho</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Idioma</div>
           <div class="stat-value">{lang_upper}</div>
-          <div class="stat-sub">Otimizado pro algoritmo</div>
+          <div class="stat-sub">Mercado alvo</div>
         </div>
       </div>
+
+      <div class="reality-note">⚠ <strong>Realidade do mercado:</strong> a maioria dos canais novos faz entre 1K e 15K inscritos em 6 meses postando consistentemente. Estes números são projeções <em>conservadoras</em> baseadas em execução disciplinada do SOP — não promessas. O crescimento real depende de consistência, qualidade de hooks e otimização contínua.</div>
     </div>
 
     {description_block}
@@ -2163,7 +2177,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   <div class="page page-break">
     <div class="page-header">
       <div class="ph-brand"><div class="ph-brand-dot"></div>Vídeos Iniciais</div>
-      <div class="ph-channel">{channel_name}</div>
+      <div class="ph-channel">{channel_name} · LACASADARK</div>
     </div>
 
     <div class="block">
@@ -2188,8 +2202,10 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
   <div class="back-cover page-break">
     <div class="back-eyebrow">Próximo passo</div>
     <h2 class="back-title">Agora é executar.</h2>
-    <p class="back-text">Use este documento como blueprint. Cada elemento foi desenhado pra que seu canal nasça posicionado pra dominar o nicho desde o primeiro upload.</p>
+    <p class="back-text">Use este documento como blueprint. Cada elemento foi desenhado pra que seu canal nasça posicionado pra dominar o nicho desde o primeiro upload. Consistência + hooks fortes + qualidade = crescimento real.</p>
     <div class="back-line"></div>
+    <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 32px; font-weight: 600; color: #fff; margin-bottom: 6px; letter-spacing: 0.04em;">LACASADARK</div>
+    <div style="font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 32px;">Mentoria de Canais Faceless</div>
     <div class="back-meta">Documento gerado em {today_br}</div>
   </div>
 

@@ -65,6 +65,16 @@ REGRA CRÍTICA DE IDIOMA (LEIA COM ATENÇÃO):
 
 REGRAS DE QUALIDADE:
 - NOME DO CANAL É CRÍTICO: deve ser ESTRATÉGICO, ORIGINAL e DIFERENCIADO. Não use clichês como "Top 10", "Daily X", "X Channel", "Mr X", "X Tube", "X Hub", "X World", traduções literais ou nomes que já existam em canais grandes. Pense em nomes que: (1) tenham personalidade única (palavras inventadas, junções inesperadas, referências profundas ao tema); (2) soem premium/cinematográficos (estilo "Vestigium Sacrum", "Corpus Mysterium", "Echoes of Empire", "Veritas Lux"); (3) sejam memoráveis e fáceis de buscar; (4) carreguem o ÂNGULO ÚNICO do canal já no nome. EVITE nomes que poderiam pertencer a qualquer canal genérico do nicho. O nome deve ser uma DECLARAÇÃO de posicionamento.
+
+REGRA CRÍTICA DE ESTIMATIVAS (PÉ NO CHÃO — NÃO INFLE):
+- A maioria dos canais NOVOS não passa de 5K inscritos em 6 meses mesmo postando consistentemente.
+- Apenas TOP 5% dos canais chegam a 50K-100K em 12 meses.
+- Views por vídeo nos primeiros 3 meses raramente passam de 1K-5K. Só os virais (1 em cada 30-50 vídeos) chegam a 50K-100K. O canal LEVA TEMPO pra construir audiência.
+- Para os 4 vídeos iniciais do mockup, use views_estimate REALISTAS de canal NOVO: a maioria deve estar entre "1K" e "8K". Apenas 1 dos 4 pode ser uma estimativa otimista de "20K-50K" simulando o vídeo viral inicial.
+- NUNCA use 500K, 350K, 420K, 600K como views iniciais. Esses números são de canais grandes JÁ ESTABELECIDOS, não de vídeos iniciais de canal novo.
+- Inscritos em 6 meses: range típico 1K-15K. Seja conservador.
+- Inscritos em 12 meses: range típico 8K-60K. Apenas casos excepcionais passam disso.
+- RPM: use o range REAL do nicho no país alvo. Histórico/educacional ~$1.50-$4. Tech/finance ~$8-$20. Entretenimento ~$1-$3. Faceless de curiosidades ~$1-$3.
 - Identifique fraquezas típicas do nicho e diga como você corrige cada uma.
 - Identifique forças e amplifique 10x.
 - Títulos com hooks fortes (curiosity gap, números específicos, urgência).
@@ -120,8 +130,10 @@ OUTPUT JSON exato (preencha TODOS os campos):
   "tagline": "Slogan no idioma {language}",
   "description": "Descrição completa NO IDIOMA {language} (~200 palavras)",
   "disclaimer": "Aviso curto NO IDIOMA {language}: este canal é faceless e usa IA para reconstituir cenas/narrações com fins educativos. (~30-50 palavras)",
-  "subscriber_estimate": "Estimativa realista de inscritos em 6 meses se o canal seguir o SOP perfeitamente (ex: '120K', '45K', '500K') — baseada em tamanho do nicho e força dos títulos sementes",
-  "subscriber_estimate_12m": "Estimativa em 12 meses (ex: '450K', '1.2M')",
+  "subscriber_estimate": "Estimativa CONSERVADORA e REALISTA de inscritos em 6 meses postando 2-3x por semana com qualidade consistente (ex: '2K', '5K', '12K'). NÃO infle. A maioria dos canais novos não passa de 5K-15K em 6 meses mesmo executando bem. Use números BAIXOS e crÍVEIS.",
+  "subscriber_estimate_12m": "Estimativa CONSERVADORA em 12 meses (ex: '15K', '40K', '80K'). Apenas canais de TOP performance chegam a 100K em 1 ano. Seja realista — a base não deve passar de 50K-80K na maior parte dos casos.",
+  "rpm_estimate": "RPM médio realista do nicho no país {country} em USD (ex: '$2.50', '$8.00', '$15.00'). Considere: nichos finance/tech/business têm RPM alto (US$10-30), entretenimento/curiosidades médio (US$2-6), gaming/kids baixo (US$0.50-2). Use o range típico DO NICHO no PAÍS alvo.",
+  "rpm_currency": "USD",
   "whats_better": "3 frases EM PT-BR explicando por que este canal é OBJETIVAMENTE superior aos concorrentes do nicho",
   "weaknesses_fixed": [
     "Fraqueza típica do nicho 1 — em PT-BR",
@@ -135,25 +147,25 @@ OUTPUT JSON exato (preencha TODOS os campos):
     {{
       "title": "Título 1 — use o seed 1 traduzido culturalmente para {language}",
       "thumbnail_prompt": "English ImageFX prompt: cinematic movie poster style YouTube thumbnail 1280x720, [cena de fundo épica RELACIONADA AO TÍTULO acima], dramatic volumetric lighting with god rays, hero character on the right side (3/4 view, intense expression, period-accurate clothing), MASSIVE bold serif title text on the left side (2-3 words, white with golden glow and heavy black shadow), shallow depth of field, teal and orange color grading, film grain, hyperrealistic, sharp focus on hero, blurred atmospheric background, lens flare, dust particles, vignette, rule of thirds, 8k ultra detailed, epic composition, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition",
-      "views_estimate": "500K",
+      "views_estimate": "Ex realista: '2.5K' a '8K' (canal novo, vídeo médio)",
       "duration": "12:45"
     }},
     {{
       "title": "Título 2 — use o seed 2 traduzido culturalmente para {language}",
       "thumbnail_prompt": "English ImageFX prompt for thumbnail 2 — DIFERENTE da thumb 1, RELACIONADO AO TÍTULO 2: variar ângulo, lighting, layout do título. Cinematic movie poster, volumetric lighting, hero subject, massive bold title text overlay, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, NO 4K BADGE.",
-      "views_estimate": "350K",
+      "views_estimate": "Ex realista: '1.5K' a '5K'",
       "duration": "10:22"
     }},
     {{
       "title": "Título 3 — use o seed 3 traduzido culturalmente para {language}",
       "thumbnail_prompt": "English ImageFX prompt for thumbnail 3 — DIFERENTE de 1 e 2, RELACIONADO AO TÍTULO 3: outro ângulo cinematográfico, outro mood, outro arranjo de título. Mantenha as 4 camadas (background plate, hero subject, massive serif title, atmospheric effects). Cinematic poster style, dramatic lighting, hyperrealistic, 8k, epic, NO LOGO, NO WATERMARK, NO 4K BADGE, clean.",
-      "views_estimate": "420K",
+      "views_estimate": "Ex realista: '3K' a '10K'",
       "duration": "14:30"
     }},
     {{
       "title": "Título 4 — use o seed 4 traduzido culturalmente para {language}",
       "thumbnail_prompt": "English ImageFX prompt for thumbnail 4 — DIFERENTE de 1, 2, 3, RELACIONADO AO TÍTULO 4. Mesmas 4 camadas. Cinematic movie poster, volumetric god rays, hero on one side, massive serif title on the other, teal/orange OR golden grading, film grain, lens flare, dust particles, vignette, hyperrealistic 8k, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition.",
-      "views_estimate": "600K",
+      "views_estimate": "Apenas 1 dos 4 vídeos pode simular um viral inicial: '15K' a '45K'. Os outros 3 = ranges baixos realistas",
       "duration": "18:15"
     }}
   ],
@@ -196,6 +208,8 @@ def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str,
         "disclaimer": str(raw.get("disclaimer") or "")[:600],
         "subscriber_estimate": str(raw.get("subscriber_estimate") or raw.get("subscriberEstimate") or "")[:30],
         "subscriber_estimate_12m": str(raw.get("subscriber_estimate_12m") or raw.get("subscriberEstimate12m") or "")[:30],
+        "rpm_estimate": str(raw.get("rpm_estimate") or raw.get("rpmEstimate") or "")[:20],
+        "rpm_currency": str(raw.get("rpm_currency") or "USD")[:6],
         "whats_better": str(raw.get("whats_better") or raw.get("whatsBetter") or "")[:800],
         "weaknesses_fixed": [],
         "strategy_edge": str(raw.get("strategy_edge") or raw.get("strategyEdge") or "")[:600],
