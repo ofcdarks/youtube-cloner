@@ -27,6 +27,26 @@ logger = logging.getLogger("ytcloner.niches_lab")
 # In-memory translation cache: {language_code: [translated_niches]}
 _NICHE_TRANSLATIONS_CACHE: dict[str, list[dict[str, Any]]] = {}
 
+# In-memory regional niches cache: {(country, language): [validated_niches]}
+_REGIONAL_NICHES_CACHE: dict[tuple[str, str], list[dict[str, Any]]] = {}
+
+COUNTRY_NAMES = {
+    "us": "United States",
+    "br": "Brazil",
+    "gb": "United Kingdom",
+    "es": "Spain",
+    "mx": "Mexico",
+    "de": "Germany",
+    "fr": "France",
+    "it": "Italy",
+    "jp": "Japan",
+    "kr": "South Korea",
+    "ar": "Argentina",
+    "co": "Colombia",
+    "cl": "Chile",
+    "pt": "Portugal",
+}
+
 LANGUAGE_FULL_NAMES = {
     "en": "English",
     "pt": "Brazilian Portuguese",
@@ -667,3 +687,295 @@ def _build_action_plan(niche: str, sub_niches: list[dict]) -> list[dict]:
             ],
         },
     ]
+
+
+# ─────────────────────────────────────────────────────────────────────
+# REGIONAL VALIDATED NICHES — AI-generated per (country, language)
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _get_youtube_api_key() -> str:
+    """Retrieve YouTube Data API key from admin_settings."""
+    try:
+        from database import get_setting
+        return get_setting("youtube_api_key") or ""
+    except Exception:
+        return ""
+
+
+def _search_youtube_channel(channel_name: str, api_key: str, region: str = "US") -> dict | None:
+    """
+    Search YouTube Data API for a channel by name. Returns dict with
+    {name, handle, url, subs, thumbnail} or None if not found.
+    """
+    if not api_key or not channel_name:
+        return None
+    try:
+        resp = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={
+                "part": "snippet",
+                "q": channel_name,
+                "type": "channel",
+                "maxResults": 1,
+                "regionCode": region.upper(),
+                "key": api_key,
+            },
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            logger.warning(f"YT search HTTP {resp.status_code} for '{channel_name}'")
+            return None
+        items = resp.json().get("items", [])
+        if not items:
+            return None
+        snippet = items[0].get("snippet", {}) or {}
+        channel_id = items[0].get("id", {}).get("channelId", "")
+        if not channel_id:
+            return None
+        # Fetch channel stats
+        stats_resp = requests.get(
+            "https://www.googleapis.com/youtube/v3/channels",
+            params={
+                "part": "snippet,statistics",
+                "id": channel_id,
+                "key": api_key,
+            },
+            timeout=15,
+        )
+        subs = 0
+        handle = ""
+        thumbnail = ""
+        real_name = snippet.get("channelTitle") or channel_name
+        if stats_resp.status_code == 200:
+            ch_items = stats_resp.json().get("items", [])
+            if ch_items:
+                ch = ch_items[0]
+                stats = ch.get("statistics", {}) or {}
+                snip = ch.get("snippet", {}) or {}
+                subs = int(stats.get("subscriberCount", 0) or 0)
+                handle = snip.get("customUrl", "") or ""
+                real_name = snip.get("title", real_name)
+                thumbs = snip.get("thumbnails", {}) or {}
+                thumbnail = (thumbs.get("default") or {}).get("url", "")
+
+        # URL: prefer handle (@xxx), fallback to /channel/ID
+        if handle:
+            url = f"https://www.youtube.com/{handle}" if handle.startswith("@") else f"https://www.youtube.com/@{handle}"
+        else:
+            url = f"https://www.youtube.com/channel/{channel_id}"
+
+        return {
+            "name": real_name,
+            "handle": handle,
+            "url": url,
+            "subs": subs,
+            "subs_formatted": _format_subs(subs),
+            "thumbnail": thumbnail,
+            "channel_id": channel_id,
+        }
+    except Exception as e:
+        logger.warning(f"_search_youtube_channel('{channel_name}') failed: {e}")
+        return None
+
+
+def _format_subs(n: int) -> str:
+    """Format subscriber count: 1.2M, 450K, etc."""
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.0f}K"
+    return str(n)
+
+
+def _build_regional_prompt(country: str, language: str) -> str:
+    """Build the AI prompt for generating validated regional niches."""
+    country_name = COUNTRY_NAMES.get(country.lower(), country.upper())
+    language_name = LANGUAGE_FULL_NAMES.get(language.lower()[:2], language)
+
+    return f"""You are a YouTube niche research strategist with 10 years of experience in faceless channels, regional content markets, and ad-rate analysis. You have personally studied thousands of thriving faceless channels across 15+ countries.
+
+TASK: Generate 8 VALIDATED, CHAMPIONSHIP-LEVEL faceless YouTube niches that are:
+- Currently EXPLODING in {country_name} specifically (not generic US/global niches)
+- Proven monetization: actual creators earning $1K-50K/month right now
+- Have a clear gap (NOT oversaturated — avoid generic "motivation", "top 10 lists", "facts you didn't know")
+- 100% faceless production (AI voice + stock/screen recording/compilations/animation)
+- Culturally/linguistically relevant to {country_name} specifically
+
+CRITICAL RULES — failure to follow these = unacceptable output:
+1. Each niche MUST be DIFFERENT from typical US/English niches when country is not US
+2. Include at least 3 niches UNIQUE to {country_name} culture, market, or language
+3. Focus on niches with REALISTIC CPM for {country_name} ad rates (don't inflate)
+4. Avoid generic "storytelling"/"history"/"facts" unless you have a very specific angle
+5. Think about what {language_name}-speaking audiences WANT that English channels DON'T cover
+6. Example channels MUST be real, currently active, in {language_name}, and >100K subs
+7. Do NOT repeat the same 8 niches if I ask again for a different region — each region has distinct winners
+
+For each niche provide (content in {language_name}, EXCEPT brand/tool names which stay in English):
+- name: catchy niche name in {language_name}
+- emoji: 1 emoji
+- seed: English search query for SEO/keyword lookup (3-5 words)
+- desc: 2-3 sentences explaining WHY it's valid NOW in {country_name} (what's driving demand)
+- cpm_est: realistic CPM range in USD for {country_name} (e.g. "$6-14", NOT "$20-50" for low-ad-rate regions)
+- competition: one of "VERY LOW" | "LOW" | "MEDIUM" | "HIGH" (be honest)
+- growth: growth multiplier last 12 months (e.g. "12x")
+- difficulty: 1-5 integer (1=easiest to start, 5=hardest)
+- virality: 1-5 integer (5=most viral potential)
+- monetization: 1-5 integer (5=highest monetization)
+- format: 1 sentence — production format
+- tools: 1 sentence — list of tools (English names: ChatGPT, ElevenLabs, CapCut, etc.)
+- tip: 1 sentence actionable pro tip in {language_name}
+- affiliate: 1 sentence affiliate/sponsor angle in {language_name}
+- color: unique hex color per niche (different from the others)
+- accent: matching hex accent
+- example_channels: ARRAY of EXACTLY 3 real YouTube channel names currently thriving in this niche targeting {country_name} audiences. BE PRECISE — these will be searched on YouTube API. Prefer 100K-10M subs range. Use the EXACT channel display name (not @handle).
+
+OUTPUT FORMAT: Return ONLY a valid JSON array of exactly 8 objects. No markdown code fences, no preamble, no commentary. Start with [ and end with ]."""
+
+
+def _fetch_regional_niches_from_ai(country: str, language: str) -> list[dict] | None:
+    """Call AI to generate regional niches. Returns parsed list or None on failure."""
+    try:
+        from protocols.ai_client import chat
+    except Exception as e:
+        logger.warning(f"ai_client unavailable for regional niches: {e}")
+        return None
+
+    prompt = _build_regional_prompt(country, language)
+    try:
+        response = chat(
+            prompt,
+            system="You are a world-class YouTube niche research expert. Always return valid JSON when asked.",
+            max_tokens=6000,
+            temperature=0.85,  # higher creativity for diverse regional niches
+            timeout=180,
+        )
+    except Exception as e:
+        logger.warning(f"AI regional niches call failed: {e}")
+        return None
+
+    import json as _json
+    text = (response or "").strip()
+    # Strip code fences if AI ignored instructions
+    if text.startswith("```"):
+        text = text.split("```", 2)[1] if "```" in text[3:] else text[3:]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.strip("` \n")
+    # Find first [ and last ]
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        logger.warning("AI regional niches: no JSON array found")
+        return None
+    try:
+        data = _json.loads(text[start : end + 1])
+    except Exception as e:
+        logger.warning(f"AI regional niches JSON parse failed: {e}")
+        return None
+
+    if not isinstance(data, list) or len(data) == 0:
+        return None
+
+    # Validate and normalize
+    normalized = []
+    for i, item in enumerate(data):
+        if not isinstance(item, dict) or not item.get("name"):
+            continue
+        normalized.append({
+            "rank": i + 1,
+            "name": str(item.get("name", ""))[:80],
+            "emoji": str(item.get("emoji", "🔥"))[:4],
+            "seed": str(item.get("seed", item.get("name", "")))[:80],
+            "desc": str(item.get("desc", ""))[:500],
+            "cpm_est": str(item.get("cpm_est", "$5-15")),
+            "competition": str(item.get("competition", "MEDIUM")).upper(),
+            "growth": str(item.get("growth", "5x")),
+            "difficulty": int(item.get("difficulty", 3) or 3),
+            "virality": int(item.get("virality", 3) or 3),
+            "monetization": int(item.get("monetization", 3) or 3),
+            "format": str(item.get("format", ""))[:200],
+            "tools": str(item.get("tools", ""))[:200],
+            "tip": str(item.get("tip", ""))[:300],
+            "affiliate": str(item.get("affiliate", ""))[:200],
+            "color": str(item.get("color", "#7B68EE"))[:8],
+            "accent": str(item.get("accent", "#B388FF"))[:8],
+            "example_channels": [str(c) for c in (item.get("example_channels") or [])[:3]],
+            "cpm_low": _parse_cpm_low(str(item.get("cpm_est", "$5-15"))),
+        })
+
+    if len(normalized) < 4:  # sanity check
+        logger.warning(f"AI regional niches: only {len(normalized)} valid items")
+        return None
+
+    return normalized
+
+
+def _enrich_niches_with_channels(niches: list[dict], region_code: str) -> list[dict]:
+    """For each niche, lookup example_channels on YouTube API and attach real URLs."""
+    api_key = _get_youtube_api_key()
+    if not api_key:
+        logger.info("YT API key not set — skipping channel enrichment")
+        for n in niches:
+            n["channels"] = []
+        return niches
+
+    for niche in niches:
+        channels_found = []
+        for name in (niche.get("example_channels") or [])[:3]:
+            if not name or not name.strip():
+                continue
+            ch = _search_youtube_channel(name.strip(), api_key, region=region_code)
+            if ch:
+                channels_found.append(ch)
+        niche["channels"] = channels_found
+    return niches
+
+
+def get_regional_niches(country: str, language: str, force_refresh: bool = False) -> list[dict]:
+    """
+    Get validated regional niches for a (country, language) combo.
+    AI-generated + YouTube channel enriched. Cached in memory.
+
+    Fallback chain:
+    1. Cache hit → return cached
+    2. AI generates niches → YT enrichment → cache
+    3. AI fails → return translated TOP_NICHES (graceful degradation)
+    """
+    country = (country or "us").lower()
+    language = (language or "en").lower()[:2]
+    cache_key = (country, language)
+
+    if not force_refresh and cache_key in _REGIONAL_NICHES_CACHE:
+        return _REGIONAL_NICHES_CACHE[cache_key]
+
+    ai_niches = _fetch_regional_niches_from_ai(country, language)
+    if ai_niches:
+        enriched = _enrich_niches_with_channels(ai_niches, country)
+        _REGIONAL_NICHES_CACHE[cache_key] = enriched
+        logger.info(f"Regional niches generated for ({country},{language}): {len(enriched)} niches")
+        return enriched
+
+    # Fallback: return translated base niches (no channels)
+    logger.info(f"Regional niches fallback to TOP_NICHES for ({country},{language})")
+    fallback = get_translated_niches(language)
+    for n in fallback:
+        n.setdefault("channels", [])
+    return fallback
+
+
+def clear_regional_cache(country: str | None = None, language: str | None = None) -> int:
+    """Clear regional niches cache. If both params None, clear all. Returns count cleared."""
+    global _REGIONAL_NICHES_CACHE
+    if country is None and language is None:
+        count = len(_REGIONAL_NICHES_CACHE)
+        _REGIONAL_NICHES_CACHE = {}
+        return count
+    keys_to_remove = [
+        k for k in _REGIONAL_NICHES_CACHE.keys()
+        if (country is None or k[0] == country.lower())
+        and (language is None or k[1] == language.lower()[:2])
+    ]
+    for k in keys_to_remove:
+        del _REGIONAL_NICHES_CACHE[k]
+    return len(keys_to_remove)

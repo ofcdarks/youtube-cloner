@@ -1613,6 +1613,122 @@ async def api_niches_lab_enrich(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": str(e)[:200]}, status_code=500)
 
 
+@app.post("/api/admin/niches-lab/regional")
+async def api_niches_lab_regional(request: Request, user=Depends(require_admin)):
+    """
+    Generate validated regional niches per (country, language) via AI.
+    Enriches with real YouTube channel URLs. Cached in memory.
+    First call ~30s. Subsequent instant.
+    """
+    from protocols.niches_lab import get_regional_niches
+    body = await request.json()
+    country = (body.get("country") or "us").lower()
+    language = (body.get("language") or "en").lower()
+    force = bool(body.get("force_refresh", False))
+    try:
+        niches = get_regional_niches(country, language, force_refresh=force)
+        return JSONResponse({
+            "ok": True,
+            "country": country,
+            "language": language,
+            "niches": niches,
+            "count": len(niches),
+        })
+    except Exception as e:
+        logger.exception(f"niches-lab/regional error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+@app.post("/api/admin/niches-lab/clear-cache")
+async def api_niches_lab_clear_cache(request: Request, user=Depends(require_admin)):
+    """Clear the regional niches cache (useful if AI generated bad data)."""
+    from protocols.niches_lab import clear_regional_cache
+    body = await request.json()
+    country = body.get("country")
+    language = body.get("language")
+    try:
+        cleared = clear_regional_cache(country, language)
+        return JSONResponse({"ok": True, "cleared": cleared})
+    except Exception as e:
+        logger.exception(f"niches-lab/clear-cache error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
+@app.get("/api/admin/gdrive/admin-root-status")
+async def api_gdrive_admin_root_status(request: Request, user=Depends(require_admin)):
+    """
+    Diagnostic endpoint for the Drive admin root folder.
+    Returns current state and allows identifying why project folders
+    might be failing to nest under the admin root.
+    """
+    from database import get_setting
+    result: dict = {"ok": True}
+    try:
+        saved_id = get_setting("drive_admin_root_id") or ""
+        result["saved_id"] = saved_id
+        result["saved_id_present"] = bool(saved_id)
+
+        from protocols.google_export import get_drive_service
+        try:
+            drive = get_drive_service()
+            result["drive_service"] = "connected"
+        except Exception as e:
+            result["drive_service"] = "error"
+            result["drive_error"] = str(e)[:200]
+            return JSONResponse(result)
+
+        # Verify saved folder still exists
+        if saved_id:
+            try:
+                info = drive.files().get(fileId=saved_id, fields="id,name,trashed,webViewLink").execute()
+                result["saved_folder_exists"] = not info.get("trashed", False)
+                result["saved_folder_name"] = info.get("name", "")
+                result["saved_folder_url"] = info.get("webViewLink", "")
+            except Exception as e:
+                result["saved_folder_exists"] = False
+                result["saved_folder_error"] = str(e)[:200]
+
+        # Search for any "YT Cloner" folders owned by user (detect duplicates)
+        try:
+            q = "name='YT Cloner' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+            found = drive.files().list(q=q, fields="files(id,name,webViewLink,createdTime)").execute()
+            result["all_yt_cloner_folders"] = found.get("files", [])
+            result["duplicates_count"] = max(0, len(found.get("files", [])) - 1)
+        except Exception as e:
+            result["list_error"] = str(e)[:200]
+    except Exception as e:
+        logger.exception(f"admin-root-status error: {e}")
+        result["ok"] = False
+        result["error"] = str(e)[:200]
+
+    return JSONResponse(result)
+
+
+@app.post("/api/admin/gdrive/reset-admin-root")
+async def api_gdrive_reset_admin_root(request: Request, user=Depends(require_admin)):
+    """
+    Force re-creation of the admin root folder. Use if it got deleted or
+    if projects are being created as flat folders instead of nested.
+    """
+    from database import set_setting
+    try:
+        # Clear cached value
+        from protocols import google_export
+        google_export._admin_root_id = None
+        set_setting("drive_admin_root_id", "")
+
+        # Trigger recreation
+        new_id = google_export.get_admin_root_folder()
+        return JSONResponse({
+            "ok": True,
+            "new_admin_root_id": new_id,
+            "message": "Admin root recriado — novos projetos vao usar essa pasta",
+        })
+    except Exception as e:
+        logger.exception(f"reset-admin-root error: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+
 @app.post("/api/admin/niches-lab/deep-dive")
 async def api_niches_lab_deep_dive(request: Request, user=Depends(require_admin)):
     """Deep Dive de um nicho — sub-niches reais via DataForSEO Labs + plano 30 dias."""

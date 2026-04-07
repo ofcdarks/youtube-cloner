@@ -62,10 +62,19 @@
                 <option value="fr">Français</option>
                 <option value="ja">日本語</option>
             </select>
-            <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="enrichTopNiches()">
-                ⚡ Enrich com DataForSEO
+            <button class="btn-primary" id="btn-regional" style="font-size:12px;padding:8px 16px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000" onclick="loadRegionalNiches()">
+                🌍 Gerar Nichos Validados (AI + YouTube)
             </button>
+            <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="enrichTopNiches()">
+                ⚡ DataForSEO Volume
+            </button>
+            <button style="font-size:11px;padding:8px 12px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;cursor:pointer" onclick="refreshRegional()" title="Forçar novos nichos (limpa cache e regenera)">🔄 Refresh</button>
             <span id="enrich-status" style="font-size:11px;color:#666;margin-left:auto"></span>
+        </div>
+
+        <!-- Explainer banner -->
+        <div id="regional-banner" style="display:none;background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,107,107,0.04));border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#cbd5e1;line-height:1.5">
+            <strong style="color:#FFD700">🌍 Modo Nichos Regionais ativo.</strong> Esses nichos foram gerados por AI especificamente para o mercado selecionado, com canais reais em alta buscados via YouTube Data API. Cache: primeira request ~30s, subsequentes instantâneas. Use 🔄 Refresh pra forçar novos.
         </div>
 
         <!-- Quick Stats Strip -->
@@ -442,13 +451,142 @@ function renderDeepDive(data, target) {
     target.innerHTML = html;
 }
 
-// Auto-trigger enrichment when language or country changes
+// Auto-trigger regional niches load when country/language changes
 document.addEventListener('DOMContentLoaded', function() {
     var langSel = document.getElementById('enrich-lang');
     var countrySel = document.getElementById('enrich-country');
-    if (langSel) langSel.addEventListener('change', function() { enrichTopNiches(); });
-    if (countrySel) countrySel.addEventListener('change', function() { enrichTopNiches(); });
+    if (langSel) langSel.addEventListener('change', function() {
+        applyLabelTranslations(langSel.value);
+        loadRegionalNiches();
+    });
+    if (countrySel) countrySel.addEventListener('change', function() {
+        loadRegionalNiches();
+    });
 });
+
+// ─── REGIONAL NICHES (validated per country+language via AI + YT) ───
+
+function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function buildCardHTML(n, lang) {
+    var labels = LABEL_TRANSLATIONS[lang] || LABEL_TRANSLATIONS.en;
+    var compClass = 'lab-badge-comp-' + (n.competition || 'MEDIUM').toLowerCase().replace(/ /g, '-');
+    var liveGrowth = n.growth ? '<span class="lab-badge" style="background:rgba(255,215,0,0.12);color:#FFD700">' + escapeHtml(n.growth) + ' growth</span>' : '';
+
+    var channelsHtml = '';
+    if (n.channels && n.channels.length) {
+        channelsHtml = '<div style="margin-top:12px;padding:10px 12px;background:rgba(255,65,54,0.06);border:1px solid rgba(255,65,54,0.2);border-radius:6px">' +
+            '<div style="font-size:10px;color:#FF6B6B;font-weight:700;margin-bottom:8px">📺 CANAIS EM ALTA NESSE NICHO</div>';
+        n.channels.forEach(function(ch) {
+            var thumb = ch.thumbnail ? '<img src="' + escapeHtml(ch.thumbnail) + '" alt="" style="width:32px;height:32px;border-radius:50%;margin-right:10px;flex-shrink:0" onerror="this.style.display=\'none\'">' : '<div style="width:32px;height:32px;border-radius:50%;background:#334155;margin-right:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px">📺</div>';
+            channelsHtml += '<a href="' + escapeHtml(ch.url) + '" target="_blank" rel="noopener" style="display:flex;align-items:center;padding:8px 10px;background:rgba(0,0,0,0.3);border-radius:6px;margin-bottom:6px;text-decoration:none;border:1px solid rgba(255,255,255,0.05);transition:border-color 0.15s" onmouseover="this.style.borderColor=\'#FF6B6B\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.05)\'">' +
+                thumb +
+                '<div style="flex:1;min-width:0">' +
+                '<div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(ch.name) + '</div>' +
+                '<div style="font-size:10px;color:#94a3b8">' + escapeHtml(ch.subs_formatted || '') + ' inscritos' + (ch.handle ? ' · ' + escapeHtml(ch.handle) : '') + '</div>' +
+                '</div>' +
+                '<div style="font-size:11px;color:#FF6B6B;margin-left:8px">↗</div>' +
+                '</a>';
+        });
+        channelsHtml += '</div>';
+    } else if (n.example_channels && n.example_channels.length) {
+        // AI suggested channels but YouTube API didn't find them (or key missing)
+        channelsHtml = '<div style="margin-top:12px;padding:10px 12px;background:rgba(100,116,139,0.1);border:1px solid rgba(100,116,139,0.2);border-radius:6px">' +
+            '<div style="font-size:10px;color:#94a3b8;font-weight:700;margin-bottom:6px">📺 CANAIS SUGERIDOS (sem YT API)</div>' +
+            '<div style="font-size:11px;color:#cbd5e1">' + n.example_channels.map(escapeHtml).join(' · ') + '</div>' +
+            '</div>';
+    }
+
+    return '<div class="niche-card" data-rank="' + n.rank + '" data-difficulty="' + (n.difficulty || 3) + '" data-comp="' + escapeHtml(n.competition || '') + '" data-cpm-low="' + (n.cpm_low || 0) + '">' +
+        '<div class="niche-header" onclick="toggleNiche(' + n.rank + ')">' +
+        '<div style="flex:1">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+        '<span style="font-size:11px;font-weight:800;color:#FFD700;background:rgba(255,215,0,0.1);padding:2px 6px;border-radius:4px">#' + n.rank + '</span>' +
+        '<span style="font-size:18px">' + escapeHtml(n.emoji || '🔥') + '</span>' +
+        '<span style="font-size:15px;font-weight:700;color:#fff">' + escapeHtml(n.name || '') + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<span class="lab-badge" style="background:rgba(46,204,64,0.15);color:#2ECC40">CPM ' + escapeHtml(n.cpm_est || '') + '</span>' +
+        '<span class="lab-badge ' + compClass + '">' + escapeHtml(n.competition || 'MEDIUM') + '</span>' +
+        liveGrowth +
+        (n.channels && n.channels.length ? '<span class="lab-badge" style="background:rgba(255,107,107,0.15);color:#FF6B6B">📺 ' + n.channels.length + ' canais</span>' : '') +
+        '</div></div>' +
+        '<div class="niche-arrow" id="arrow-' + n.rank + '">▾</div>' +
+        '</div>' +
+        '<div class="niche-detail" id="detail-' + n.rank + '" style="display:none">' +
+        '<p style="font-size:13px;color:#B0B0C0;line-height:1.6;margin:14px 0 12px">' + escapeHtml(n.desc || '') + '</p>' +
+        '<div class="lab-info-row"><span class="lab-info-label">' + labels.format + '</span><span class="lab-info-val">' + escapeHtml(n.format || '') + '</span></div>' +
+        '<div class="lab-info-row"><span class="lab-info-label">' + labels.tools + '</span><span class="lab-info-val">' + escapeHtml(n.tools || '') + '</span></div>' +
+        '<div class="lab-info-row"><span class="lab-info-label">' + labels.tip + '</span><span class="lab-info-val">' + escapeHtml(n.tip || '') + '</span></div>' +
+        '<div class="lab-info-row"><span class="lab-info-label">' + labels.affiliate + '</span><span class="lab-info-val">' + escapeHtml(n.affiliate || '') + '</span></div>' +
+        channelsHtml +
+        '<div style="margin-top:12px;display:flex;gap:8px">' +
+        '<button class="btn-primary deep-dive-btn" style="font-size:11px;padding:6px 12px" onclick="event.stopPropagation(); deepDiveFromCard(\'' + escapeHtml(n.seed || n.name).replace(/'/g, "\\'") + '\', \'' + escapeHtml(n.name || '').replace(/'/g, "\\'") + '\')">' + labels.deepDive + '</button>' +
+        '</div></div></div>';
+}
+
+function renderNicheList(niches, lang) {
+    var list = document.getElementById('niche-list');
+    if (!list) return;
+    if (!niches || !niches.length) {
+        list.innerHTML = '<div style="padding:40px;text-align:center;color:#666">Nenhum nicho retornado.</div>';
+        return;
+    }
+    list.innerHTML = niches.map(function(n) { return buildCardHTML(n, lang); }).join('');
+}
+
+function loadRegionalNiches(forceRefresh) {
+    var country = document.getElementById('enrich-country').value;
+    var language = document.getElementById('enrich-lang').value;
+    var status = document.getElementById('enrich-status');
+    var btn = document.getElementById('btn-regional');
+    var banner = document.getElementById('regional-banner');
+
+    status.textContent = forceRefresh ? '🔄 Regenerando nichos...' : '🌍 Gerando nichos regionais validados (pode levar ~30s)...';
+    status.style.color = '#FFD700';
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+
+    var list = document.getElementById('niche-list');
+    if (list) list.innerHTML = '<div style="padding:60px;text-align:center;color:#888"><div style="font-size:32px;margin-bottom:12px">🌍</div>Gerando nichos validados para o mercado selecionado...<br><small style="color:#666">AI analysing + YouTube channel lookup</small></div>';
+
+    apiPost('/api/admin/niches-lab/regional', {country: country, language: language, force_refresh: !!forceRefresh})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        if (!data.ok) {
+            status.textContent = '❌ ' + (data.error || 'erro');
+            status.style.color = '#FF4136';
+            if (list) list.innerHTML = '<div style="padding:40px;text-align:center;color:#FF6B6B">❌ ' + (data.error || 'Falha ao gerar nichos') + '</div>';
+            return;
+        }
+        if (banner) banner.style.display = 'block';
+        renderNicheList(data.niches, language);
+        var channelCount = 0;
+        data.niches.forEach(function(n) { if (n.channels) channelCount += n.channels.length; });
+        status.textContent = '✅ ' + data.niches.length + ' nichos · ' + channelCount + ' canais reais';
+        status.style.color = '#2ECC40';
+    })
+    .catch(function(e) {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        if (e && e.message === 'unauthorized') return;
+        status.textContent = '❌ ' + e.message;
+        status.style.color = '#FF4136';
+    });
+}
+
+function refreshRegional() {
+    showConfirm('Regenerar Nichos', 'Isso vai limpar o cache e pedir pra AI gerar nichos NOVOS pra esse país+idioma. Pode levar ~30s. Continuar?', function() {
+        loadRegionalNiches(true);
+    });
+}
 
 function copyKw(text, btn) {
     navigator.clipboard.writeText(text).then(function() {
