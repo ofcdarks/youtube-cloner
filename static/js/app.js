@@ -489,7 +489,7 @@ function generateScript(id, title) {
             }
         }, 8000);
 
-        apiPost('/api/generate-script', {id: id})
+        apiPost('/api/generate-script', {idea_id: id})
         .then(r => r.json())
         .then(data => {
             clearInterval(scriptInterval);
