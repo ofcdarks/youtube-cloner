@@ -134,6 +134,7 @@ Estilo de produção: {style}
 
 ═══ TÍTULOS SEMENTES (use EXATAMENTE estes 4 títulos, traduzindo culturalmente pra {language} se necessário) ═══
 {seed_titles_block}
+{overrides_block}
 
 ═══ TAREFA ═══
 Gere a identidade completa do canal. SUPERE qualquer concorrente típico do nicho. Lembre:
@@ -317,6 +318,54 @@ def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str,
     return out
 
 
+def _build_overrides_block(
+    custom_channel_name: str = "",
+    custom_tagline: str = "",
+    custom_description_hint: str = "",
+    custom_niche_angle: str = "",
+    extra_instructions: str = "",
+) -> str:
+    """Build an optional OVERRIDES block appended to the user prompt.
+
+    Each field is only included when the caller provided a non-empty value.
+    The AI is instructed to treat provided values as MANDATORY (not hints).
+    """
+    lines: list[str] = []
+    if custom_channel_name.strip():
+        lines.append(
+            f'- "channel_name" OBRIGATÓRIO (NÃO invente outro, NÃO traduza): {custom_channel_name.strip()[:120]}'
+        )
+    if custom_tagline.strip():
+        lines.append(
+            f'- "tagline" OBRIGATÓRIA (use EXATAMENTE esta): {custom_tagline.strip()[:200]}'
+        )
+    if custom_description_hint.strip():
+        lines.append(
+            '- "description" deve SEGUIR EXATAMENTE este direcionamento (expanda para ~200 palavras '
+            f"no idioma alvo, mas mantenha o sentido e o tom): {custom_description_hint.strip()[:800]}"
+        )
+    if custom_niche_angle.strip():
+        lines.append(
+            "- ÂNGULO/POSICIONAMENTO do nicho (use isto como lente principal ao invés do nicho genérico): "
+            f"{custom_niche_angle.strip()[:400]}"
+        )
+    if extra_instructions.strip():
+        lines.append(
+            f"- INSTRUÇÕES ADICIONAIS DO ADMIN (prioridade máxima): {extra_instructions.strip()[:800]}"
+        )
+
+    if not lines:
+        return ""
+
+    return (
+        "\n═══ OVERRIDES DO ADMIN (prioridade sobre qualquer outra regra acima) ═══\n"
+        + "\n".join(lines)
+        + "\nIMPORTANTE: os campos marcados como OBRIGATÓRIOS acima devem aparecer EXATAMENTE "
+        "como especificados no JSON final. Os demais campos você gera normalmente mas RESPEITANDO "
+        "o direcionamento fornecido.\n"
+    )
+
+
 def generate_channel_mockup(
     niche_name: str,
     sop_excerpt: str = "",
@@ -324,6 +373,11 @@ def generate_channel_mockup(
     country: str = "BR",
     style: str = "faceless",
     seed_titles: list[str] | None = None,
+    custom_channel_name: str = "",
+    custom_tagline: str = "",
+    custom_description_hint: str = "",
+    custom_niche_angle: str = "",
+    extra_instructions: str = "",
 ) -> dict[str, Any]:
     """
     Generate a full channel mockup for a niche. Returns a normalized dict
@@ -332,6 +386,11 @@ def generate_channel_mockup(
     seed_titles: optional 4 SOP-derived titles to anchor the mockup. The AI
     will translate them culturally to the target language and build matching
     cinematic thumbnails.
+
+    The custom_* and extra_instructions parameters let the admin override
+    specific fields (name, tagline, description direction, niche angle) when
+    regenerating the identity — useful when the first pass didn't capture
+    the intended positioning.
     """
     from protocols.ai_client import chat
 
@@ -341,6 +400,14 @@ def generate_channel_mockup(
     else:
         seed_titles_block = "(sem títulos sementes — crie 4 títulos virais novos no idioma alvo)"
 
+    overrides_block = _build_overrides_block(
+        custom_channel_name=custom_channel_name,
+        custom_tagline=custom_tagline,
+        custom_description_hint=custom_description_hint,
+        custom_niche_angle=custom_niche_angle,
+        extra_instructions=extra_instructions,
+    )
+
     user_prompt = _USER_TEMPLATE.format(
         niche_name=niche_name or "(nicho não nomeado)",
         language=language or "pt-BR",
@@ -348,6 +415,7 @@ def generate_channel_mockup(
         style=style or "faceless",
         sop_excerpt=(sop_excerpt or "(SOP não disponível — gere baseado apenas no nome do nicho)")[:3000],
         seed_titles_block=seed_titles_block,
+        overrides_block=overrides_block,
     )
 
     response = chat(
@@ -369,5 +437,13 @@ def generate_channel_mockup(
 
     if not isinstance(raw, dict):
         raise RuntimeError("AI retornou estrutura inválida (esperado objeto JSON)")
+
+    # Hard-override name/tagline when the admin provided them, even if the AI
+    # ignored the instruction. Description is a hint (AI expands it), so we
+    # only overwrite when the AI response is empty.
+    if custom_channel_name.strip():
+        raw["channel_name"] = custom_channel_name.strip()[:120]
+    if custom_tagline.strip():
+        raw["tagline"] = custom_tagline.strip()[:200]
 
     return _normalize(raw, niche_name, language or "pt-BR")

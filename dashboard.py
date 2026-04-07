@@ -1718,6 +1718,14 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
     body = await request.json()
     project_id = (body.get("project_id") or "").strip()
     override_language = (body.get("language") or "").strip()
+    # Admin overrides when regenerating — any of these may be empty
+    override_niche = (body.get("niche") or "").strip()
+    custom_channel_name = (body.get("custom_channel_name") or "").strip()
+    custom_tagline = (body.get("custom_tagline") or "").strip()
+    custom_description_hint = (body.get("custom_description_hint") or "").strip()
+    custom_niche_angle = (body.get("custom_niche_angle") or "").strip()
+    extra_instructions = (body.get("extra_instructions") or "").strip()
+    reset_images = bool(body.get("reset_images"))
     if not project_id:
         return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
 
@@ -1731,7 +1739,7 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
     if not proj:
         return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
 
-    niche_name = proj.get("niche_chosen") or proj.get("name", "")
+    niche_name = override_niche or proj.get("niche_chosen") or proj.get("name", "")
     language = override_language or (proj.get("language") or "pt-BR").strip()
     # Map our internal lang code to country (best-effort)
     country_map = {
@@ -1764,24 +1772,32 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
             country,
             "faceless",
             seed_titles,
+            custom_channel_name,
+            custom_tagline,
+            custom_description_hint,
+            custom_niche_angle,
+            extra_instructions,
         )
     except Exception as e:
         logger.exception(f"generate-channel-mockup error: {e}")
         return JSONResponse({"error": f"Falha ao gerar mockup: {str(e)[:200]}"}, status_code=500)
 
-    # Persist as a file (overwrite previous mockup if any), preserving any
-    # previously generated images so they survive a "regenerate identity".
+    # Persist as a file (overwrite previous mockup if any). By default we keep
+    # previously generated images so they survive a "regenerate identity", but
+    # when the admin explicitly asks to reset them (reset_images=true) we drop
+    # them so the new identity gets a fresh set of logo/banner/thumbs.
     try:
         existing = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
         if existing:
             from database import get_db
-            try:
-                prev = _json.loads(existing[0].get("content", "") or "{}")
-                prev_images = prev.get("images") or {}
-                if prev_images:
-                    mockup["images"] = prev_images
-            except Exception:
-                pass
+            if not reset_images:
+                try:
+                    prev = _json.loads(existing[0].get("content", "") or "{}")
+                    prev_images = prev.get("images") or {}
+                    if prev_images:
+                        mockup["images"] = prev_images
+                except Exception:
+                    pass
             with get_db() as conn:
                 for f in existing:
                     conn.execute("DELETE FROM files WHERE id=?", (f["id"],))

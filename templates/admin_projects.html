@@ -273,6 +273,141 @@ function escapeHtmlMockup(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// Open a modal letting the admin EDIT the identity inputs before regenerating.
+// Reads the current mockup (if any) to pre-fill the fields, so the admin can
+// tweak name, niche, tagline, description direction and extra instructions
+// instead of just regenerating the same thing.
+function openRegenerateIdentityModal(projectId) {
+    var current = window._currentMockup || {};
+    var curName = current.channel_name || '';
+    var curTag = current.tagline || '';
+    var curDesc = current.description || '';
+    var curLang = current.language || current.description_language || 'pt-BR';
+    var curNiche = (window._currentProject && (window._currentProject.niche_chosen || window._currentProject.name)) || '';
+
+    var allLangs = [
+        ['pt-BR','Português (BR)'], ['en','English'], ['es','Español'],
+        ['fr','Français'], ['de','Deutsch'], ['it','Italiano'],
+        ['ja','日本語'], ['ko','한국어'], ['zh','中文'], ['ru','Русский'],
+        ['ar','العربية'], ['hi','हिन्दी'], ['tr','Türkçe'], ['nl','Nederlands']
+    ];
+    var langOptions = allLangs.map(function(l) {
+        var sel = l[0] === curLang ? ' selected' : '';
+        return '<option value="' + l[0] + '"' + sel + '>' + escapeHtmlMockup(l[1]) + '</option>';
+    }).join('');
+
+    var lbl = 'display:block;font-size:11px;color:#94a3b8;margin:10px 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px';
+    var inp = 'width:100%;padding:9px 12px;background:#0b1220;color:#fff;border:1px solid #334155;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:inherit';
+
+    var body =
+        '<div style="padding:0 4px">' +
+            '<p style="margin:0 0 14px;font-size:12px;color:#94a3b8;line-height:1.55">' +
+                'Edite os campos abaixo antes de regenerar. Campos vazios = a AI decide livremente. ' +
+                'Campos preenchidos são <strong style="color:#fbbf24">obrigatórios</strong> — a AI é forçada a respeitar.' +
+            '</p>' +
+
+            '<label style="' + lbl + '">🎯 Nicho / tema central</label>' +
+            '<input id="rgi-niche" type="text" style="' + inp + '" value="' + escapeHtmlMockup(curNiche) + '" placeholder="Ex: História antiga, Mistérios bíblicos, Tech futurista...">' +
+
+            '<label style="' + lbl + '">🎭 Ângulo / posicionamento (opcional)</label>' +
+            '<input id="rgi-angle" type="text" style="' + inp + '" placeholder="Ex: focar só em civilizações perdidas, POV histórico, narrativa em 1ª pessoa...">' +
+
+            '<label style="' + lbl + '">📛 Nome do canal (opcional — força a AI a usar este nome)</label>' +
+            '<input id="rgi-name" type="text" style="' + inp + '" value="' + escapeHtmlMockup(curName) + '" placeholder="Deixe vazio pra AI criar um nome novo">' +
+
+            '<label style="' + lbl + '">💬 Tagline / slogan (opcional)</label>' +
+            '<input id="rgi-tagline" type="text" style="' + inp + '" value="' + escapeHtmlMockup(curTag) + '" placeholder="Deixe vazio pra AI criar">' +
+
+            '<label style="' + lbl + '">📝 Descrição — direcionamento (opcional)</label>' +
+            '<textarea id="rgi-desc" rows="3" style="' + inp + ';resize:vertical;min-height:64px" placeholder="Resumo do tom, foco e promessa. A AI expande pra ~200 palavras no idioma alvo.">' + escapeHtmlMockup(curDesc) + '</textarea>' +
+
+            '<label style="' + lbl + '">🌐 Idioma do canal</label>' +
+            '<select id="rgi-lang" style="' + inp + '">' + langOptions + '</select>' +
+
+            '<label style="' + lbl + '">⚡ Instruções extras pra AI (opcional)</label>' +
+            '<textarea id="rgi-extra" rows="2" style="' + inp + ';resize:vertical;min-height:48px" placeholder="Ex: usar cores mais sóbrias; evitar clickbait; focar em público 40+..."></textarea>' +
+
+            '<label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:12px;color:#cbd5e1;cursor:pointer">' +
+                '<input id="rgi-reset-imgs" type="checkbox" style="cursor:pointer">' +
+                '<span>🗑️ Descartar logo/banner/thumbs já gerados (começar do zero)</span>' +
+            '</label>' +
+        '</div>';
+
+    var footer =
+        '<button onclick="closeRgiModal()" style="padding:10px 18px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">Cancelar</button>' +
+        '<button id="rgi-submit-btn" onclick="submitRegenerateIdentity(\'' + projectId + '\')" style="padding:10px 22px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">⚡ Regenerar</button>';
+
+    var overlay = document.createElement('div');
+    overlay.id = 'rgi-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,0.85);z-index:99000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)';
+    overlay.onclick = function(e) { if (e.target === overlay) closeRgiModal(); };
+    overlay.innerHTML =
+        '<div style="background:#0f172a;border:1px solid #334155;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 30px 80px rgba(0,0,0,0.6)">' +
+            '<div style="padding:18px 22px;border-bottom:1px solid #1f2937;display:flex;align-items:center;justify-content:space-between">' +
+                '<h3 style="margin:0;color:#fff;font-size:16px">↻ Regenerar Identidade do Canal</h3>' +
+                '<button onclick="closeRgiModal()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;padding:0 6px">×</button>' +
+            '</div>' +
+            '<div style="padding:18px 22px">' + body + '</div>' +
+            '<div style="padding:14px 22px;border-top:1px solid #1f2937;display:flex;gap:10px;justify-content:flex-end">' + footer + '</div>' +
+        '</div>';
+    document.body.appendChild(overlay);
+}
+
+function closeRgiModal() {
+    var el = document.getElementById('rgi-modal-overlay');
+    if (el) el.parentNode.removeChild(el);
+}
+
+function submitRegenerateIdentity(projectId) {
+    var btn = document.getElementById('rgi-submit-btn');
+    function val(id) { var el = document.getElementById(id); return el ? (el.value || '').trim() : ''; }
+    var resetEl = document.getElementById('rgi-reset-imgs');
+    var payload = {
+        project_id: projectId,
+        niche: val('rgi-niche'),
+        custom_niche_angle: val('rgi-angle'),
+        custom_channel_name: val('rgi-name'),
+        custom_tagline: val('rgi-tagline'),
+        custom_description_hint: val('rgi-desc'),
+        language: val('rgi-lang'),
+        extra_instructions: val('rgi-extra'),
+        reset_images: !!(resetEl && resetEl.checked)
+    };
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Gerando...'; }
+
+    var content = document.getElementById('mockup-content');
+    if (content) {
+        content.innerHTML =
+            '<div style="text-align:center;padding:60px 20px">' +
+                '<div style="font-size:48px;margin-bottom:16px">⚡</div>' +
+                '<div style="color:#fbbf24;font-size:16px;font-weight:700;margin-bottom:8px">Regenerando identidade com suas edições...</div>' +
+                '<div style="color:#94a3b8;font-size:12px;margin-bottom:20px">AI aplicando overrides e recriando nome, descrição, vídeos e prompts visuais</div>' +
+                '<div style="width:240px;height:6px;border-radius:3px;background:rgba(255,255,255,0.06);margin:0 auto;overflow:hidden">' +
+                    '<div style="height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;width:60%;animation:pulse 1.5s ease-in-out infinite"></div>' +
+                '</div>' +
+            '</div>';
+    }
+
+    apiPost('/api/admin/generate-channel-mockup', payload)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok && data.mockup) {
+                closeRgiModal();
+                renderMockup(data.mockup, projectId, true);
+                showToast('Identidade regenerada com suas edições!', 'success');
+            } else {
+                if (btn) { btn.disabled = false; btn.innerHTML = '⚡ Regenerar'; }
+                showToast(data.error || 'Erro desconhecido ao regenerar', 'error');
+            }
+        })
+        .catch(function(e) {
+            if (e && e.message === 'unauthorized') return;
+            if (btn) { btn.disabled = false; btn.innerHTML = '⚡ Regenerar'; }
+            showToast('Erro: ' + e.message, 'error');
+        });
+}
+
 // In-memory store of generated images per slot (logo, banner, thumb0..3)
 var _mockupImages = {};
 // In-memory store of prompts per slot, used by the regenerate buttons
@@ -424,7 +559,7 @@ function renderMockup(m, projectId, isFresh) {
     ];
     html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #1f2937">';
     html += '<button onclick="generateAllMockupImages(\'' + projectId + '\')" style="padding:9px 18px;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer" id="btn-gen-all">🎨 Gerar TODAS as Imagens</button>';
-    html += '<button onclick="generateMockup(\'' + projectId + '\', \'' + escapeHtmlMockup(m.channel_name || '').replace(/'/g, "\\'") + '\')" style="padding:9px 18px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">↻ Regenerar Identidade</button>';
+    html += '<button onclick="openRegenerateIdentityModal(\'' + projectId + '\')" style="padding:9px 18px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer" title="Regenerar identidade com edições">↻ Regenerar Identidade</button>';
     // Channel language selector — regenerates the WHOLE mockup (titles, thumbs, desc, tags, hashtags) in the chosen language
     html += '<div style="display:flex;gap:6px;align-items:center;padding:4px 10px;background:#0f172a;border:1px solid #334155;border-radius:8px">';
     html += '<span style="font-size:11px;color:#94a3b8">🌐 Idioma do canal:</span>';
