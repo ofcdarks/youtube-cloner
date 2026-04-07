@@ -62,6 +62,7 @@
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <a href="/?project={{ p.id }}" class="btn-primary" style="font-size:.72em;padding:4px 10px;text-decoration:none">Dashboard</a>
                             <button style="font-size:.72em;padding:4px 10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:4px;cursor:pointer" onclick="modelChannel('{{ p.id }}', '{{ p.name }}')" title="Gerar mockup visual do canal (nome, logo, banner, 4 thumbnails reais)">&#127912; Modelar</button>
+                            <button style="font-size:.72em;padding:4px 10px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:4px;cursor:pointer" onclick="downloadMockupPDF('{{ p.id }}')" title="Baixar PDF da identidade do canal para enviar ao aluno">&#128196; PDF</button>
                             <button style="font-size:.72em;padding:4px 10px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer" onclick="cloneProject('{{ p.id }}', '{{ p.name }}')" title="Clonar para outro idioma">&#127760; Clone</button>
                             <button class="btn-danger" style="font-size:.72em;padding:4px 10px" onclick="deleteProject('{{ p.id }}', '{{ p.name }}')" aria-label="Excluir projeto {{ p.name }}">Excluir</button>
                         </div>
@@ -310,6 +311,21 @@ function openMockupLightbox(url) {
     document.body.appendChild(lb);
 }
 
+// Open the channel-identity PDF report in a new tab. The report auto-triggers
+// the print dialog so the mentor can save it as PDF and send to a student.
+function downloadMockupPDF(projectId) {
+    if (!projectId) return;
+    var token = window.SESSION_TOKEN || '';
+    var url = '/api/admin/mockup-report?project_id=' + encodeURIComponent(projectId);
+    if (token) url += '&_token=' + encodeURIComponent(token);
+    var win = window.open(url, '_blank');
+    if (!win) {
+        showToast('Permita popups para baixar o PDF', 'error');
+    } else {
+        showToast('Abrindo relatório... use "Salvar como PDF" no diálogo de impressão', 'success', 5000);
+    }
+}
+
 // Persist a generated image URL in the saved mockup file (DB-backed)
 function persistMockupImage(slot, url) {
     if (!_mockupProjectId || !url) return;
@@ -351,6 +367,7 @@ function renderMockup(m, projectId, isFresh) {
     html += '</select>';
     html += '<button id="mk-regen-lang-btn" onclick="regenerateMockupInLanguage(\'' + projectId + '\', \'' + escapeHtmlMockup(m.channel_name || '').replace(/'/g, "\\'") + '\')" title="Regerar tudo neste idioma" style="padding:5px 10px;background:linear-gradient(135deg,#3b82f6,#7c3aed);color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600">↻ Aplicar</button>';
     html += '</div>';
+    html += '<button onclick="downloadMockupPDF(\'' + projectId + '\')" style="padding:9px 18px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📄 Baixar PDF</button>';
     html += '<button onclick="copyMockupAll()" style="padding:9px 18px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">📋 Copiar JSON</button>';
     html += '<div style="margin-left:auto;font-size:11px;color:#64748b;align-self:center">💾 Salvo em Arquivos do Projeto</div>';
     html += '</div>';

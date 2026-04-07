@@ -1764,6 +1764,205 @@ async def api_get_channel_mockup(request: Request, user=Depends(require_admin), 
         return JSONResponse({"error": f"Mockup salvo invalido: {e}"}, status_code=500)
 
 
+@app.get("/api/admin/mockup-report")
+async def api_mockup_report(request: Request, user=Depends(require_admin), project_id: str = ""):
+    """
+    Render the saved channel mockup as a print-friendly HTML report.
+    When opened in a new tab the page auto-triggers window.print() so the
+    mentor can save it as PDF and forward to the student.
+    """
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    import json as _json
+    import html as _html
+    from database import get_files, get_project
+
+    proj = get_project(project_id)
+    files = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
+    if not files:
+        return HTMLResponse("<h1>Mockup nao encontrado para este projeto.</h1>", status_code=404)
+    try:
+        m = _json.loads(files[0].get("content", "") or "{}")
+    except Exception as e:
+        return HTMLResponse(f"<h1>Mockup invalido: {_html.escape(str(e))}</h1>", status_code=500)
+
+    def esc(s) -> str:
+        return _html.escape(str(s or ""))
+
+    images = m.get("images") or {}
+    colors = m.get("colors") or {}
+    primary = esc(colors.get("primary") or "#7c3aed")
+    accent = esc(colors.get("accent") or "#fbbf24")
+
+    channel_name = esc(m.get("channel_name") or (proj or {}).get("name") or "Canal")
+    tagline = esc(m.get("tagline") or "")
+    description = esc(m.get("description") or "")
+    disclaimer = esc(m.get("disclaimer") or "")
+    sub_est = esc(m.get("subscriber_estimate") or "")
+    sub_12 = esc(m.get("subscriber_estimate_12m") or "")
+    language = esc(m.get("language") or m.get("description_language") or "pt-BR")
+    whats_better = esc(m.get("whats_better") or "")
+    strategy_edge = esc(m.get("strategy_edge") or "")
+    weaknesses = m.get("weaknesses_fixed") or []
+    tags = m.get("tags") or []
+    hashtags = m.get("hashtags") or []
+    keywords = m.get("keywords") or []
+    videos = m.get("videos") or []
+
+    banner_html = (
+        f'<img src="{esc(images.get("banner"))}" alt="Banner" />'
+        if images.get("banner")
+        else f'<div class="placeholder banner-ph">Banner não gerado</div>'
+    )
+    logo_html = (
+        f'<img src="{esc(images.get("logo"))}" alt="Logo" />'
+        if images.get("logo")
+        else f'<div class="placeholder logo-ph">Logo</div>'
+    )
+
+    videos_html = ""
+    for i, v in enumerate(videos[:4]):
+        thumb_url = images.get(f"thumb{i}")
+        thumb = (
+            f'<img src="{esc(thumb_url)}" alt="Thumb {i + 1}" />'
+            if thumb_url
+            else '<div class="placeholder thumb-ph">Thumb não gerada</div>'
+        )
+        videos_html += f"""
+        <div class="video-card">
+            <div class="video-thumb">{thumb}</div>
+            <div class="video-meta">
+                <div class="video-title">{esc(v.get("title") or "")}</div>
+                <div class="video-views">{esc(v.get("views_estimate") or "")} views previstos · {esc(v.get("duration") or "")}</div>
+            </div>
+        </div>"""
+
+    weaknesses_html = "".join(f'<li>{esc(w)}</li>' for w in weaknesses[:6])
+    tags_html = "".join(f'<span class="tag">{esc(t)}</span>' for t in tags[:20])
+    hashtags_html = "".join(f'<span class="hashtag">{esc(h)}</span>' for h in hashtags[:15])
+    keywords_html = "".join(f'<span class="keyword">{esc(k)}</span>' for k in keywords[:15])
+
+    # Pre-build conditional sections (Python 3.11 forbids backslashes inside f-string expressions)
+    disclaimer_section = f'<div class="disclaimer">{disclaimer}</div>' if disclaimer else ""
+    description_section = f'<section><h3>📝 Descrição do Canal</h3><p>{description}</p></section>' if description else ""
+
+    superior_inner = f'<p>{whats_better}</p>'
+    if weaknesses_html:
+        superior_inner += f'<ul class="weaknesses">{weaknesses_html}</ul>'
+    if strategy_edge:
+        superior_inner += f'<div class="strategy">📈 {strategy_edge}</div>'
+    superior_section = (
+        f'<section><h3>🏆 Por que este canal é superior</h3>{superior_inner}</section>'
+        if (whats_better or weaknesses_html)
+        else ""
+    )
+
+    tags_section = f'<section><h3>🏷️ Tags YouTube</h3><div>{tags_html}</div></section>' if tags_html else ""
+    hashtags_section = f'<section><h3>#️⃣ Hashtags</h3><div>{hashtags_html}</div></section>' if hashtags_html else ""
+    keywords_section = f'<section><h3>🔑 Keywords</h3><div>{keywords_html}</div></section>' if keywords_html else ""
+
+    handle = channel_name.lower().replace(" ", "")
+    sub_extra = f" → {sub_12} (12m)" if sub_12 else ""
+
+    html_doc = f"""<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Identidade do Canal — {channel_name}</title>
+<style>
+  * {{ box-sizing: border-box; }}
+  html, body {{ margin: 0; padding: 0; font-family: -apple-system, 'Segoe UI', Inter, Roboto, sans-serif; color: #111; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+  .page {{ max-width: 820px; margin: 0 auto; padding: 32px 36px 60px; }}
+  header.cover {{ background: linear-gradient(135deg, {primary}, {accent}); color: #fff; padding: 28px 32px; border-radius: 14px; margin-bottom: 22px; }}
+  header.cover h1 {{ margin: 0 0 4px; font-size: 28px; letter-spacing: -0.02em; }}
+  header.cover .sub {{ font-size: 13px; opacity: 0.92; }}
+  header.cover .lang-badge {{ display: inline-block; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,0.25); font-size: 11px; font-weight: 600; margin-top: 8px; }}
+  .disclaimer {{ background: #fff8e1; border-left: 4px solid {accent}; padding: 12px 16px; border-radius: 6px; font-size: 12px; color: #7a5b00; margin-bottom: 22px; line-height: 1.5; }}
+  .banner-wrap {{ width: 100%; aspect-ratio: 16/9; max-height: 320px; overflow: hidden; border-radius: 12px; background: #111; margin-bottom: 18px; }}
+  .banner-wrap img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+  .channel-header {{ display: flex; align-items: center; gap: 18px; padding: 12px 0 22px; border-bottom: 1px solid #eee; margin-bottom: 22px; }}
+  .channel-header .logo {{ width: 86px; height: 86px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, {primary}, {accent}); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 32px; }}
+  .channel-header .logo img {{ width: 100%; height: 100%; object-fit: cover; }}
+  .channel-header h2 {{ margin: 0 0 4px; font-size: 22px; }}
+  .channel-header .stats {{ font-size: 12px; color: #666; }}
+  .channel-header .stats strong {{ color: #16a34a; }}
+  .channel-header .tagline {{ font-size: 13px; color: #444; margin-top: 4px; font-style: italic; }}
+  section {{ margin-bottom: 24px; page-break-inside: avoid; }}
+  section h3 {{ font-size: 14px; color: {primary}; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid {primary}; }}
+  section p {{ margin: 0 0 8px; line-height: 1.6; font-size: 13px; color: #222; }}
+  .videos-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
+  .video-card {{ border: 1px solid #eee; border-radius: 10px; overflow: hidden; background: #fafafa; }}
+  .video-thumb {{ width: 100%; aspect-ratio: 16/9; background: #111; }}
+  .video-thumb img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+  .video-meta {{ padding: 10px 12px; }}
+  .video-title {{ font-weight: 600; font-size: 12px; color: #111; line-height: 1.4; margin-bottom: 4px; }}
+  .video-views {{ font-size: 11px; color: #777; }}
+  .placeholder {{ width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #888; font-size: 11px; background: repeating-linear-gradient(45deg, #f5f5f5, #f5f5f5 8px, #ececec 8px, #ececec 16px); }}
+  .weaknesses {{ margin: 0; padding-left: 18px; }}
+  .weaknesses li {{ font-size: 12px; line-height: 1.5; margin-bottom: 4px; color: #333; }}
+  .strategy {{ background: #f0fdf4; border-left: 3px solid #16a34a; padding: 10px 14px; border-radius: 6px; font-size: 12px; color: #14532d; margin-top: 10px; line-height: 1.5; font-style: italic; }}
+  .tag, .hashtag, .keyword {{ display: inline-block; padding: 3px 9px; border-radius: 5px; font-size: 11px; margin: 2px 3px 2px 0; }}
+  .tag {{ background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }}
+  .hashtag {{ background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }}
+  .keyword {{ background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }}
+  footer {{ margin-top: 40px; padding-top: 14px; border-top: 1px solid #eee; font-size: 10px; color: #999; text-align: center; }}
+  .print-bar {{ position: fixed; top: 12px; right: 12px; background: #111; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 12px; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,0.3); }}
+  .print-bar button {{ margin-left: 10px; padding: 6px 12px; background: {accent}; color: #111; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; }}
+  @media print {{ .print-bar {{ display: none; }} .page {{ padding: 0; max-width: none; }} body {{ background: #fff; }} }}
+</style>
+</head>
+<body>
+<div class="print-bar">
+  💡 Use "Salvar como PDF" no diálogo de impressão
+  <button onclick="window.print()">📄 Imprimir / Salvar PDF</button>
+</div>
+<div class="page">
+  <header class="cover">
+    <h1>{channel_name}</h1>
+    <div class="sub">{tagline}</div>
+    <div class="lang-badge">🌐 {language}</div>
+  </header>
+
+  {disclaimer_section}
+
+  <div class="banner-wrap">{banner_html}</div>
+
+  <div class="channel-header">
+    <div class="logo">{logo_html}</div>
+    <div>
+      <h2>{channel_name}</h2>
+      <div class="stats">@{handle} · <strong>{sub_est} inscritos previstos (6m){sub_extra}</strong> · {len(videos)} vídeos</div>
+      <div class="tagline">{tagline}</div>
+    </div>
+  </div>
+
+  {description_section}
+
+  <section>
+    <h3>🎬 Vídeos Iniciais (do SOP)</h3>
+    <div class="videos-grid">{videos_html}</div>
+  </section>
+
+  {superior_section}
+
+  {tags_section}
+  {hashtags_section}
+  {keywords_section}
+
+  <footer>Identidade gerada pelo YT Channel Cloner — {language}</footer>
+</div>
+<script>
+  // Auto-trigger print after images load (so PDF includes them)
+  window.addEventListener('load', function() {{
+    setTimeout(function() {{ window.print(); }}, 600);
+  }});
+</script>
+</body>
+</html>"""
+    return HTMLResponse(html_doc)
+
+
 @app.post("/api/admin/save-mockup-image")
 @limiter.limit("60/minute")
 async def api_save_mockup_image(request: Request, user=Depends(require_admin)):
