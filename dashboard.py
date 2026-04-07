@@ -2103,25 +2103,64 @@ async def api_sync_drive(request: Request, user=Depends(require_admin)):
     import asyncio
 
     def _sync():
-        from database import get_project, get_files, get_ideas, get_niches, log_activity
-        from protocols.google_export import create_doc, create_sheet, get_drive_service
+        from database import get_project, get_files, get_ideas, get_niches, log_activity, update_project
+        from protocols.google_export import (
+            create_doc, create_sheet, get_drive_service,
+            get_or_create_project_folder,
+        )
 
         proj = get_project(project_id)
         if not proj:
             return {"error": "Projeto nao encontrado"}
 
-        folder_id = proj.get("drive_folder_id", "")
-        if not folder_id:
-            return {"error": "Projeto sem pasta no Drive. Use 'Conectar' primeiro."}
-
         niche_name = proj.get("niche_chosen") or proj.get("name", "Projeto")
+        folder_id = proj.get("drive_folder_id", "") or ""
+        folder_created = False
+        folder_recreated = False
+
+        # Verify folder still exists in Drive (it may have been deleted manually).
+        # If it doesn't exist OR project never had one, create it now via the
+        # admin-root-aware helper (no flat folders, no duplicates).
+        try:
+            drive = get_drive_service()
+        except Exception as e:
+            logger.error(f"Drive sync: drive_service unavailable: {e}")
+            return {"error": "Google Drive nao conectado. Conecte em Admin > Drive."}
+
+        folder_valid = False
+        if folder_id:
+            try:
+                info = drive.files().get(
+                    fileId=folder_id, fields="id,trashed"
+                ).execute()
+                folder_valid = not info.get("trashed", False)
+            except Exception as e:
+                logger.warning(f"Drive sync: saved folder {folder_id} not found ({e}) — will recreate")
+                folder_valid = False
+
+        if not folder_valid:
+            try:
+                folder_id = get_or_create_project_folder(niche_name)
+                if not folder_id:
+                    return {"error": "Falha ao criar pasta no Drive."}
+                update_project(
+                    project_id,
+                    drive_folder_id=folder_id,
+                    drive_folder_url=f"https://drive.google.com/drive/folders/{folder_id}",
+                )
+                folder_created = not bool(proj.get("drive_folder_id"))
+                folder_recreated = bool(proj.get("drive_folder_id")) and not folder_created
+                logger.info(f"Drive sync: {'created' if folder_created else 'recreated'} folder {folder_id} for {niche_name}")
+            except Exception as e:
+                logger.error(f"Drive sync: failed to create folder: {e}")
+                return {"error": f"Falha ao criar pasta no Drive: {str(e)[:120]}"}
+
         uploaded = 0
         skipped = 0
 
         # List existing files in Drive folder to avoid duplicates
         existing_names = set()
         try:
-            drive = get_drive_service()
             results = drive.files().list(
                 q=f"'{folder_id}' in parents and trashed=false",
                 fields="files(name)",
@@ -2243,8 +2282,16 @@ async def api_sync_drive(request: Request, user=Depends(require_admin)):
                 combined += (nf.get("content", "") or "") + "\n\n"
             _doc(f"Narracoes Completas - {niche_name}", combined)
 
-        log_activity(project_id, "drive_synced", f"{uploaded} novos + {skipped} ja existentes no Drive")
-        return {"ok": True, "uploaded": uploaded, "skipped": skipped}
+        action_label = "drive_folder_created" if folder_created else ("drive_folder_recreated" if folder_recreated else "drive_synced")
+        log_activity(project_id, action_label, f"{uploaded} novos + {skipped} ja existentes no Drive")
+        return {
+            "ok": True,
+            "uploaded": uploaded,
+            "skipped": skipped,
+            "folder_id": folder_id,
+            "folder_created": folder_created,
+            "folder_recreated": folder_recreated,
+        }
 
     try:
         result = await asyncio.to_thread(_sync)

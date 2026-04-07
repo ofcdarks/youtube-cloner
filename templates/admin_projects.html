@@ -245,7 +245,19 @@ function syncDrive(projectId, name) {
     .then(function(data) {
         removeToast(loading);
         if (data.ok) {
-            showToast('Drive sincronizado! ' + (data.uploaded || 0) + '/14 arquivos.', 'success', 4000);
+            var msg;
+            if (data.folder_created) {
+                msg = '📁 Pasta criada no Drive! ' + (data.uploaded || 0) + ' arquivos enviados.';
+            } else if (data.folder_recreated) {
+                msg = '📁 Pasta recriada (a anterior foi deletada). ' + (data.uploaded || 0) + ' arquivos enviados.';
+            } else {
+                msg = '✅ Drive sincronizado! ' + (data.uploaded || 0) + ' novos + ' + (data.skipped || 0) + ' já existentes.';
+            }
+            showToast(msg, 'success', 5000);
+            // Reload to update the "Abrir" link if folder was just created
+            if (data.folder_created || data.folder_recreated) {
+                setTimeout(function() { window.location.reload(); }, 1500);
+            }
         } else {
             showToast('Erro: ' + (data.error || ''), 'error');
         }
