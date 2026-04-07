@@ -1717,11 +1717,19 @@ async def api_generate_channel_mockup(request: Request, user=Depends(require_adm
         logger.exception(f"generate-channel-mockup error: {e}")
         return JSONResponse({"error": f"Falha ao gerar mockup: {str(e)[:200]}"}, status_code=500)
 
-    # Persist as a file (overwrite previous mockup if any)
+    # Persist as a file (overwrite previous mockup if any), preserving any
+    # previously generated images so they survive a "regenerate identity".
     try:
         existing = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
         if existing:
             from database import get_db
+            try:
+                prev = _json.loads(existing[0].get("content", "") or "{}")
+                prev_images = prev.get("images") or {}
+                if prev_images:
+                    mockup["images"] = prev_images
+            except Exception:
+                pass
             with get_db() as conn:
                 for f in existing:
                     conn.execute("DELETE FROM files WHERE id=?", (f["id"],))
@@ -1754,6 +1762,48 @@ async def api_get_channel_mockup(request: Request, user=Depends(require_admin), 
         return JSONResponse({"ok": True, "mockup": mockup})
     except Exception as e:
         return JSONResponse({"error": f"Mockup salvo invalido: {e}"}, status_code=500)
+
+
+@app.post("/api/admin/save-mockup-image")
+@limiter.limit("60/minute")
+async def api_save_mockup_image(request: Request, user=Depends(require_admin)):
+    """
+    Persist a generated image URL on the saved mockup file under
+    mockup['images'][slot]. The slot is one of: logo, banner, thumb0..3.
+    """
+    body = await request.json()
+    project_id = (body.get("project_id") or "").strip()
+    slot = (body.get("slot") or "").strip()
+    url = (body.get("url") or "").strip()
+    if not project_id or not slot or not url:
+        return JSONResponse({"error": "project_id, slot e url obrigatorios"}, status_code=400)
+
+    import json as _json
+    from database import get_files, get_db
+
+    files = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
+    if not files:
+        return JSONResponse({"error": "Mockup nao encontrado"}, status_code=404)
+    try:
+        mockup = _json.loads(files[0].get("content", "") or "{}")
+    except Exception as e:
+        return JSONResponse({"error": f"Mockup invalido: {e}"}, status_code=500)
+
+    images = mockup.get("images") or {}
+    images[slot] = url
+    mockup["images"] = images
+
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE files SET content=? WHERE id=?",
+                (_json.dumps(mockup, ensure_ascii=False, indent=2), files[0]["id"]),
+            )
+    except Exception as e:
+        logger.warning(f"save-mockup-image failed: {e}")
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/admin/translate-mockup-description")

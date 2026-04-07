@@ -64,7 +64,7 @@ REGRA CRÍTICA DE IDIOMA (LEIA COM ATENÇÃO):
 - Os "videos[].title" devem ser EXATAMENTE os títulos sementes que eu fornecer (quando fornecidos). Se o seed_title estiver em outro idioma que não o `language` alvo, TRADUZA culturalmente pro idioma alvo (não literal). Se não houver seeds, crie 4 títulos virais no idioma alvo.
 
 REGRAS DE QUALIDADE:
-- Não copie nomes genéricos. Crie nomes ORIGINAIS e memoráveis.
+- NOME DO CANAL É CRÍTICO: deve ser ESTRATÉGICO, ORIGINAL e DIFERENCIADO. Não use clichês como "Top 10", "Daily X", "X Channel", "Mr X", "X Tube", "X Hub", "X World", traduções literais ou nomes que já existam em canais grandes. Pense em nomes que: (1) tenham personalidade única (palavras inventadas, junções inesperadas, referências profundas ao tema); (2) soem premium/cinematográficos (estilo "Vestigium Sacrum", "Corpus Mysterium", "Echoes of Empire", "Veritas Lux"); (3) sejam memoráveis e fáceis de buscar; (4) carreguem o ÂNGULO ÚNICO do canal já no nome. EVITE nomes que poderiam pertencer a qualquer canal genérico do nicho. O nome deve ser uma DECLARAÇÃO de posicionamento.
 - Identifique fraquezas típicas do nicho e diga como você corrige cada uma.
 - Identifique forças e amplifique 10x.
 - Títulos com hooks fortes (curiosity gap, números específicos, urgência).
@@ -116,10 +116,12 @@ Gere a identidade completa do canal. SUPERE qualquer concorrente típico do nich
 
 OUTPUT JSON exato (preencha TODOS os campos):
 {{
-  "channel_name": "Nome criativo no idioma {language}",
+  "channel_name": "Nome ESTRATÉGICO, ORIGINAL e premium no idioma {language} (NÃO genérico — siga regras críticas no system prompt)",
   "tagline": "Slogan no idioma {language}",
   "description": "Descrição completa NO IDIOMA {language} (~200 palavras)",
   "disclaimer": "Aviso curto NO IDIOMA {language}: este canal é faceless e usa IA para reconstituir cenas/narrações com fins educativos. (~30-50 palavras)",
+  "subscriber_estimate": "Estimativa realista de inscritos em 6 meses se o canal seguir o SOP perfeitamente (ex: '120K', '45K', '500K') — baseada em tamanho do nicho e força dos títulos sementes",
+  "subscriber_estimate_12m": "Estimativa em 12 meses (ex: '450K', '1.2M')",
   "whats_better": "3 frases EM PT-BR explicando por que este canal é OBJETIVAMENTE superior aos concorrentes do nicho",
   "weaknesses_fixed": [
     "Fraqueza típica do nicho 1 — em PT-BR",
@@ -192,6 +194,8 @@ def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str,
         "description": str(raw.get("description") or "")[:2500],
         "description_language": language,
         "disclaimer": str(raw.get("disclaimer") or "")[:600],
+        "subscriber_estimate": str(raw.get("subscriber_estimate") or raw.get("subscriberEstimate") or "")[:30],
+        "subscriber_estimate_12m": str(raw.get("subscriber_estimate_12m") or raw.get("subscriberEstimate12m") or "")[:30],
         "whats_better": str(raw.get("whats_better") or raw.get("whatsBetter") or "")[:800],
         "weaknesses_fixed": [],
         "strategy_edge": str(raw.get("strategy_edge") or raw.get("strategyEdge") or "")[:600],
@@ -204,6 +208,7 @@ def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str,
         "tags": [],
         "hashtags": [],
         "language": language,
+        "images": {},
     }
 
     wf = raw.get("weaknesses_fixed") or raw.get("weaknessesFixed") or []
