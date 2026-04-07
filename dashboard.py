@@ -1862,8 +1862,9 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     keywords = m.get("keywords") or []
     videos = m.get("videos") or []
 
+    banner_pos = esc(m.get("banner_position") or "center")
     banner_html = (
-        f'<img src="{esc(images.get("banner"))}" alt="Banner" />'
+        f'<img src="{esc(images.get("banner"))}" alt="Banner" style="object-position:{banner_pos}" />'
         if images.get("banner")
         else f'<div class="placeholder banner-ph">Banner não gerado</div>'
     )
@@ -2013,6 +2014,48 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
 </body>
 </html>"""
     return HTMLResponse(html_doc)
+
+
+@app.post("/api/admin/save-mockup-banner-position")
+@limiter.limit("60/minute")
+async def api_save_mockup_banner_position(request: Request, user=Depends(require_admin)):
+    """
+    Persist the user-chosen banner position (drag-to-reposition). The position
+    is stored as a CSS background-position string ("50% 30%") in
+    mockup['banner_position'].
+    """
+    body = await request.json()
+    project_id = (body.get("project_id") or "").strip()
+    position = (body.get("position") or "").strip()
+    if not project_id or not position:
+        return JSONResponse({"error": "project_id e position obrigatorios"}, status_code=400)
+    # Sanity check — only digits, %, decimal dot and spaces
+    import re as _re
+    if not _re.match(r"^[\d\.\s%]+$", position) or len(position) > 30:
+        return JSONResponse({"error": "position invalida"}, status_code=400)
+
+    import json as _json
+    from database import get_files, get_db
+
+    files = [f for f in (get_files(project_id) or []) if f.get("category") == "mockup"]
+    if not files:
+        return JSONResponse({"error": "Mockup nao encontrado"}, status_code=404)
+    try:
+        mockup = _json.loads(files[0].get("content", "") or "{}")
+    except Exception as e:
+        return JSONResponse({"error": f"Mockup invalido: {e}"}, status_code=500)
+
+    mockup["banner_position"] = position
+    try:
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE files SET content=? WHERE id=?",
+                (_json.dumps(mockup, ensure_ascii=False, indent=2), files[0]["id"]),
+            )
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/admin/save-mockup-image")

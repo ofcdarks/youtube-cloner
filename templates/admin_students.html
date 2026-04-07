@@ -140,12 +140,13 @@
             </div>
             <div class="form-group">
                 <label>Nicho <span style="color:#6b7280;font-weight:400">(opcional — pode definir depois)</span></label>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                <select id="student-niche-select" title="Escolher nicho" aria-label="Escolher nicho" onchange="document.getElementById('student-niche').value = this.value">
+                    <option value="">— Escolher nicho —</option>
                     {% for n in nichos %}
-                    <span class="niche-badge" onclick="selectNicheBadge(this, '{{ n.name }}')" style="cursor:pointer;padding:5px 12px;border-radius:6px;font-size:.78em;font-weight:bold;border:2px solid {{ n.color }};color:{{ n.color }};background:#0a0a1a;transition:.2s">{{ n.name }}</span>
+                    <option value="{{ n.name }}">{{ n.name }}</option>
                     {% endfor %}
-                </div>
-                <input type="text" id="student-niche" placeholder="Selecione acima, digite manualmente, ou deixe vazio">
+                </select>
+                <input type="text" id="student-niche" placeholder="Ou digite manualmente / deixe vazio" style="margin-top:8px">
             </div>
             <div class="form-group">
                 <label>Projeto <span style="color:#6b7280;font-weight:400">(opcional — pode atribuir depois)</span></label>
