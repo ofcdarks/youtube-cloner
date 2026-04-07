@@ -144,6 +144,11 @@ async def api_bend_idea(request: Request, user=Depends(require_auth)):
         meta = fetch_youtube_metadata(url)
         if "error" in meta:
             return JSONResponse({"error": meta["error"]}, status_code=400)
+
+        # v2: compute virality signals + handle channel/playlist candidates
+        from protocols.idea_bender import extract_success_signals
+        signals = extract_success_signals(meta)
+
         title = meta["title"]
         language = body.get("language", "en")
         niche = body.get("niche", meta.get("channel", ""))
@@ -151,11 +156,29 @@ async def api_bend_idea(request: Request, user=Depends(require_auth)):
         source_views = meta.get("views", 0)
         # Use user-provided SOP if any, otherwise use the video description
         sop = body.get("sop", "") or meta.get("description", "")
+
+        url_type = meta.get("url_type", "video")
+        candidates_info = ""
+        if url_type == "channel" and meta.get("candidates"):
+            candidates_info = (
+                f"\n  source_type: CHANNEL ({meta.get('candidates_count', 0)} videos scanned, "
+                f"top video picked by views)"
+            )
+        elif url_type == "playlist" and meta.get("candidates"):
+            candidates_info = f"\n  source_type: PLAYLIST ({len(meta['candidates'])} videos)"
+
         extra_context = (
-            f"channel: {meta.get('channel', '')}, views: {meta.get('views', 0):,}, "
-            f"likes: {meta.get('like_count', 0):,}, comments: {meta.get('comment_count', 0):,}, "
-            f"duration: {meta.get('duration_sec', 0)}s"
+            f"channel: {meta.get('channel', '')}, views: {signals['views']:,}, "
+            f"likes: {signals['likes']:,}, comments: {signals['comments']:,}, "
+            f"duration: {signals['duration_label']}, "
+            f"engagement: {signals['engagement_rate_pct']}%, "
+            f"views/day: {signals['views_per_day']:,}, "
+            f"days_since_upload: {signals['days_since_upload']}, "
+            f"virality_tier: {signals['virality_tier']}"
+            f"{candidates_info}"
         )
+        if meta.get("tags"):
+            extra_context += f", tags: {', '.join(meta['tags'][:10])}"
 
     elif mode == "manual":
         title = (body.get("title") or "").strip()
@@ -168,7 +191,20 @@ async def api_bend_idea(request: Request, user=Depends(require_auth)):
     else:
         return JSONResponse({"error": f"Unknown mode: {mode}"}, status_code=400)
 
-    # Run the bender
+    # Fetch YouTube API key for market research pre-phase
+    youtube_api_key = ""
+    try:
+        from database import get_db
+        with get_db() as conn:
+            yt_row = conn.execute(
+                "SELECT value FROM admin_settings WHERE key='youtube_api_key'"
+            ).fetchone()
+            if yt_row:
+                youtube_api_key = yt_row["value"]
+    except Exception as e:
+        logger.warning(f"[BEND] Could not fetch YouTube API key: {e}")
+
+    # Run the bender v2 (includes market research phase)
     result = bend_idea(
         title=title,
         sop=sop,
@@ -176,6 +212,7 @@ async def api_bend_idea(request: Request, user=Depends(require_auth)):
         language=language,
         num_variations=num_variations,
         extra_context=extra_context,
+        youtube_api_key=youtube_api_key,
     )
 
     if "error" in result:

@@ -994,7 +994,8 @@ function openBendExternal() {
             + '</div>'
             + '<p style="color:#94a3b8;font-size:13px;margin-bottom:16px">Cole a URL de um video viral do YouTube. O sistema vai analisar o DNA do sucesso e gerar 5 variacoes elevadas em angulos diferentes.</p>'
             + '<label style="color:#cbd5e1;font-size:12px;display:block;margin-bottom:6px">URL do YouTube</label>'
-            + '<input id="bend-yt-url" type="url" placeholder="https://www.youtube.com/watch?v=..." style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:14px;margin-bottom:14px">'
+            + '<input id="bend-yt-url" type="url" placeholder="URL de video OU canal (@handle) do YouTube" style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:14px;margin-bottom:6px">'
+            + '<div style="color:#64748b;font-size:10px;margin-bottom:14px;line-height:1.5">Aceita: vídeo (watch?v=...), shorts, canal (@handle ou /channel/...), playlist. Para canais, pega o vídeo com mais views.</div>'
             + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
             + '<div><label style="color:#cbd5e1;font-size:12px;display:block;margin-bottom:6px">Idioma do resultado</label>'
             + '<select id="bend-lang" style="width:100%;padding:10px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0">'
@@ -1022,28 +1023,61 @@ function submitBendExternal() {
     var lang = document.getElementById('bend-lang').value;
     var num = parseInt(document.getElementById('bend-num').value, 10);
     if (!url) { showToast('Cole uma URL do YouTube', 'warning'); return; }
+
     var btn = document.getElementById('bend-submit-btn');
     btn.disabled = true;
-    btn.textContent = 'Analisando... (pode demorar 30s)';
-    var loading = showToast('Buscando metadata + analisando DNA...', 'loading');
+
+    // Multi-stage progress simulation (the backend runs phases sequentially
+    // but we don't have SSE here — so we fake progress to give feedback)
+    var stages = [
+        { t: 0,      label: '🔎 Classificando URL e buscando metadata...' },
+        { t: 6000,   label: '📊 Extraindo sinais de sucesso (views, engagement, virality)...' },
+        { t: 12000,  label: '🔬 Pesquisando Google Trends + YouTube search no nicho...' },
+        { t: 25000,  label: '🧬 Extraindo DNA do sucesso via IA...' },
+        { t: 50000,  label: '⚡ Gerando variações estratificadas por RPM...' },
+        { t: 90000,  label: '🎯 Finalizando análise competitiva...' },
+        { t: 150000, label: '⏳ Aguardando IA (pode demorar até 4 minutos em análises complexas)...' }
+    ];
+    var stageTimers = [];
+    stages.forEach(function(s) {
+        stageTimers.push(setTimeout(function() {
+            btn.textContent = s.label;
+        }, s.t));
+    });
+    btn.textContent = stages[0].label;
+
+    function clearTimers() {
+        stageTimers.forEach(function(t) { clearTimeout(t); });
+        stageTimers = [];
+    }
+
     apiPost('/api/admin/bend-idea', {mode: 'external', youtube_url: url, language: lang, num_variations: num})
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        removeToast(loading);
+    .then(function(r) {
+        return r.text().then(function(txt) {
+            try { return { ok: r.ok, data: JSON.parse(txt) }; }
+            catch(e) { return { ok: r.ok, data: { error: 'Resposta invalida: ' + txt.substring(0, 200) } }; }
+        });
+    })
+    .then(function(resp) {
+        clearTimers();
         btn.disabled = false;
         btn.textContent = 'Analisar e Dobrar';
-        if (data.ok) {
+        var data = resp.data;
+        if (resp.ok && data.ok) {
             closeBendModal();
             renderBentIdeasModal(data);
+            var stats = data.variations ? data.variations.length + ' variações geradas' : 'análise completa';
+            var mr = data.market_research_used ? ' (com dados de mercado)' : '';
+            showToast('✅ ' + stats + mr, 'success', 4000);
         } else {
-            showToast('Erro: ' + (data.error || 'falha'), 'error', 8000);
+            showToast('Erro: ' + (data.error || 'falha desconhecida'), 'error', 10000);
         }
     })
     .catch(function(e) {
-        removeToast(loading);
+        clearTimers();
         btn.disabled = false;
         btn.textContent = 'Analisar e Dobrar';
-        showToast('Erro: ' + e.message, 'error');
+        showToast('Erro de rede: ' + e.message, 'error', 10000);
     });
 }
 
@@ -1087,17 +1121,36 @@ function renderBentIdeasModal(data) {
         html += '</div>';
     }
 
-    // Variations
+    // Variations (sorted by composite_score on backend)
+    var rpmColors = { HIGH: '#10b981', MEDIUM: '#f59e0b', LOW: '#64748b' };
+    var compColors = { LOW: '#10b981', MEDIUM: '#f59e0b', HIGH: '#ef4444', SATURATED: '#991b1b' };
+    var prodColors = { EASY: '#10b981', MEDIUM: '#f59e0b', HARD: '#ef4444' };
+
     variations.forEach(function(v, i) {
         var score = v.potential_score || 0;
-        var scoreColor = score >= 80 ? '#10b981' : (score >= 60 ? '#f59e0b' : '#ef4444');
+        var composite = v.composite_score || score;
+        var scoreColor = composite >= 80 ? '#10b981' : (composite >= 60 ? '#f59e0b' : '#ef4444');
+        var rpmTier = v.rpm_tier || 'MEDIUM';
+        var compLevel = v.competition_level || 'MEDIUM';
+        var prodComplex = v.production_complexity || 'MEDIUM';
+
         html += '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px;margin-bottom:12px">';
-        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">';
+
+        // Header row: title + composite score
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">';
         html += '<div style="flex:1">';
         html += '<div style="color:#a78bfa;font-size:10px;font-weight:600;margin-bottom:4px">VARIACAO ' + (i+1) + ' &middot; ' + escapeHtml(v.new_niche_suggestion || '') + '</div>';
         html += '<div style="color:#f8fafc;font-size:15px;font-weight:600;line-height:1.4">' + escapeHtml(v.title || '') + '</div>';
         html += '</div>';
-        html += '<div style="background:' + scoreColor + '20;color:' + scoreColor + ';padding:6px 12px;border-radius:20px;font-weight:700;font-size:14px;white-space:nowrap">' + score + '/100</div>';
+        html += '<div style="background:' + scoreColor + '20;color:' + scoreColor + ';padding:6px 12px;border-radius:20px;font-weight:700;font-size:14px;white-space:nowrap" title="Composite score = potencial × RPM × (1/competicao)">★ ' + composite + '</div>';
+        html += '</div>';
+
+        // Strategic badges row: RPM / Competition / Production
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+        html += '<span style="background:' + rpmColors[rpmTier] + '18;color:' + rpmColors[rpmTier] + ';border:1px solid ' + rpmColors[rpmTier] + '40;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600">💰 RPM ' + rpmTier + (v.rpm_estimate_usd ? ' · ' + escapeHtml(v.rpm_estimate_usd) : '') + '</span>';
+        html += '<span style="background:' + compColors[compLevel] + '18;color:' + compColors[compLevel] + ';border:1px solid ' + compColors[compLevel] + '40;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600">🎯 COMP ' + compLevel + '</span>';
+        html += '<span style="background:' + prodColors[prodComplex] + '18;color:' + prodColors[prodComplex] + ';border:1px solid ' + prodColors[prodComplex] + '40;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600">⚒️ ' + prodComplex + (v.estimated_production_hours ? ' · ' + v.estimated_production_hours + 'h' : '') + '</span>';
+        html += '<span style="background:#334155;color:#cbd5e1;border:1px solid #475569;padding:3px 8px;border-radius:4px;font-size:10px">Score IA: ' + score + '/100</span>';
         html += '</div>';
 
         if (v.angle) {
@@ -1106,22 +1159,51 @@ function renderBentIdeasModal(data) {
         if (v.reasoning) {
             html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px;line-height:1.5"><strong style="color:#cbd5e1">Por que funciona:</strong> ' + escapeHtml(v.reasoning) + '</div>';
         }
+        if (v.timing_hook) {
+            html += '<div style="color:#fbbf24;font-size:12px;margin-bottom:6px;line-height:1.5"><strong>⚡ Timing:</strong> ' + escapeHtml(v.timing_hook) + '</div>';
+        }
         if (v.visual_style) {
             html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px"><strong style="color:#cbd5e1">Visual:</strong> ' + escapeHtml(v.visual_style) + '</div>';
         }
         if (v.target_audience) {
             html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px"><strong style="color:#cbd5e1">Publico:</strong> ' + escapeHtml(v.target_audience) + '</div>';
         }
+
         if (v.example_pillars && v.example_pillars.length) {
-            html += '<div style="color:#94a3b8;font-size:11px;margin-top:8px">';
+            html += '<div style="color:#94a3b8;font-size:11px;margin-top:8px;margin-bottom:4px"><strong style="color:#cbd5e1">Pilares de conteudo:</strong></div>';
+            html += '<div style="margin-bottom:8px">';
             v.example_pillars.forEach(function(p) {
-                html += '<span style="display:inline-block;background:#334155;color:#cbd5e1;padding:3px 8px;border-radius:4px;margin-right:6px;margin-bottom:4px">' + escapeHtml(p) + '</span>';
+                html += '<span style="display:inline-block;background:#334155;color:#cbd5e1;padding:3px 8px;border-radius:4px;margin-right:6px;margin-bottom:4px;font-size:11px">' + escapeHtml(p) + '</span>';
             });
             html += '</div>';
         }
+
+        if (v.thumbnail_concepts && v.thumbnail_concepts.length) {
+            html += '<details style="margin-top:8px"><summary style="cursor:pointer;color:#a78bfa;font-size:11px;font-weight:600">🖼️ Conceitos de thumbnail (' + v.thumbnail_concepts.length + ')</summary>';
+            html += '<ul style="color:#94a3b8;font-size:11px;margin:6px 0 0 16px;padding:0">';
+            v.thumbnail_concepts.forEach(function(c) {
+                html += '<li style="margin-bottom:4px">' + escapeHtml(c) + '</li>';
+            });
+            html += '</ul></details>';
+        }
+
+        if (v.first_3_titles && v.first_3_titles.length) {
+            html += '<details style="margin-top:6px"><summary style="cursor:pointer;color:#10b981;font-size:11px;font-weight:600">🎬 Primeiros ' + v.first_3_titles.length + ' titulos sugeridos pro novo canal</summary>';
+            html += '<ul style="color:#94a3b8;font-size:11px;margin:6px 0 0 16px;padding:0">';
+            v.first_3_titles.forEach(function(t) {
+                html += '<li style="margin-bottom:4px">' + escapeHtml(t) + '</li>';
+            });
+            html += '</ul></details>';
+        }
+
         html += '<button onclick="copyBentTitle(this, \'' + escapeAttr(v.title || '') + '\')" style="margin-top:10px;padding:6px 12px;background:#7c3aed18;color:#a78bfa;border:1px solid #7c3aed40;border-radius:5px;font-size:11px;cursor:pointer">&#128203; Copiar titulo</button>';
         html += '</div>';
     });
+
+    // Market research indicator
+    if (data.market_research_used) {
+        html += '<div style="background:#0c1e13;border:1px solid #10b98140;padding:8px 12px;border-radius:6px;margin-top:10px;color:#10b981;font-size:11px">✓ Análise baseada em dados reais de mercado (Google Trends + YouTube Search últimos 14 dias)</div>';
+    }
 
     html += '</div>';
     modal.innerHTML = html;
