@@ -83,7 +83,24 @@ REGRA CRÍTICA DE ESTIMATIVAS (REALISTA + MOTIVADORA — não invente, mas mostr
 - Banner prompt: cinematic, 2560x1440, mood específico do nicho, SEGURO PARA SAFE-AREA do YouTube (elementos importantes centralizados, sem detalhes cruciais nas bordas).
 
 REGRAS CRÍTICAS PARA THUMBNAIL PROMPTS (siga TODAS):
-Você está criando thumbnails CINEMATOGRÁFICOS estilo Hollywood — NUNCA fotos genéricas. Cada thumbnail deve ter MÚLTIPLAS CAMADAS visuais:
+
+ANTES de gerar os 4 thumbnail_prompts, você DEVE fazer uma análise mental rápida (research interno):
+1. Quais são os top 5-10 canais do nicho EXATO no idioma {language} / país {country}?
+2. Que ARQUÉTIPOS VISUAIS dominam suas thumbnails de maior CTR? (ex: para canais de história → personagem central com expressão intensa + mapa antigo + bandeira do império + monumento icônico + lighting cinematográfico dourado/dramático com god rays + título massivo em fonte serifada clássica branca/dourada com sombra preta forte; para canais bíblicos → similar com texturas de pergaminho + ícones religiosos; para tech → neon ciano + dispositivos + texto sans-serif bold; para crime → sombras frias azul/teal + figuras silhuetadas + texto vermelho impactante)
+3. Que ELEMENTOS COMPLEMENTARES aparecem repetidamente? (mapas, bandeiras, mosaicos, ruínas, retratos clássicos, ícones religiosos, símbolos, etc.)
+4. Que PALETA de cores é dominante no nicho?
+5. Que TIPOGRAFIA e LAYOUT de texto domina? (serifa clássica vs sans bold condensed; esquerda vs direita vs centro; uma cor vs duas cores destaque)
+
+Use essa análise pra preencher o campo "thumbnail_style_guide" e DEPOIS gere os 4 thumbnail_prompts seguindo RIGOROSAMENTE esse style guide. Cada prompt deve REPLICAR o que funciona no nicho E ELEVAR (mais cinematográfico, mais dramatic lighting, mais composição premium).
+
+EXEMPLOS DE STYLE GUIDES POR NICHO:
+- História antiga (PT/ES): "Personagem histórico em primeiro plano (3/4 view, expressão majestática, vestimentas de época autênticas, ocupando 35-50% do frame, deslocado pra um lado), background com mapa antigo + bandeira do império + monumento icônico (Coliseu, Hagia Sophia, Pasargadae), god rays dourados, texturas de pergaminho/pedra envelhecida, título em fonte serifada clássica massiva (Trajan/Cinzel) branco com glow dourado e sombra preta forte, paleta dourado quente + marrom + vermelho profundo, lighting cinematográfico high contrast, mood épico-majestático"
+- Bíblico/religioso: "Figura bíblica + manuscrito antigo + ícone religioso + arquitetura sagrada, god rays divinos, paleta dourada/sépia, texturas de pergaminho, título em serifa clássica branca dourada"
+- Crime/mistério: "Silhueta de figura misteriosa + cidade noturna + elemento simbólico (faca/máscara/símbolo), paleta fria teal/azul/vermelho sangue, texto sans bold condensed vermelho ou branco com glow, mood sombrio-tenso"
+- Tech/futurista: "Dispositivo futurista + elementos holográficos + neon ciano/roxo, paleta cyberpunk, texto sans bold geometric"
+- Faceless de curiosidades: "Objeto/cena misteriosa centralizada + texto bold curiosity-gap (números, perguntas), paleta saturada"
+
+Cada thumbnail deve ter MÚLTIPLAS CAMADAS visuais:
 
 1. **CAMADA DE FUNDO (background plate)**: cena ampla cinematográfica relacionada ao tema (paisagem épica, ruínas, batalha, cosmos, laboratório, etc.) com lighting dramático (god rays, golden hour, fogo, neblina volumétrica).
 2. **CAMADA DE PERSONAGEM (hero subject)**: figura humana em primeiro plano (3/4 view ou perfil), grande, ocupando 30-50% do frame, com expressão intensa OU pose de poder. NÃO centralizado — deslocado pra um lado pra deixar espaço pro título.
@@ -145,35 +162,36 @@ OUTPUT JSON exato (preencha TODOS os campos):
     "Fraqueza típica do nicho 3 — em PT-BR"
   ],
   "strategy_edge": "Em PT-BR: por que este canal cresce em 6 meses mais do que concorrentes",
+  "thumbnail_style_guide": "RESULTADO DA ANÁLISE INTERNA: descreva em 2-4 frases o style guide visual SEGUIDO pelos top canais do nicho {niche_name} no idioma {language}. Inclua: arquétipo de personagem, background típico, elementos complementares (mapas, bandeiras, monumentos, ícones), paleta de cores dominante, tipo de tipografia, mood. Este guide será usado por TODOS os 4 thumbnail_prompts abaixo.",
   "logo_prompt": "English ImageFX prompt: square YouTube channel logo icon, [conceito específico do nicho], [cores], bold modern emblem design, fills the entire canvas edge-to-edge, NO white background, NO padding, NO whitespace borders, centered subject covering 95 percent of the frame, high contrast, premium vector style, 4k",
   "banner_prompt": "English ImageFX prompt: ultra-wide cinematic YouTube channel banner, aspect ratio 16:9, [conceito do nicho], [cores principais], dramatic volumetric lighting, atmospheric, epic horizontal scale, important elements centered in the safe area (middle 33 percent), no text on edges, fills the entire frame edge-to-edge with rich detail, 8k professional",
   "videos": [
     {{
       "title": "Título 1 — use o seed 1 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica relacionada ao TÍTULO 1], dramatic volumetric god rays, hero character on right side, MASSIVE bold serif title text on left side, teal and orange color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "thumbnail_prompt": "PROMPT EM INGLÊS seguindo o thumbnail_style_guide do nicho. Substitua os placeholders por descrições REAIS adaptadas ao TÍTULO 1: cinematic movie poster style YouTube thumbnail 1280x720, [DESCRIÇÃO DA CENA específica do título 1: personagem central + background icônico do nicho + elementos complementares como mapa/bandeira/monumento/ícone], dramatic volumetric god rays, hero character (3/4 view, intense expression, period-accurate clothing) on right side, MASSIVE bold [serif OR sans condensed depending on niche] title text on left side following the style guide, [paleta de cores do guide], film grain, hyperrealistic, 8k, sharp focus on hero, blurred atmospheric background, NO LOGO, NO WATERMARK, clean composition",
       "views_estimate": "8K",
       "duration": "12:45"
     }},
     {{
       "title": "Título 2 — use o seed 2 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica DIFERENTE relacionada ao TÍTULO 2], close-up dramatic angle, golden hour lighting, MASSIVE bold serif title text, hero subject, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "thumbnail_prompt": "PROMPT EM INGLÊS seguindo o style guide, DIFERENTE da thumb 1: variar ângulo/lighting/layout. Cinematic movie poster YouTube thumbnail 1280x720, [DESCRIÇÃO DA CENA específica do título 2 com personagem + elementos do nicho], close-up dramatic angle OR wide shot, golden hour OR firelight, MASSIVE bold title text following style guide typography, [paleta do guide], film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, clean composition",
       "views_estimate": "12K",
       "duration": "10:22"
     }},
     {{
       "title": "Título 3 — use o seed 3 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica DIFERENTE relacionada ao TÍTULO 3], wide cinematic shot, blue hour lighting, MASSIVE bold serif title text, hero figure, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "thumbnail_prompt": "PROMPT EM INGLÊS seguindo o style guide, DIFERENTE de 1 e 2. Cinematic movie poster YouTube thumbnail 1280x720, [DESCRIÇÃO DA CENA específica do título 3 com novo arquétipo do nicho], outro ângulo cinematográfico, outro mood do guide, MASSIVE bold title text, [paleta], film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, clean composition",
       "views_estimate": "15K",
       "duration": "14:30"
     }},
     {{
       "title": "Título 4 — use o seed 4 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica DIFERENTE relacionada ao TÍTULO 4], firelight dramatic mood, MASSIVE bold serif title text, intense hero character, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "thumbnail_prompt": "PROMPT EM INGLÊS seguindo o style guide, DIFERENTE de 1, 2, 3. Cinematic movie poster YouTube thumbnail 1280x720, [DESCRIÇÃO DA CENA específica do título 4 com elementos do nicho], dramatic mood do guide, MASSIVE bold title text, hero subject, [paleta], film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, clean composition",
       "views_estimate": "35K",
       "duration": "18:15"
     }}
   ],
-  "INSTRUÇÃO PARA THUMBNAIL_PROMPT": "Substitua [cena épica relacionada ao TÍTULO X] por uma descrição visual REAL e específica do conteúdo do título correspondente. Cada uma das 4 thumbs deve ter uma cena DIFERENTE adaptada ao seu título. NUNCA deixe os colchetes [] no output final — substitua por descrição visual concreta em inglês. Mantenha o resto do prompt cinematográfico intacto.",
+  "INSTRUÇÃO PARA THUMBNAIL_PROMPT": "OBRIGATÓRIO: 1) Cada um dos 4 thumbnail_prompts deve seguir o thumbnail_style_guide do nicho 2) Substitua TODOS os placeholders [...] por descrições visuais CONCRETAS em inglês adaptadas ao título correspondente 3) Cada thumb deve mostrar uma CENA DIFERENTE mas dentro do mesmo style guide visual (mesma paleta, mesmo arquétipo de personagem, mesmos tipos de elementos) 4) Ao final NUNCA deixe colchetes [] ou texto em português no thumbnail_prompt — só inglês cinematográfico concreto. Pense em REPLICAR e ELEVAR as melhores thumbs de alto CTR do nicho específico.",
   "colors": {{"primary": "#hex", "secondary": "#hex", "accent": "#hex"}},
   "fonts": "Sugestão de fontes (ex: Montserrat Bold + Inter Regular)",
   "keywords": ["palavra-chave 1 no idioma {language}", "...", "...10 palavras"],
@@ -221,6 +239,7 @@ def _normalize(raw: dict, niche_name: str, language: str = "pt-BR") -> dict[str,
         "whats_better": str(raw.get("whats_better") or raw.get("whatsBetter") or "")[:800],
         "weaknesses_fixed": [],
         "strategy_edge": str(raw.get("strategy_edge") or raw.get("strategyEdge") or "")[:600],
+        "thumbnail_style_guide": str(raw.get("thumbnail_style_guide") or raw.get("thumbnailStyleGuide") or "")[:1000],
         "logo_prompt": str(raw.get("logo_prompt") or raw.get("logoPrompt") or "")[:600],
         "banner_prompt": str(raw.get("banner_prompt") or raw.get("bannerPrompt") or "")[:600],
         "videos": [],
@@ -331,9 +350,9 @@ def generate_channel_mockup(
     response = chat(
         prompt=user_prompt,
         system=_SYSTEM_PROMPT,
-        max_tokens=5500,
+        max_tokens=6500,
         temperature=0.7,
-        timeout=200,
+        timeout=240,
     )
 
     if not response or not response.strip():

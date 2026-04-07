@@ -559,6 +559,15 @@ function renderMockup(m, projectId, isFresh) {
         html += '</div>';
     }
 
+    // Thumbnail style guide (research result da AI)
+    if (m.thumbnail_style_guide) {
+        html += '<div style="background:linear-gradient(135deg,rgba(168,85,247,0.06),rgba(59,130,246,0.04));border:1px solid rgba(168,85,247,0.25);border-radius:12px;padding:14px 16px;margin-top:14px">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:14px">🎯</span><span style="font-weight:800;font-size:12px;color:#a855f7;letter-spacing:.05em;text-transform:uppercase">Thumbnail Style Guide do Nicho</span></div>';
+        html += '<div style="font-size:12px;color:#cbd5e1;line-height:1.65">' + escapeHtmlMockup(m.thumbnail_style_guide) + '</div>';
+        html += '<div style="font-size:10px;color:#64748b;margin-top:8px;font-style:italic">Análise da AI sobre o que funciona em thumbs de alto CTR neste nicho — usado como base pelos 4 prompts abaixo</div>';
+        html += '</div>';
+    }
+
     // Prompts
     html += '<details style="background:rgba(255,255,255,0.02);border:1px solid #1f2937;border-radius:12px;padding:14px;margin-top:14px">';
     html += '<summary style="cursor:pointer;font-size:13px;color:#fbbf24;font-weight:700">📋 Prompts Prontos para Copiar (logo / banner / 4 thumbnails)</summary>';
