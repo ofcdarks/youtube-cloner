@@ -2195,7 +2195,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
         <span><strong>{lang_upper}</strong>Idioma</span>
         <span><strong>{sub_6_display}</strong>Inscritos · 6m</span>
         <span><strong>{sub_12_display}</strong>Inscritos · 12m</span>
-        <span><strong>{rpm_display}</strong>RPM médio</span>
+        <span><strong>{rpm_avg_display}</strong>RPM médio</span>
       </div>
     </div>
     <div class="cover-bottom">
