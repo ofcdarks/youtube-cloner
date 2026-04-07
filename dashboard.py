@@ -1040,9 +1040,7 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{l
                 ideas_list = json.loads(titles_json_match.group())
                 for i, idea in enumerate(ideas_list[:30]):
                     title = idea.get("title", f"Titulo {i+1}")
-                    # YouTube limit: max 100 characters
-                    if len(title) > 100:
-                        title = title[:97] + "..."
+                    # save_idea() enforces 100-char limit via enforce_title_limit()
                     save_idea(project_id, i + 1, title,
                              idea.get("hook", ""), idea.get("summary", ""),
                              idea.get("pillar", ""), idea.get("priority", "MEDIA"))

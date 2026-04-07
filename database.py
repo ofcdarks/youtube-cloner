@@ -544,6 +544,39 @@ def delete_file(file_id: int) -> dict | None:
 
 # ── Ideas ────────────────────────────────────────────────
 
+YOUTUBE_TITLE_MAX_CHARS = 100
+
+
+def enforce_title_limit(title: str, max_chars: int = YOUTUBE_TITLE_MAX_CHARS) -> str:
+    """Enforce YouTube 100-char title limit.
+
+    Strategy:
+    1. Strip whitespace
+    2. If within limit, return as-is
+    3. Try truncating at last word boundary <= max_chars
+    4. If no word boundary works, hard-truncate at max_chars
+
+    Never adds ellipsis (would waste 3 chars) — YouTube counts total chars.
+    """
+    if not title:
+        return title
+    t = title.strip()
+    if len(t) <= max_chars:
+        return t
+    # Try to find last word boundary before max_chars
+    cut = t[:max_chars].rstrip()
+    # Walk back to last space to avoid breaking a word
+    if " " in cut:
+        last_space = cut.rfind(" ")
+        # Only use word boundary if it's not too aggressive (lose < 25% of limit)
+        if last_space >= max_chars * 0.75:
+            cut = cut[:last_space].rstrip()
+    # Strip trailing punctuation that looks weird at cut point
+    while cut and cut[-1] in ",;:.-|":
+        cut = cut[:-1].rstrip()
+    return cut[:max_chars]
+
+
 def save_idea(
     project_id: str,
     num: int,
@@ -557,6 +590,10 @@ def save_idea(
     title_b: str = "",
     trending: int = 0,
 ) -> int:
+    # Enforce YouTube 100-char limit on both title and title_b
+    title = enforce_title_limit(title)
+    if title_b:
+        title_b = enforce_title_limit(title_b)
     now = datetime.now().isoformat()
     with get_db() as conn:
         cur = conn.execute(
@@ -564,6 +601,28 @@ def save_idea(
             (project_id, num, title, hook, summary, pillar, priority, search_volume, search_competition, title_b, trending, now),
         )
         return cur.lastrowid
+
+
+def update_idea_title(idea_id: int, title: str, title_b: str = None) -> bool:
+    """Update an idea's title, enforcing the 100-char limit."""
+    title = enforce_title_limit(title)
+    with get_db() as conn:
+        if title_b is not None:
+            title_b = enforce_title_limit(title_b)
+            conn.execute("UPDATE ideas SET title=?, title_b=? WHERE id=?", (title, title_b, idea_id))
+        else:
+            conn.execute("UPDATE ideas SET title=? WHERE id=?", (title, idea_id))
+    return True
+
+
+def find_long_titles(max_chars: int = YOUTUBE_TITLE_MAX_CHARS) -> list[dict]:
+    """Find all ideas with titles exceeding the limit."""
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT id, project_id, num, title, title_b FROM ideas WHERE length(title) > ? OR length(title_b) > ?",
+            (max_chars, max_chars),
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def get_ideas(project_id: str, pillar: str | None = None, priority: str | None = None) -> list[dict]:

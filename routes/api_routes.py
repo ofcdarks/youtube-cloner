@@ -24,6 +24,51 @@ async def deploy_check(request: Request):
     return JSONResponse({"deployed": "9ab9872", "ts": "2026-04-06"})
 
 
+@router.get("/api/admin/fix-long-titles")
+async def fix_long_titles(request: Request, dry_run: bool = False):
+    """Find and fix all titles exceeding 100 chars across all projects.
+
+    Query params:
+    - dry_run=true: only return what would be changed, don't update DB
+
+    Strategy: truncate at word boundary <= 100 chars (no ellipsis).
+    For a smarter rewrite, could call AI here but that's expensive for bulk.
+    """
+    from database import find_long_titles, enforce_title_limit, update_idea_title
+    long_ones = find_long_titles()
+    results = []
+    for row in long_ones:
+        old_title = row.get("title", "") or ""
+        old_title_b = row.get("title_b", "") or ""
+        new_title = enforce_title_limit(old_title) if len(old_title) > 100 else old_title
+        new_title_b = enforce_title_limit(old_title_b) if len(old_title_b) > 100 else old_title_b
+        entry = {
+            "id": row["id"],
+            "project_id": row["project_id"],
+            "num": row["num"],
+            "old_title": old_title,
+            "old_length": len(old_title),
+            "new_title": new_title,
+            "new_length": len(new_title),
+        }
+        if old_title_b and len(old_title_b) > 100:
+            entry["old_title_b"] = old_title_b
+            entry["new_title_b"] = new_title_b
+        results.append(entry)
+        if not dry_run:
+            try:
+                update_idea_title(row["id"], new_title, new_title_b if old_title_b else None)
+            except Exception as e:
+                entry["error"] = str(e)
+                logger.error(f"Failed to fix title {row['id']}: {e}")
+    return JSONResponse({
+        "ok": True,
+        "total_long": len(long_ones),
+        "dry_run": dry_run,
+        "fixes": results,
+    })
+
+
 # ── Idea Bender (dobra de nicho/ideia) ──────────────────────────────
 @router.post("/api/admin/bend-idea")
 @limiter.limit("10/minute")
