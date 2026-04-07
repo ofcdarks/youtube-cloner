@@ -345,6 +345,23 @@ def _run_migrations():
             created_at TEXT NOT NULL,
             FOREIGN KEY (target_student_id) REFERENCES users(id)
         )"""),
+        # v8.8: Idea Bender history (niche/idea bending tool)
+        ("create_bent_ideas", """CREATE TABLE IF NOT EXISTS bent_ideas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_mode TEXT NOT NULL DEFAULT 'internal',
+            source_project_id TEXT DEFAULT '',
+            source_idea_id INTEGER DEFAULT 0,
+            source_title TEXT NOT NULL,
+            source_url TEXT DEFAULT '',
+            source_views INTEGER DEFAULT 0,
+            language TEXT DEFAULT 'en',
+            dna_json TEXT DEFAULT '{}',
+            variations_json TEXT DEFAULT '[]',
+            num_variations INTEGER DEFAULT 5,
+            created_at TEXT NOT NULL,
+            created_by INTEGER DEFAULT 0
+        )"""),
+        ("idx_bent_ideas_project", "CREATE INDEX IF NOT EXISTS idx_bent_ideas_project ON bent_ideas(source_project_id)"),
     ]
     with get_db() as conn:
         for migration_id, sql in migrations:
@@ -1331,3 +1348,83 @@ def get_performance_summary(student_id: int) -> dict:
         "best_views": row["best_views"],
         "top_videos": [dict(r) for r in top],
     }
+
+
+
+# ── Bent Ideas (Idea Bender feature) ──────────────────────────────
+def save_bent_idea(
+    source_mode: str,
+    source_title: str,
+    language: str,
+    dna: dict,
+    variations: list,
+    source_project_id: str = "",
+    source_idea_id: int = 0,
+    source_url: str = "",
+    source_views: int = 0,
+    created_by: int = 0,
+) -> int:
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        cur = conn.execute(
+            """INSERT INTO bent_ideas
+               (source_mode, source_project_id, source_idea_id, source_title,
+                source_url, source_views, language, dna_json, variations_json,
+                num_variations, created_at, created_by)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                source_mode,
+                source_project_id,
+                source_idea_id,
+                source_title,
+                source_url,
+                source_views,
+                language,
+                json.dumps(dna, ensure_ascii=False),
+                json.dumps(variations, ensure_ascii=False),
+                len(variations),
+                now,
+                created_by,
+            ),
+        )
+        return cur.lastrowid
+
+
+def get_bent_ideas(limit: int = 50, project_id: str = "") -> list[dict]:
+    with get_db() as conn:
+        if project_id:
+            rows = conn.execute(
+                "SELECT * FROM bent_ideas WHERE source_project_id=? ORDER BY created_at DESC LIMIT ?",
+                (project_id, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM bent_ideas ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["dna"] = json.loads(d.get("dna_json") or "{}")
+            d["variations"] = json.loads(d.get("variations_json") or "[]")
+        except (ValueError, TypeError):
+            d["dna"] = {}
+            d["variations"] = []
+        result.append(d)
+    return result
+
+
+def get_bent_idea_by_id(bent_id: int) -> dict | None:
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM bent_ideas WHERE id=?", (bent_id,)).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["dna"] = json.loads(d.get("dna_json") or "{}")
+        d["variations"] = json.loads(d.get("variations_json") or "[]")
+    except (ValueError, TypeError):
+        d["dna"] = {}
+        d["variations"] = []
+    return d

@@ -194,6 +194,7 @@
                         <a href="/admin/radar?project={{ current_project_id }}" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#f59e0b;border-color:#f59e0b;text-decoration:none" title="Pagina dedicada: tendencias quentes no nicho">&#128225; Radar</a>
                         <a href="/admin/sop-analysis?project={{ current_project_id }}&mode=canal" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#3b82f6;border-color:#3b82f6;text-decoration:none" title="Pagina dedicada: analise SOP do canal original">&#128202; SOP Canal</a>
                         <a href="/admin/sop-analysis?project={{ current_project_id }}&mode=alunos" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#7c3aed;border-color:#7c3aed;text-decoration:none" title="Pagina dedicada: analise SOP dos alunos">&#129504; SOP Alunos</a>
+                        <button type="button" onclick="openBendExternal()" class="btn-primary" style="font-size:11px;padding:4px 12px;background:#10b981;border-color:#10b981;cursor:pointer" title="Dobrar ideia externa: cole URL de video viral e gere 5 variacoes">&#128260; Dobrar Ideia</button>
                     </div>
                     {% endif %}
                 </div>
@@ -324,6 +325,7 @@
                         </div>
                         {% endif %}
                         <button type="button" class="gen-btn" onclick="generateScript({{ idea_id }}, '{{ title|replace("'", "") }}')" title="Gerar roteiro" aria-label="Gerar roteiro">&#9998;</button>
+                        <button type="button" class="gen-btn" style="background:#7c3aed18;color:#a78bfa;border-color:#7c3aed40" onclick="bendIdeaInternal({{ idea_id }})" title="Dobrar esta ideia — gerar variações com o mesmo DNA" aria-label="Dobrar ideia">&#128260;</button>
                     </div>
                     {% if idea.region_html %}
                     {{ idea.region_html|safe }}
@@ -898,6 +900,188 @@ function trendRadar() {
         btn.disabled = false;
         btn.innerHTML = '&#128225; Radar';
         showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+// ═══════ IDEA BENDER ═══════
+function bendIdeaInternal(ideaId) {
+    var loading = showToast('Analisando DNA da ideia...', 'loading');
+    apiPost('/api/admin/bend-idea', {mode: 'internal', idea_id: ideaId, num_variations: 5})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        if (data.ok) {
+            renderBentIdeasModal(data);
+        } else {
+            showToast('Erro: ' + (data.error || 'falha na dobra'), 'error', 6000);
+        }
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+function openBendExternal() {
+    var modal = document.getElementById('bend-external-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'bend-external-modal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+        modal.innerHTML = '<div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:30px;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.6)">'
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+            + '<h2 style="color:#e2e8f0;margin:0;font-size:20px">&#128260; Dobrar Ideia Externa</h2>'
+            + '<button onclick="closeBendModal()" style="background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer">&times;</button>'
+            + '</div>'
+            + '<p style="color:#94a3b8;font-size:13px;margin-bottom:16px">Cole a URL de um video viral do YouTube. O sistema vai analisar o DNA do sucesso e gerar 5 variacoes elevadas em angulos diferentes.</p>'
+            + '<label style="color:#cbd5e1;font-size:12px;display:block;margin-bottom:6px">URL do YouTube</label>'
+            + '<input id="bend-yt-url" type="url" placeholder="https://www.youtube.com/watch?v=..." style="width:100%;padding:10px 12px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:14px;margin-bottom:14px">'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
+            + '<div><label style="color:#cbd5e1;font-size:12px;display:block;margin-bottom:6px">Idioma do resultado</label>'
+            + '<select id="bend-lang" style="width:100%;padding:10px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0">'
+            + '<option value="en">English</option><option value="es">Espanol</option><option value="pt-BR">Portugues</option></select></div>'
+            + '<div><label style="color:#cbd5e1;font-size:12px;display:block;margin-bottom:6px">Variacoes</label>'
+            + '<select id="bend-num" style="width:100%;padding:10px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0">'
+            + '<option value="3">3</option><option value="5" selected>5</option><option value="7">7</option><option value="10">10</option></select></div>'
+            + '</div>'
+            + '<button id="bend-submit-btn" onclick="submitBendExternal()" style="width:100%;padding:12px;background:#10b981;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">Analisar e Dobrar</button>'
+            + '</div>';
+        document.body.appendChild(modal);
+    }
+    modal.style.display = 'flex';
+}
+
+function closeBendModal() {
+    var m = document.getElementById('bend-external-modal');
+    if (m) m.style.display = 'none';
+    var r = document.getElementById('bend-results-modal');
+    if (r) r.style.display = 'none';
+}
+
+function submitBendExternal() {
+    var url = document.getElementById('bend-yt-url').value.trim();
+    var lang = document.getElementById('bend-lang').value;
+    var num = parseInt(document.getElementById('bend-num').value, 10);
+    if (!url) { showToast('Cole uma URL do YouTube', 'warning'); return; }
+    var btn = document.getElementById('bend-submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Analisando... (pode demorar 30s)';
+    var loading = showToast('Buscando metadata + analisando DNA...', 'loading');
+    apiPost('/api/admin/bend-idea', {mode: 'external', youtube_url: url, language: lang, num_variations: num})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.textContent = 'Analisar e Dobrar';
+        if (data.ok) {
+            closeBendModal();
+            renderBentIdeasModal(data);
+        } else {
+            showToast('Erro: ' + (data.error || 'falha'), 'error', 8000);
+        }
+    })
+    .catch(function(e) {
+        removeToast(loading);
+        btn.disabled = false;
+        btn.textContent = 'Analisar e Dobrar';
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
+function renderBentIdeasModal(data) {
+    var modal = document.getElementById('bend-results-modal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'bend-results-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+    var dna = data.dna || {};
+    var variations = data.variations || [];
+    var source = data.source || {};
+
+    var html = '<div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:30px;max-width:900px;width:100%;margin:20px 0">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">';
+    html += '<h2 style="color:#e2e8f0;margin:0;font-size:20px">&#128260; ' + variations.length + ' Variacoes Dobradas</h2>';
+    html += '<button onclick="closeBendModal()" style="background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer">&times;</button>';
+    html += '</div>';
+
+    // Source info
+    html += '<div style="background:#1e293b;border-left:3px solid #7c3aed;padding:12px 16px;border-radius:6px;margin-bottom:20px">';
+    html += '<div style="color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">IDEIA ORIGINAL</div>';
+    html += '<div style="color:#e2e8f0;font-size:15px;font-weight:500">' + escapeHtml(source.title || '') + '</div>';
+    if (source.views) {
+        html += '<div style="color:#64748b;font-size:11px;margin-top:4px">' + source.views.toLocaleString() + ' views &middot; ' + (source.niche || '') + '</div>';
+    }
+    html += '</div>';
+
+    // DNA
+    if (dna.why_it_worked) {
+        html += '<div style="background:#0c1226;border:1px solid #1e3a8a;padding:14px 18px;border-radius:8px;margin-bottom:20px">';
+        html += '<div style="color:#60a5fa;font-size:11px;font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">&#129504; DNA DO SUCESSO</div>';
+        html += '<div style="color:#cbd5e1;font-size:13px;line-height:1.6;margin-bottom:10px">' + escapeHtml(dna.why_it_worked) + '</div>';
+        if (dna.title_formula) {
+            html += '<div style="color:#94a3b8;font-size:12px"><strong style="color:#60a5fa">Formula:</strong> ' + escapeHtml(dna.title_formula) + '</div>';
+        }
+        if (dna.emotional_driver) {
+            html += '<div style="color:#94a3b8;font-size:12px"><strong style="color:#60a5fa">Gatilho:</strong> ' + escapeHtml(dna.emotional_driver) + '</div>';
+        }
+        html += '</div>';
+    }
+
+    // Variations
+    variations.forEach(function(v, i) {
+        var score = v.potential_score || 0;
+        var scoreColor = score >= 80 ? '#10b981' : (score >= 60 ? '#f59e0b' : '#ef4444');
+        html += '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px;margin-bottom:12px">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">';
+        html += '<div style="flex:1">';
+        html += '<div style="color:#a78bfa;font-size:10px;font-weight:600;margin-bottom:4px">VARIACAO ' + (i+1) + ' &middot; ' + escapeHtml(v.new_niche_suggestion || '') + '</div>';
+        html += '<div style="color:#f8fafc;font-size:15px;font-weight:600;line-height:1.4">' + escapeHtml(v.title || '') + '</div>';
+        html += '</div>';
+        html += '<div style="background:' + scoreColor + '20;color:' + scoreColor + ';padding:6px 12px;border-radius:20px;font-weight:700;font-size:14px;white-space:nowrap">' + score + '/100</div>';
+        html += '</div>';
+
+        if (v.angle) {
+            html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px"><strong style="color:#cbd5e1">Angulo:</strong> ' + escapeHtml(v.angle) + '</div>';
+        }
+        if (v.reasoning) {
+            html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px;line-height:1.5"><strong style="color:#cbd5e1">Por que funciona:</strong> ' + escapeHtml(v.reasoning) + '</div>';
+        }
+        if (v.visual_style) {
+            html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px"><strong style="color:#cbd5e1">Visual:</strong> ' + escapeHtml(v.visual_style) + '</div>';
+        }
+        if (v.target_audience) {
+            html += '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px"><strong style="color:#cbd5e1">Publico:</strong> ' + escapeHtml(v.target_audience) + '</div>';
+        }
+        if (v.example_pillars && v.example_pillars.length) {
+            html += '<div style="color:#94a3b8;font-size:11px;margin-top:8px">';
+            v.example_pillars.forEach(function(p) {
+                html += '<span style="display:inline-block;background:#334155;color:#cbd5e1;padding:3px 8px;border-radius:4px;margin-right:6px;margin-bottom:4px">' + escapeHtml(p) + '</span>';
+            });
+            html += '</div>';
+        }
+        html += '<button onclick="copyBentTitle(this, \'' + escapeAttr(v.title || '') + '\')" style="margin-top:10px;padding:6px 12px;background:#7c3aed18;color:#a78bfa;border:1px solid #7c3aed40;border-radius:5px;font-size:11px;cursor:pointer">&#128203; Copiar titulo</button>';
+        html += '</div>';
+    });
+
+    html += '</div>';
+    modal.innerHTML = html;
+    document.body.appendChild(modal);
+    modal.style.display = 'flex';
+}
+
+function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function escapeAttr(s) {
+    return escapeHtml(s).replace(/'/g, '&#39;');
+}
+function copyBentTitle(btn, text) {
+    navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '&#10004; Copiado!';
+        setTimeout(function() { btn.innerHTML = orig; }, 1500);
     });
 }
 </script>

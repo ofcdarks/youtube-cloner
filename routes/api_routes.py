@@ -24,6 +24,158 @@ async def deploy_check(request: Request):
     return JSONResponse({"deployed": "9ab9872", "ts": "2026-04-06"})
 
 
+# ── Idea Bender (dobra de nicho/ideia) ──────────────────────────────
+@router.post("/api/admin/bend-idea")
+@limiter.limit("10/minute")
+async def api_bend_idea(request: Request, user=Depends(require_auth)):
+    """
+    Bend a validated idea into N variations.
+
+    Modes:
+    - internal: {idea_id: 123}  — bends an idea from the DB using its project SOP
+    - external: {youtube_url: "..."}  — fetches metadata from a YouTube URL
+    - manual:   {title: "...", sop: "...", niche: "...", language: "en"}
+    """
+    from protocols.idea_bender import bend_idea, fetch_youtube_metadata
+    from database import (
+        get_ideas,
+        get_projects,
+        get_files,
+        save_bent_idea,
+    )
+
+    if user.get("role") != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+    mode = body.get("mode", "internal")
+    num_variations = max(3, min(int(body.get("num_variations", 5)), 10))
+
+    title = ""
+    sop = ""
+    niche = ""
+    language = "en"
+    source_project_id = ""
+    source_idea_id = 0
+    source_url = ""
+    source_views = 0
+    extra_context = ""
+
+    if mode == "internal":
+        idea_id = int(body.get("idea_id", 0))
+        if not idea_id:
+            return JSONResponse({"error": "idea_id required for internal mode"}, status_code=400)
+        # Find the idea across all projects
+        found = None
+        for p in get_projects():
+            for i in get_ideas(p["id"]):
+                if i["id"] == idea_id:
+                    found = (p, i)
+                    break
+            if found:
+                break
+        if not found:
+            return JSONResponse({"error": f"Idea {idea_id} not found"}, status_code=404)
+        project, idea = found
+        title = idea.get("title", "")
+        niche = idea.get("pillar") or project.get("niche_chosen", "")
+        language = project.get("language", "en")
+        source_project_id = project["id"]
+        source_idea_id = idea_id
+        # Load SOP from project files
+        sop_files = [f for f in get_files(project["id"], "analise") if "SOP" in (f.get("label") or "")]
+        if sop_files:
+            sop = sop_files[0].get("content", "")
+        extra_context = f"views: {idea.get('search_volume', 0)}/month, score: {idea.get('score', 0)}"
+
+    elif mode == "external":
+        url = (body.get("youtube_url") or "").strip()
+        if not url:
+            return JSONResponse({"error": "youtube_url required for external mode"}, status_code=400)
+        meta = fetch_youtube_metadata(url)
+        if "error" in meta:
+            return JSONResponse({"error": meta["error"]}, status_code=400)
+        title = meta["title"]
+        language = body.get("language", "en")
+        niche = body.get("niche", meta.get("channel", ""))
+        source_url = meta.get("webpage_url", url)
+        source_views = meta.get("views", 0)
+        # Use user-provided SOP if any, otherwise use the video description
+        sop = body.get("sop", "") or meta.get("description", "")
+        extra_context = (
+            f"channel: {meta.get('channel', '')}, views: {meta.get('views', 0):,}, "
+            f"likes: {meta.get('like_count', 0):,}, comments: {meta.get('comment_count', 0):,}, "
+            f"duration: {meta.get('duration_sec', 0)}s"
+        )
+
+    elif mode == "manual":
+        title = (body.get("title") or "").strip()
+        sop = body.get("sop", "")
+        niche = body.get("niche", "")
+        language = body.get("language", "en")
+        if not title:
+            return JSONResponse({"error": "title required for manual mode"}, status_code=400)
+
+    else:
+        return JSONResponse({"error": f"Unknown mode: {mode}"}, status_code=400)
+
+    # Run the bender
+    result = bend_idea(
+        title=title,
+        sop=sop,
+        niche=niche,
+        language=language,
+        num_variations=num_variations,
+        extra_context=extra_context,
+    )
+
+    if "error" in result:
+        return JSONResponse({"error": result["error"], "raw": result.get("raw", "")}, status_code=500)
+
+    # Persist to history
+    try:
+        bent_id = save_bent_idea(
+            source_mode=mode,
+            source_title=title,
+            language=language,
+            dna=result.get("dna", {}),
+            variations=result.get("variations", []),
+            source_project_id=source_project_id,
+            source_idea_id=source_idea_id,
+            source_url=source_url,
+            source_views=source_views,
+            created_by=user.get("id", 0),
+        )
+        result["bent_id"] = bent_id
+    except Exception as e:
+        logger.warning(f"Failed to persist bent idea: {e}")
+
+    result["ok"] = True
+    result["source"] = {
+        "mode": mode,
+        "title": title,
+        "niche": niche,
+        "language": language,
+        "views": source_views,
+        "url": source_url,
+    }
+    return JSONResponse(result)
+
+
+@router.get("/api/admin/bent-ideas-history")
+async def api_bent_ideas_history(request: Request, user=Depends(require_auth), limit: int = 30, project: str = ""):
+    """List recent bent ideas (history)."""
+    from database import get_bent_ideas
+    if user.get("role") != "admin":
+        return JSONResponse({"error": "Admin only"}, status_code=403)
+    items = get_bent_ideas(limit=limit, project_id=project)
+    return JSONResponse({"ok": True, "items": items, "count": len(items)})
+
+
 # Mapping: project name (exact match in DB) -> SOP file basename in output/
 SOP_FILE_MAP = {
     "ROBOS ENCANTADOS": "sop_robos_encantados_floresta.md",
