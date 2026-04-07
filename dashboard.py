@@ -1942,7 +1942,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
         hero_bg = f'background: linear-gradient(135deg, {primary}, #0a0a0f);'
 
     seo_page = (
-        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name} · LACASADARK</div></div>{seo_block}<div class="page-footer"><div>{channel_name}</div><div>05</div></div></div>'
+        f'<div class="page page-break"><div class="page-header"><div class="ph-brand"><div class="ph-brand-dot"></div>SEO Pack</div><div class="ph-channel">{channel_name} · LACASADARK</div></div>{seo_block}<div class="page-footer"><div>{channel_name} · LACASADARK · canaisdarks.com.br</div><div>05</div></div></div>'
         if seo_block
         else ""
     )
@@ -2126,7 +2126,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     </div>
     <div class="cover-bottom">
       <div>Projeto · {project_label}</div>
-      <div>LACASADARK</div>
+      <div>LACASADARK · canaisdarks.com.br</div>
     </div>
   </div>
 
@@ -2166,7 +2166,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     </div>
 
     <div class="page-footer">
-      <div>{channel_name}</div>
+      <div>{channel_name} · LACASADARK · canaisdarks.com.br</div>
       <div>02</div>
     </div>
   </div>
@@ -2217,7 +2217,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     {description_block}
 
     <div class="page-footer">
-      <div>{channel_name}</div>
+      <div>{channel_name} · LACASADARK · canaisdarks.com.br</div>
       <div>03</div>
     </div>
   </div>
@@ -2232,7 +2232,7 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     {superior_block}
 
     <div class="page-footer">
-      <div>{channel_name}</div>
+      <div>{channel_name} · LACASADARK · canaisdarks.com.br</div>
       <div>04</div>
     </div>
   </div>
@@ -2247,7 +2247,8 @@ async def api_mockup_report(request: Request, user=Depends(require_admin), proje
     <p class="back-text">Use este documento como blueprint. Cada elemento foi desenhado pra que seu canal nasça posicionado pra dominar o nicho desde o primeiro upload. Consistência + hooks fortes + qualidade = crescimento real.</p>
     <div class="back-line"></div>
     <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 32px; font-weight: 600; color: #fff; margin-bottom: 6px; letter-spacing: 0.04em;">LACASADARK</div>
-    <div style="font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 32px;">Mentoria de Canais Faceless</div>
+    <div style="font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 14px;">Mentoria de Canais Faceless</div>
+    <div style="font-size: 13px; color: {accent}; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 32px;">canaisdarks.com.br</div>
     <div class="back-meta">Documento gerado em {today_br}</div>
   </div>
 

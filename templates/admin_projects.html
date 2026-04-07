@@ -718,9 +718,25 @@ function copyMockupAll() {
     });
 }
 
+function _buildFallbackPrompt(slot) {
+    if (slot === 'logo') {
+        return 'circular YouTube channel logo, modern emblem, premium vector style, bold colors, fills frame edge to edge, no padding, no whitespace, 4k';
+    }
+    if (slot === 'banner') {
+        return 'cinematic YouTube channel banner 16:9, dramatic volumetric lighting, atmospheric, epic horizontal scale, 8k professional';
+    }
+    // thumb fallback — pull title from current mockup
+    var idx = parseInt(slot.replace('thumb', ''), 10);
+    var title = '';
+    if (window._currentMockup && window._currentMockup.videos && window._currentMockup.videos[idx]) {
+        title = window._currentMockup.videos[idx].title || '';
+    }
+    return 'cinematic movie poster style YouTube thumbnail 1280x720, dramatic volumetric god rays, hero subject, MASSIVE bold serif title text overlay related to "' + title + '", teal and orange color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, clean composition';
+}
+
 function genMockupImage(slot, promptStr) {
     var prompt = JSON.parse(promptStr);
-    if (!prompt) { showToast('Sem prompt definido pra ' + slot, 'error'); return; }
+    if (!prompt) { prompt = _buildFallbackPrompt(slot); }
     var slotEl = document.getElementById('mk-' + slot);
     if (!slotEl) return;
     var loadingHtml;
@@ -732,21 +748,41 @@ function genMockupImage(slot, promptStr) {
     var prevHtml = slotEl.innerHTML;
     slotEl.innerHTML = prevHtml + loadingHtml;
 
-    var aspect = slot === 'logo' ? 'SQUARE' : (slot === 'banner' ? 'LANDSCAPE' : 'LANDSCAPE');
+    var aspect = slot === 'logo' ? 'SQUARE' : 'LANDSCAPE';
+    var triedFallback = false;
 
-    apiPost('/api/admin/generate-mockup-image', {prompt: prompt, aspect: aspect})
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (!data.ok) {
-            slotEl.innerHTML = prevHtml;
-            if (data.code === 'NO_COOKIE') {
-                showToast(data.error + ' Configure em Admin > ImageFX.', 'error', 8000);
-            } else {
-                showToast(data.error || 'Erro ao gerar imagem', 'error', 6000);
+    function attempt(currentPrompt, retriesLeft) {
+        return apiPost('/api/admin/generate-mockup-image', {prompt: currentPrompt, aspect: aspect})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) { return data; }
+            if (data.code === 'NO_COOKIE') { return {fatal: true, error: data.error}; }
+            if (retriesLeft > 0) {
+                return new Promise(function(res) {
+                    setTimeout(function() { res(attempt(currentPrompt, retriesLeft - 1)); }, 1500);
+                });
             }
+            // Final fallback: try once with a clean prompt built from title (if not already)
+            if (!triedFallback) {
+                triedFallback = true;
+                return attempt(_buildFallbackPrompt(slot), 1);
+            }
+            return {error: data.error || 'falha após retries'};
+        });
+    }
+
+    attempt(prompt, 2)
+    .then(function(data) {
+        if (data && data.ok) {
+            applyMockupImage(slot, data.url, prompt, true);
             return;
         }
-        applyMockupImage(slot, data.url, prompt, true);
+        slotEl.innerHTML = prevHtml;
+        if (data && data.fatal) {
+            showToast(data.error + ' Configure em Admin > ImageFX.', 'error', 8000);
+        } else {
+            showToast((data && data.error) || 'Erro ao gerar imagem após retries', 'error', 6000);
+        }
     })
     .catch(function(e) {
         if (e && e.message === 'unauthorized') return;
@@ -779,7 +815,7 @@ function generateAllMockupImages(projectId) {
     var failed = [];
     var idx = 0;
 
-    function attempt(slot, prompt, retriesLeft) {
+    function attempt(slot, prompt, retriesLeft, isFallback) {
         return apiPost('/api/admin/generate-mockup-image', {prompt: prompt, aspect: slot === 'logo' ? 'SQUARE' : 'LANDSCAPE'})
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -792,16 +828,23 @@ function generateAllMockupImages(projectId) {
             }
             if (retriesLeft > 0) {
                 return new Promise(function(res) {
-                    setTimeout(function() { res(attempt(slot, prompt, retriesLeft - 1)); }, 1500);
+                    setTimeout(function() { res(attempt(slot, prompt, retriesLeft - 1, isFallback)); }, 1500);
                 });
+            }
+            // Final attempt: try the clean fallback prompt if we haven't already
+            if (!isFallback) {
+                return attempt(slot, _buildFallbackPrompt(slot), 1, true);
             }
             return {ok: false, error: data.error || 'erro desconhecido'};
         })
         .catch(function(e) {
             if (retriesLeft > 0) {
                 return new Promise(function(res) {
-                    setTimeout(function() { res(attempt(slot, prompt, retriesLeft - 1)); }, 1500);
+                    setTimeout(function() { res(attempt(slot, prompt, retriesLeft - 1, isFallback)); }, 1500);
                 });
+            }
+            if (!isFallback) {
+                return attempt(slot, _buildFallbackPrompt(slot), 1, true);
             }
             return {ok: false, error: (e && e.message) || 'erro de rede'};
         });
@@ -825,7 +868,7 @@ function generateAllMockupImages(projectId) {
         var prompt = slots[idx][1];
         idx++;
         if (btn) btn.textContent = '⏳ ' + slot + ' (' + idx + '/' + slots.length + ')';
-        attempt(slot, prompt, 2).then(function(result) {
+        attempt(slot, prompt, 2, false).then(function(result) {
             if (result.fatal) {
                 showToast(result.error || 'Configure ImageFX cookie em Admin', 'error', 8000);
                 if (btn) { btn.disabled = false; btn.innerHTML = '🎨 Gerar TODAS as Imagens'; }

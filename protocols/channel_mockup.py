@@ -149,29 +149,30 @@ OUTPUT JSON exato (preencha TODOS os campos):
   "videos": [
     {{
       "title": "Título 1 — use o seed 1 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "English ImageFX prompt: cinematic movie poster style YouTube thumbnail 1280x720, [cena de fundo épica RELACIONADA AO TÍTULO acima], dramatic volumetric lighting with god rays, hero character on the right side (3/4 view, intense expression, period-accurate clothing), MASSIVE bold serif title text on the left side (2-3 words, white with golden glow and heavy black shadow), shallow depth of field, teal and orange color grading, film grain, hyperrealistic, sharp focus on hero, blurred atmospheric background, lens flare, dust particles, vignette, rule of thirds, 8k ultra detailed, epic composition, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition",
-      "views_estimate": "Ex realista: '2.5K' a '8K' (canal novo, vídeo médio)",
+      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica relacionada ao TÍTULO 1], dramatic volumetric god rays, hero character on right side, MASSIVE bold serif title text on left side, teal and orange color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "views_estimate": "8K",
       "duration": "12:45"
     }},
     {{
       "title": "Título 2 — use o seed 2 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 2 — DIFERENTE da thumb 1, RELACIONADO AO TÍTULO 2: variar ângulo, lighting, layout do título. Cinematic movie poster, volumetric lighting, hero subject, massive bold title text overlay, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK, NO 4K BADGE.",
-      "views_estimate": "Ex realista: '1.5K' a '5K'",
+      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica DIFERENTE relacionada ao TÍTULO 2], close-up dramatic angle, golden hour lighting, MASSIVE bold serif title text, hero subject, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "views_estimate": "12K",
       "duration": "10:22"
     }},
     {{
       "title": "Título 3 — use o seed 3 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 3 — DIFERENTE de 1 e 2, RELACIONADO AO TÍTULO 3: outro ângulo cinematográfico, outro mood, outro arranjo de título. Mantenha as 4 camadas (background plate, hero subject, massive serif title, atmospheric effects). Cinematic poster style, dramatic lighting, hyperrealistic, 8k, epic, NO LOGO, NO WATERMARK, NO 4K BADGE, clean.",
-      "views_estimate": "Ex realista: '3K' a '10K'",
+      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica DIFERENTE relacionada ao TÍTULO 3], wide cinematic shot, blue hour lighting, MASSIVE bold serif title text, hero figure, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "views_estimate": "15K",
       "duration": "14:30"
     }},
     {{
       "title": "Título 4 — use o seed 4 traduzido culturalmente para {language}",
-      "thumbnail_prompt": "English ImageFX prompt for thumbnail 4 — DIFERENTE de 1, 2, 3, RELACIONADO AO TÍTULO 4. Mesmas 4 camadas. Cinematic movie poster, volumetric god rays, hero on one side, massive serif title on the other, teal/orange OR golden grading, film grain, lens flare, dust particles, vignette, hyperrealistic 8k, NO LOGO, NO WATERMARK, NO 4K BADGE, clean composition.",
-      "views_estimate": "Apenas 1 dos 4 vídeos pode simular um viral inicial: '15K' a '45K'. Os outros 3 = ranges baixos realistas",
+      "thumbnail_prompt": "cinematic movie poster YouTube thumbnail 1280x720, [cena épica DIFERENTE relacionada ao TÍTULO 4], firelight dramatic mood, MASSIVE bold serif title text, intense hero character, color grading, film grain, hyperrealistic, 8k, NO LOGO, NO WATERMARK",
+      "views_estimate": "35K",
       "duration": "18:15"
     }}
   ],
+  "INSTRUÇÃO PARA THUMBNAIL_PROMPT": "Substitua [cena épica relacionada ao TÍTULO X] por uma descrição visual REAL e específica do conteúdo do título correspondente. Cada uma das 4 thumbs deve ter uma cena DIFERENTE adaptada ao seu título. NUNCA deixe os colchetes [] no output final — substitua por descrição visual concreta em inglês. Mantenha o resto do prompt cinematográfico intacto.",
   "colors": {{"primary": "#hex", "secondary": "#hex", "accent": "#hex"}},
   "fonts": "Sugestão de fontes (ex: Montserrat Bold + Inter Regular)",
   "keywords": ["palavra-chave 1 no idioma {language}", "...", "...10 palavras"],
