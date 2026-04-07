@@ -493,18 +493,74 @@ async def read_file(request: Request, path: str = "", id: int = 0, user=Depends(
 
 @app.get("/project")
 async def read_project(request: Request, id: str = "", user=Depends(require_auth)):
-    """Read project files concatenated."""
+    """Read project files concatenated.
+
+    Projects can exist in two places:
+    1. Filesystem: PROJECTS_DIR/<id>/*.md (legacy, pipeline-generated)
+    2. Database: files table with project_id=<id> and content column populated
+       (reusable niche templates assignable to any student — no channel required)
+
+    This route reads from whichever source has content. If both exist, filesystem wins.
+    If neither has content, returns 404.
+    """
     if not validate_project_id(id):
         return JSONResponse({"error": "ID invalido"}, status_code=400)
 
+    content = ""
+
+    # 1. Try filesystem first (legacy pipeline projects)
     project_dir = PROJECTS_DIR / id
-    if not project_dir.exists():
+    if project_dir.exists():
+        for f in sorted(project_dir.glob("*.md")):
+            content += f"{'=' * 60}\n{f.stem.upper()}\n{'=' * 60}\n\n"
+            content += f.read_text(encoding="utf-8") + "\n\n"
+
+    # 2. Fallback/merge: read files stored in DB (template projects, no channel)
+    if not content.strip():
+        try:
+            from database import get_project as db_get_project, get_files as db_get_files
+            project = db_get_project(id)
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            files = db_get_files(id)
+            if not files:
+                # Project exists in DB but has no files yet — return friendly empty state
+                return PlainTextResponse(
+                    f"{'=' * 60}\n"
+                    f"PROJETO: {project.get('name', id)}\n"
+                    f"{'=' * 60}\n\n"
+                    f"Este projeto ainda nao tem arquivos.\n\n"
+                    f"Voce pode adicionar arquivos via pipeline, upload manual, "
+                    f"ou importar SOPs de outro projeto.\n"
+                )
+
+            # Sort by category then created_at for stable ordering
+            def _sort_key(f):
+                return (str(f.get("category") or ""), str(f.get("created_at") or ""))
+
+            last_category = None
+            for f in sorted(files, key=_sort_key):
+                fname = f.get("filename") or f.get("label") or f"file_{f.get('id')}"
+                fcontent = f.get("content") or ""
+                if not fcontent.strip():
+                    continue
+                # Section header with category break
+                category = f.get("category") or "geral"
+                if category != last_category:
+                    content += f"\n{'#' * 60}\n# CATEGORIA: {category.upper()}\n{'#' * 60}\n\n"
+                    last_category = category
+                content += f"{'=' * 60}\n{Path(fname).stem.upper()}\n{'=' * 60}\n\n"
+                content += fcontent + "\n\n"
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logging.exception("read_project DB fallback failed for id=%s: %s", id, exc)
+            raise HTTPException(status_code=500, detail="Erro ao ler projeto do banco")
+
+    if not content.strip():
         raise HTTPException(status_code=404, detail="Project not found")
 
-    content = ""
-    for f in sorted(project_dir.glob("*.md")):
-        content += f"{'=' * 60}\n{f.stem.upper()}\n{'=' * 60}\n\n"
-        content += f.read_text(encoding="utf-8") + "\n\n"
     return PlainTextResponse(content)
 
 
