@@ -31,15 +31,24 @@ def get_credentials():
     1. Web OAuth token from DB (set via /api/admin/gdrive/auth flow)
     2. GOOGLE_TOKEN_JSON env var
     3. Legacy token.json file
-    """
-    creds = None
 
-    # Priority 1: Web OAuth token from DB
+    Raises RuntimeError with a SPECIFIC reason when Drive is not usable, so
+    the caller (and the admin UI) can show what's actually wrong instead of
+    swallowing the error.
+    """
+    # Priority 1: Web OAuth token from DB. Only fall through to env/file when
+    # the web OAuth module itself isn't importable — any RuntimeError raised
+    # by get_oauth_credentials() (token missing, expired, refresh failed) is
+    # the most specific error we have and must propagate.
     try:
         from routes.gdrive_routes import get_oauth_credentials
+    except ImportError as e:
+        logger.debug(f"gdrive_routes not importable, falling back: {e}")
+    else:
+        # Module imported — its errors are authoritative.
         return get_oauth_credentials()
-    except (ImportError, RuntimeError, Exception) as e:
-        logger.debug(f"Web OAuth not available: {e}")
+
+    creds = None
 
     # Priority 2: Env var
     token_json = os.environ.get("GOOGLE_TOKEN_JSON", "")
@@ -48,23 +57,38 @@ def get_credentials():
             creds = Credentials.from_authorized_user_info(json.loads(token_json), SCOPES)
         except Exception as e:
             logger.warning(f"Failed to load token from env: {e}")
+            raise RuntimeError(
+                f"GOOGLE_TOKEN_JSON env var presente mas invalido: {e}"
+            ) from e
 
     # Priority 3: Legacy file
     if not creds and TOKEN_PATH.exists():
-        creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
+        except Exception as e:
+            raise RuntimeError(f"token.json invalido: {e}") from e
 
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            # Save refreshed token
+    if not creds:
+        raise RuntimeError(
+            "Google Drive nao conectado. Conecte via Admin Panel > Google Drive, "
+            "ou defina GOOGLE_TOKEN_JSON nas env vars."
+        )
+
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                raise RuntimeError(
+                    f"Token do Google Drive expirado e refresh falhou: {e}"
+                ) from e
             try:
                 TOKEN_PATH.write_text(creds.to_json(), encoding="utf-8")
             except Exception:
                 pass
         else:
             raise RuntimeError(
-                "Google Drive nao conectado. Conecte via Admin Panel > Google Drive, "
-                "ou defina GOOGLE_TOKEN_JSON nas env vars."
+                "Token do Google Drive invalido (sem refresh_token). Reconecte em Admin Panel."
             )
 
     return creds

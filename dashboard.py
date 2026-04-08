@@ -3110,8 +3110,13 @@ async def api_connect_drive(request: Request, user=Depends(require_admin)):
             "uploaded": uploaded,
         })
     except Exception as e:
-        logger.error(f"connect-drive error: {e}")
-        return JSONResponse({"error": "Falha ao conectar Google Drive."}, status_code=500)
+        logger.error(f"connect-drive error: {e}", exc_info=True)
+        msg = str(e)
+        if "nao conectado" in msg.lower() or "not connected" in msg.lower():
+            return JSONResponse({"error": "Google Drive nao conectado. Va em Admin Panel > Google Drive para autenticar."}, status_code=400)
+        if "expired" in msg.lower() or "invalid_grant" in msg.lower():
+            return JSONResponse({"error": "Token do Google Drive expirado. Reconecte em Admin Panel > Google Drive."}, status_code=400)
+        return JSONResponse({"error": f"Falha ao conectar Google Drive: {msg[:200]}"}, status_code=500)
 
 
 @app.post("/api/admin/sync-drive")
