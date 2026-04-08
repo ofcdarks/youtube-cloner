@@ -90,7 +90,6 @@ async def _student_dashboard_inner(request: Request, view_as: int, channel: int,
     """
     # First-login: force password change before allowing access
     if user.get("must_change_password") and not view_as:
-        from fastapi.responses import RedirectResponse
         return RedirectResponse("/change-password?first=1", status_code=302)
 
     # ── Impersonation: admin viewing as student ──
