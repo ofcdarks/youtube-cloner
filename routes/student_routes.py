@@ -75,6 +75,15 @@ def _render(request, template, ctx=None):
 
 @router.get("/student", response_class=HTMLResponse)
 async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0, user=Depends(require_auth)):
+    # Debug: catch any error and log full traceback before SafeErrorMiddleware hides it
+    try:
+        return await _student_dashboard_inner(request, view_as, channel, user)
+    except Exception as e:
+        logger.error(f"student_dashboard CRASH: {e}", exc_info=True)
+        raise
+
+
+async def _student_dashboard_inner(request: Request, view_as: int, channel: int, user: dict):
     """Student dashboard with kanban board.
     Admin can view as any student via ?view_as=<student_id>
     Student switches channels via ?channel=<channel_id>
@@ -107,7 +116,9 @@ async def student_dashboard(request: Request, view_as: int = 0, channel: int = 0
     active_channel = None
     if channels:
         if channel:
-            active_channel = next((ch for ch in channels if ch["id"] == channel), channels[0])
+            active_channel = next((ch for ch in channels if ch["id"] == int(channel)), None)
+            if not active_channel:
+                active_channel = channels[0]
         else:
             active_channel = channels[0]
 
