@@ -131,6 +131,57 @@ async def startup():
     except Exception as e:
         logger.debug(f"Seed: {e}")
 
+    # One-time project imports from output/import_*.json
+    try:
+        _import_dir = OUTPUT_DIR
+        for _imp_file in sorted(PROJECT_DIR.glob("output/import_*.json")):
+            _imp_data = json.loads(_imp_file.read_text(encoding="utf-8"))
+            _imp_name = _imp_data["project"]["name"]
+            # Check if project already exists (by name)
+            from database import get_db
+            with get_db() as _conn:
+                _existing = _conn.execute(
+                    "SELECT id FROM projects WHERE name=?", (_imp_name,)
+                ).fetchone()
+            if _existing:
+                logger.info(f"Import skip: project '{_imp_name}' already exists")
+                continue
+            from database import create_project, save_niche, save_idea, save_file, log_activity
+            _p = _imp_data["project"]
+            _pid = create_project(
+                name=_p["name"], channel_original=_p.get("channel_original", ""),
+                niche_chosen=_p.get("niche_chosen", ""),
+                meta=json.loads(_p["meta"]) if isinstance(_p["meta"], str) else _p.get("meta", {}),
+                language=_p.get("language", "en"),
+            )
+            # SOP
+            if _imp_data.get("sop"):
+                save_file(_pid, "analise", f"SOP Completo - {_p['name']}",
+                          f"sop_{_p['name'].lower().replace(' ', '_')}.md", _imp_data["sop"])
+            # Niches
+            for _n in _imp_data.get("niches", []):
+                save_niche(_pid, _n["name"], _n.get("description", ""),
+                           rpm_range=_n.get("rpm_range", ""), competition=_n.get("competition", ""),
+                           color=_n.get("color", "#7c3aed"), pillars=_n.get("pillars", "[]"))
+            # Ideas
+            for _t in _imp_data.get("ideas", []):
+                save_idea(_pid, _t.get("num", 0), _t["title"],
+                          hook=_t.get("hook", ""), pillar=_t.get("pillar", ""),
+                          priority=_t.get("priority", "medium"))
+            # Mind map
+            try:
+                from services import generate_mindmap_html as _gmm, get_project_sop as _gsop
+                _mm_niches = [{"name": _n["name"]} for _n in _imp_data.get("niches", [])]
+                _mm_ideas = [{"title": _t["title"], "hook": _t.get("hook", ""), "score": 0} for _t in _imp_data.get("ideas", [])[:10]]
+                _mm = _gmm(_p["name"], "", (_imp_data.get("sop") or "")[:3000], _mm_niches, _mm_ideas)
+                (OUTPUT_DIR / f"mindmap_{_pid}.html").write_text(_mm, encoding="utf-8")
+            except Exception:
+                pass
+            log_activity(_pid, "project_imported", f"Projeto importado de {_imp_file.name}")
+            logger.info(f"Import OK: '{_imp_name}' → {_pid} ({len(_imp_data.get('niches',[]))} niches, {len(_imp_data.get('ideas',[]))} ideas)")
+    except Exception as e:
+        logger.debug(f"Import: {e}")
+
     # Log Google Drive config status
     _gid = os.environ.get("GOOGLE_CLIENT_ID", "")
     _gsec = os.environ.get("GOOGLE_CLIENT_SECRET", "")
