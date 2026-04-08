@@ -59,8 +59,8 @@ def _build_prompts(niche_name: str) -> list[dict]:
     return [
         {
             "key": "parte1_dna_formato",
-            "label": "Parte 1/6 — Autopsia do Canal (DNA + Formato)",
-            "prompt": f"""PARTE 1 de 6 — AUTOPSIA DO CANAL
+            "label": "Parte 1/7 — Autopsia do Canal (DNA + Formato)",
+            "prompt": f"""PARTE 1 de 7 — AUTOPSIA DO CANAL
 
 Faca uma analise EXTREMAMENTE DETALHADA deste canal para criar um SOP de replicacao no nicho "{niche_name}".
 
@@ -84,8 +84,8 @@ IMPORTANTE: Use exemplos REAIS dos videos. Cite trechos especificos. Nao general
         },
         {
             "key": "parte2_roteiro_hooks",
-            "label": "Parte 2/6 — Engenharia de Roteiro + Hooks",
-            "prompt": f"""PARTE 2 de 6 — ENGENHARIA DE ROTEIRO
+            "label": "Parte 2/7 — Engenharia de Roteiro + Hooks",
+            "prompt": f"""PARTE 2 de 7 — ENGENHARIA DE ROTEIRO
 
 3. ANATOMIA DO ROTEIRO (analise 5+ videos)
 - HOOK (0-5s): Liste a PRIMEIRA FRASE de cada video analisado
@@ -110,8 +110,8 @@ Cite o TEXTO EXATO de cada hook encontrado.""",
         },
         {
             "key": "parte3_storytelling_regras",
-            "label": "Parte 3/6 — Storytelling + Regras de Ouro",
-            "prompt": """PARTE 3 de 6 — STORYTELLING + REGRAS DE OURO
+            "label": "Parte 3/7 — Storytelling + Regras de Ouro",
+            "prompt": """PARTE 3 de 7 — STORYTELLING + REGRAS DE OURO
 
 5. TECNICAS DE STORYTELLING — 5 exemplos CONCRETOS de cada:
 - OPEN LOOPS: misterios plantados que resolvem depois. Cite o trecho exato e quando resolve.
@@ -133,8 +133,8 @@ Seja detalhado. Cada regra com exemplo real.""",
         },
         {
             "key": "parte4_estrategia_competitivo",
-            "label": "Parte 4/6 — Estrategia + Inteligencia Competitiva",
-            "prompt": f"""PARTE 4 de 6 — ESTRATEGIA + INTELIGENCIA COMPETITIVA
+            "label": "Parte 4/7 — Estrategia + Inteligencia Competitiva",
+            "prompt": f"""PARTE 4 de 7 — ESTRATEGIA + INTELIGENCIA COMPETITIVA
 
 7. PILARES DE CONTEUDO: 5-7 categorias com nome, %, 3 exemplos reais, qual performa melhor
 
@@ -156,8 +156,8 @@ Use evidencias reais para cada ponto.""",
         },
         {
             "key": "parte5_sop_ia_template",
-            "label": "Parte 5/6 — Manual de Replicacao para IA",
-            "prompt": """PARTE 5 de 6 — MANUAL DE REPLICACAO PARA IA
+            "label": "Parte 5/7 — Manual de Replicacao para IA",
+            "prompt": """PARTE 5 de 7 — MANUAL DE REPLICACAO PARA IA
 
 15. SYSTEM PROMPT COMPLETO (300+ palavras) para IA gerar roteiros identicos:
 - Persona com backstory
@@ -186,179 +186,92 @@ O hook prende em 5s? Tem 3+ open loops? Tom consistente? Spikes a cada 2-3min? C
 INSTRUCAO: Minimo 1500 palavras nesta parte. Cada exemplo deve ser ESCRITO por voce no estilo exato do canal.""",
         },
         {
-            "key": "parte6_dna_visual",
-            "label": "Parte 6/6 — DNA Visual Completo (Thumbs + Branding + Video Style)",
-            "prompt": f"""PARTE 6 de 6 — DNA VISUAL COMPLETO DO CANAL
+            "key": "parte6_thumbs_alto_ctr",
+            "label": "Parte 6/7 — Thumbs de Alto CTR",
+            "prompt": f"""PARTE 6 de 7 — THUMBS DE ALTO CTR
 
-Analise visual EXTREMAMENTE DETALHADA de TUDO que e visivel no canal do nicho "{niche_name}": thumbs, logo, banner, estilo dos videos, B-roll, color grading, tipografia, intro/outro. Objetivo: recriar a identidade visual por completo e alimentar um agente automatizado que vai gerar assets novos no mesmo estilo. CADA item aqui vai virar input pra IA de geracao de imagem/video.
+Analise visual DETALHADA das thumbnails do canal + concorrentes do nicho "{niche_name}". Objetivo: recriar thumbs que gerem CTR >= 8%.
 
-1. TOP 10 THUMBS DO CANAL ORIGINAL (da mais clicavel pra menos). Para CADA uma:
-- Titulo exato do video
-- Views aproximadas (se souber)
-- COMPOSICAO: posicao do hero subject (left/center/right), tamanho relativo em % do frame, POV (close/medio/wide), angulo
-- BACKGROUND: cenario, profundidade, luz (god rays, golden hour, neon, fogo, neblina)
-- PERSONAGEM (se houver): expressao facial, direcao do olhar, roupa/armadura/uniforme, etnia/genero, era historica
-- TEXTO OVERLAY: palavras exatas, numero de palavras, fonte (serif/sans/marker/handwritten), peso, cor principal + outline, tamanho relativo, posicao
-- PALETA DOMINANTE: 3 cores em HEX + mood (quente/frio/neutro)
-- ELEMENTOS GRAFICOS: setas, circulos, highlights, particulas, lens flare, grain
-- PSYCHOLOGY HOOK: o que faz essa thumb ser clicavel em 1 frase (curiosity gap, face reaction, contraste brutal, misterio, stakes altos...)
+1. TOP 10 THUMBS DO CANAL (da mais clicavel pra menos). Para CADA:
+- Titulo exato + views aproximadas
+- COMPOSICAO: hero subject position (left/center/right), % do frame, POV, angulo
+- BACKGROUND: cenario, luz (god rays, golden hour, neon, fogo, neblina)
+- PERSONAGEM: expressao, olhar, roupa, era historica
+- TEXTO OVERLAY: palavras exatas, fonte (serif/sans/marker), cor + outline, posicao
+- PALETA: 3 cores HEX + mood
+- PSYCHOLOGY HOOK: por que clica em 1 frase
 
-2. PADROES REPETIDOS (o que se repete em 80%+ das thumbs do canal):
-- Arquetipo visual dominante (ex: "heroi em 3/4 view + background epico + texto serif dourado")
-- Paleta mestre: 3-5 cores hex que aparecem em quase todas
-- Familia tipografica identificada (nome especifico se possivel: Trajan, Cinzel, Impact, Permanent Marker...)
-- Regra de composicao (tercos, centralizado, assimetrico)
-- % que usam rosto humano close-up vs cena ampla
-- % que usam texto vs so imagem
-- Numero medio de palavras no texto (se houver)
+2. PADROES REPETIDOS (80%+ das thumbs):
+- Arquetipo visual dominante, paleta mestre (3-5 HEX), familia tipografica, regra de composicao
+- % rosto humano vs cena ampla, % com texto, media de palavras
 
-3. TOP 5 THUMBS DE CONCORRENTES DIRETOS do nicho (canais similares, mesmo publico, CTR comprovado). Para cada: mesma analise do item 1, MAIS o que elas fazem DIFERENTE do canal original e se esse diferencial e vantagem ou risco.
+3. TOP 5 THUMBS DE CONCORRENTES do nicho. Mesma analise + diferencial vs canal original.
 
-4. PALETA MESTRE CONSOLIDADA — 5 cores em HEX com funcao:
-- Primary (dominante em fundos/grandes areas)
-- Secondary (contraste/sombra)
-- Accent (texto/highlight principal)
-- Warning (alertas, perigo, stakes — geralmente vermelho/laranja)
-- Neutral (branco/creme/preto pra respiro)
+4. PALETA MESTRE — 5 cores HEX: Primary, Secondary, Accent, Warning, Neutral
 
-5. TIPOGRAFIA MESTRE — 2 fontes (primaria pro titulo grande, secundaria pro subtitulo/tag). Nome da fonte, peso, estilo. Se nao conseguir identificar a exata, cite a familia (ex: "serif condensada tipo Trajan Pro").
+5. TIPOGRAFIA — 2 fontes (titulo + subtitulo): nome, peso, estilo
 
-6. 5 TEMPLATES REPRODUZIVEIS — descreva 5 layouts que o canal repete e que eu posso recriar pra qualquer novo titulo:
-- Template nome (ex: "Hero + Serif Gold")
-- Descricao visual em 3 frases
-- Para que tipo de titulo funciona (ex: "titulos com nome de personagem historico")
-- Elementos fixos (posicao do texto, paleta, arquetipo)
-- Elementos variaveis (o que muda de video pra video)
+6. 5 TEMPLATES REPRODUZIVEIS: nome, descricao 3 frases, tipo de titulo, fixos vs variaveis
 
-7. ANTI-PADROES — liste 5 coisas que o canal NUNCA faz nas thumbs (ex: "nunca usa emoji", "nunca usa fundo branco", "nunca centraliza o rosto").
+7. ANTI-PADROES — 5 coisas que NUNCA faz nas thumbs
 
-8. PROMPT BASE EM INGLES pra gerar novas thumbs (ImageFX/Midjourney/DALL-E) que replique o estilo exato do canal. Deve incluir: "cinematic movie poster YouTube thumbnail 1280x720", estilo, paleta, arquetipo, iluminacao, mood, "NO LOGO NO WATERMARK". ~80 palavras.
+8. PROMPT BASE INGLES (~80 palavras) pra ImageFX replicar o estilo. Inclua "cinematic movie poster YouTube thumbnail 1280x720", paleta, arquetipo, "NO LOGO NO WATERMARK".
 
-═══ DNA VISUAL COMPLETO DO CANAL (alem das thumbs) ═══
+CITE cores HEX reais, fontes especificas. Nada generico. Minimo 1200 palavras.""",
+        },
+        {
+            "key": "parte7_dna_visual_branding",
+            "label": "Parte 7/7 — DNA Visual (Logo + Banner + Video Style + JSON)",
+            "prompt": f"""PARTE 7 de 7 — DNA VISUAL DO CANAL (BRANDING + VIDEO STYLE)
 
-9. LOGO / AVATAR DO CANAL
-- Estilo: emblema/icone/letra/mascote/simbolo abstrato?
-- Forma base (circulo, escudo, hexagono, quadrado)
-- Cores em HEX (background + simbolo + detalhes)
-- Estilo grafico (flat, gradiente, 3d, vintage, metalico, minimalista)
-- Mood/sensacao transmitida (autoridade, misterio, energia, premium...)
-- PROMPT EM INGLES pra recriar: ~60 palavras, comeca com "square YouTube channel logo icon," e termina com "NO white background, NO padding, fills 95% of frame, 4k"
+Analise visual de TODA identidade alem das thumbs do canal "{niche_name}". Este output vai alimentar um agente automatizado que gera assets visuais.
 
-10. BANNER / HEADER DO CANAL
-- Tema visual central (paisagem, colagem, foto unica, tipografico)
-- Elementos presentes (personagens, monumentos, texturas, frase, logo)
-- Paleta HEX dominante (3 cores)
-- Tratamento de luz (dramatico, suave, neon, cinematografico)
-- Texto presente no banner (se houver): palavras exatas, fonte, cor
-- PROMPT EM INGLES ~70 palavras, comeca com "ultra-wide cinematic YouTube channel banner 16:9,"
+1. LOGO / AVATAR
+- Estilo (emblema/icone/letra/mascote), forma (circulo/escudo/hex), cores HEX, estilo grafico (flat/gradiente/metalico), mood
+- PROMPT INGLES ~60 palavras: "square YouTube channel logo icon, [descricao], NO white background, NO padding, fills 95% of frame, 4k"
 
-11. ESTILO VISUAL DOS VIDEOS (o "look" do video, nao as thumbs)
-- Tipo de imagem dominante: B-roll de arquivo? Imagens geradas por IA? Animacao? Talking head? Misto?
-- Color grading dominante (teal & orange, dessaturado vintage, alto contraste, monochrome, warm golden, cold blue...)
-- Lente/framing tipico (wide cinematico, close-up intimo, drone, angulo baixo heroico, sweeping pans)
-- Iluminacao (golden hour, god rays, firelight, fluorescent cold, mixed volumetric)
-- Texturas/filtros visiveis (film grain, vhs, letterbox, light leaks, dust particles)
-- Movimento (camera parada, ken burns, parallax, drone swoops, shake sutil)
-- Transicoes entre shots (cortes duros, crossfade, match cuts, whip pan, zoom in)
-- Ritmo visual: quantos shots por minuto em media?
+2. BANNER / HEADER
+- Tema visual, elementos, paleta HEX (3 cores), luz, texto (se houver)
+- PROMPT INGLES ~70 palavras: "ultra-wide cinematic YouTube channel banner 16:9, [descricao]"
 
-12. TEXT OVERLAY DENTRO DOS VIDEOS (captions, lower thirds, quote cards)
-- Frequencia (toda palavra? so palavras-chave? so numeros?)
-- Estilo (kinetic typography, static caption, lower third TV news, big bold block)
-- Fonte + cor + outline + fundo
-- Posicao dominante (centro, bottom, top, moving)
-- Animacao (pop, fade, slide, none)
+3. ESTILO VISUAL DOS VIDEOS (o "look", nao as thumbs)
+- Tipo dominante: B-roll arquivo / IA / animacao / talking head / misto
+- Color grading (teal&orange, vintage, warm golden, cold blue...)
+- Lente (wide, close-up, drone, angulo baixo), iluminacao, texturas (film grain, letterbox)
+- Movimento (ken burns, parallax, drone), transicoes (hard cuts, crossfade, match cuts)
+- Shots por minuto em media
 
-13. INTRO / OUTRO
-- Intro: existe? Duracao em segundos? Descricao visual em 2 frases
-- Outro: existe? Tem end screen com videos sugeridos + subscribe prompt? Layout?
-- Musica de intro/outro: descricao do mood (epic orchestral, dark ambient, hopeful cinematic...)
+4. TEXT OVERLAY NOS VIDEOS (captions, lower thirds)
+- Frequencia, estilo (kinetic/static/bold block), fonte + cor + outline, posicao, animacao
 
-14. BRANDING CONSOLIDADO — ASSINATURA VISUAL DO CANAL EM 1 PARAGRAFO
-- Em 4-6 frases, descreva o "visual signature" do canal como se estivesse ensinando outro designer a recriar. Precisa ser tao especifico que qualquer designer leia e consiga reproduzir sem precisar ver o canal.
+5. INTRO / OUTRO
+- Intro: existe? Duracao? Descricao 2 frases. Outro: end screen? Layout?
+- Musica: mood (epic orchestral, dark ambient, hopeful cinematic)
 
-═══ OUTPUT FINAL — BLOCO JSON IMPORTAVEL ═══
+6. ASSINATURA VISUAL — 4-6 frases descrevendo o visual signature do canal como se ensinasse outro designer a recriar sem ver o canal.
 
-Ao FINAL da sua resposta, entregue um bloco JSON valido dentro de ```json ... ``` contendo o DNA visual estruturado. Esse JSON vai ser importado direto por um agente automatizado, entao os campos precisam estar no formato exato abaixo:
+═══ JSON IMPORTAVEL (obrigatorio) ═══
+
+Ao final, entregue JSON valido em ```json ... ``` com TODOS os campos abaixo preenchidos:
 
 ```json
 {{
   "niche": "{niche_name}",
-  "palette": {{
-    "primary": "#hex",
-    "secondary": "#hex",
-    "accent": "#hex",
-    "warning": "#hex",
-    "neutral": "#hex"
-  }},
-  "typography": {{
-    "primary_font": "Nome ou familia",
-    "secondary_font": "Nome ou familia",
-    "weight": "bold/black/regular",
-    "style": "serif/sans/marker/handwritten"
-  }},
-  "thumbnail": {{
-    "dominant_archetype": "descricao em 1 frase",
-    "composition_rule": "tercos/centralizado/assimetrico",
-    "hero_subject_position": "left/center/right",
-    "uses_human_face_pct": 80,
-    "avg_text_words": 3,
-    "text_color": "#hex",
-    "text_outline_color": "#hex",
-    "base_prompt_en": "prompt ingles ~80 palavras pra gerar novas thumbs"
-  }},
-  "logo": {{
-    "shape": "circle/shield/square/hex",
-    "style": "flat/gradient/metallic/vintage/minimalist",
-    "colors_hex": ["#hex", "#hex"],
-    "mood": "premium/authority/mystery/energy",
-    "base_prompt_en": "prompt ingles ~60 palavras"
-  }},
-  "banner": {{
-    "theme": "descricao",
-    "palette_hex": ["#hex", "#hex", "#hex"],
-    "lighting": "dramatic/soft/neon/cinematic",
-    "has_text": true,
-    "base_prompt_en": "prompt ingles ~70 palavras"
-  }},
-  "video_look": {{
-    "dominant_content_type": "ai_generated/stock_broll/animation/talking_head/mixed",
-    "color_grading": "teal_orange/desaturated_vintage/warm_golden/cold_blue/high_contrast",
-    "lens_style": "cinematic_wide/close_up/drone/heroic_low_angle",
-    "lighting": "golden_hour/god_rays/firelight/cold_fluorescent",
-    "textures": ["film_grain", "letterbox"],
-    "motion": "ken_burns/parallax/drone_swoops/static",
-    "transitions": "hard_cuts/crossfade/match_cuts/whip_pan",
-    "shots_per_minute_avg": 12
-  }},
-  "text_overlay": {{
-    "frequency": "keywords_only/every_word/numbers_only/none",
-    "style": "kinetic/static_caption/lower_third/bold_block",
-    "font": "nome ou familia",
-    "color": "#hex",
-    "outline": "#hex",
-    "position": "center/bottom/top"
-  }},
-  "intro_outro": {{
-    "has_intro": true,
-    "intro_duration_sec": 5,
-    "intro_description": "2 frases",
-    "has_end_screen": true,
-    "music_mood": "epic_orchestral/dark_ambient/hopeful_cinematic"
-  }},
-  "brand_signature": "paragrafo de 4-6 frases descrevendo o visual signature consolidado",
-  "templates": [
-    {{"name": "nome do template", "fixed_elements": "o que nao muda", "variable_elements": "o que muda", "use_case": "quando usar"}}
-  ],
-  "anti_patterns": ["o que NUNCA fazer 1", "2", "3", "4", "5"]
+  "palette": {{"primary":"#hex","secondary":"#hex","accent":"#hex","warning":"#hex","neutral":"#hex"}},
+  "typography": {{"primary_font":"nome","secondary_font":"nome","weight":"bold","style":"serif/sans"}},
+  "thumbnail": {{"dominant_archetype":"1 frase","composition_rule":"tercos","hero_subject_position":"right","uses_human_face_pct":80,"avg_text_words":3,"text_color":"#hex","text_outline_color":"#hex","base_prompt_en":"prompt ~80 palavras"}},
+  "logo": {{"shape":"circle","style":"metallic","colors_hex":["#hex"],"mood":"authority","base_prompt_en":"prompt ~60 palavras"}},
+  "banner": {{"theme":"descricao","palette_hex":["#hex"],"lighting":"dramatic","has_text":true,"base_prompt_en":"prompt ~70 palavras"}},
+  "video_look": {{"dominant_content_type":"mixed","color_grading":"teal_orange","lens_style":"cinematic_wide","lighting":"god_rays","textures":["film_grain"],"motion":"ken_burns","transitions":"hard_cuts","shots_per_minute_avg":12}},
+  "text_overlay": {{"frequency":"keywords_only","style":"bold_block","font":"nome","color":"#hex","outline":"#hex","position":"bottom"}},
+  "intro_outro": {{"has_intro":true,"intro_duration_sec":5,"intro_description":"2 frases","has_end_screen":true,"music_mood":"epic_orchestral"}},
+  "brand_signature": "4-6 frases",
+  "templates": [{{"name":"nome","fixed_elements":"fixos","variable_elements":"variaveis","use_case":"quando"}}],
+  "anti_patterns": ["1","2","3","4","5"]
 }}
 ```
 
-IMPORTANTE GERAL DA PARTE 6:
-- Cite numeros, cores HEX reais, fontes especificas. Nada generico.
-- Se nao tiver certeza da fonte, diga "familia serif condensada" em vez de inventar um nome falso.
-- O JSON final DEVE ser valido (sem trailing commas, aspas duplas, hex com #).
-- Minimo 2000 palavras nesta parte (a mais longa e importante das 6).""",
+JSON DEVE ser valido (aspas duplas, sem trailing commas). HEX reais, fontes especificas. Minimo 1200 palavras.""",
         },
     ]
 
@@ -403,7 +316,7 @@ async def extract_dna(notebook_id: str, niche_name: str = "Canal") -> dict:
         label = p["label"]
         prompt_text = p["prompt"]
 
-        logger.info(f"[NLM DNA {i+1}/5] Enviando: {label}")
+        logger.info(f"[NLM DNA {i+1}/{len(prompts)}] Enviando: {label}")
 
         try:
             # Send prompt and get response
@@ -413,12 +326,12 @@ async def extract_dna(notebook_id: str, niche_name: str = "Canal") -> dict:
                 "content": response,
                 "words": len(response.split()),
             }
-            logger.info(f"[NLM DNA {i+1}/5] Resposta: {len(response.split())} palavras")
+            logger.info(f"[NLM DNA {i+1}/{len(prompts)}] Resposta: {len(response.split())} palavras")
 
             # Check if we need a follow-up
             followup = _build_followup(key, response, niche_name)
             if followup:
-                logger.info(f"[NLM DNA {i+1}/5] Follow-up necessario, enviando...")
+                logger.info(f"[NLM DNA {i+1}/{len(prompts)}] Follow-up necessario, enviando...")
                 followup_response = await ask(notebook_id, followup)
                 # Append follow-up to the original response
                 results[key]["content"] += f"\n\n---\n\n### DETALHES ADICIONAIS:\n\n{followup_response}"
@@ -426,7 +339,7 @@ async def extract_dna(notebook_id: str, niche_name: str = "Canal") -> dict:
                 results[key]["had_followup"] = True
 
         except Exception as e:
-            logger.error(f"[NLM DNA {i+1}/5] Erro: {e}")
+            logger.error(f"[NLM DNA {i+1}/{len(prompts)}] Erro: {e}")
             results[key] = {
                 "label": label,
                 "content": f"Erro: {str(e)[:200]}",
@@ -437,10 +350,10 @@ async def extract_dna(notebook_id: str, niche_name: str = "Canal") -> dict:
 
 
 def compile_sop(dna: dict, niche_name: str = "") -> str:
-    """Compile all 6 responses into a single SOP document."""
+    """Compile all 7 responses into a single SOP document."""
     sections = []
     sections.append(f"# SOP COMPLETO — {niche_name or 'Canal Analisado'}")
-    sections.append("Gerado via NotebookLM Deep Analysis (6 prompts sequenciais)\n")
+    sections.append("Gerado via NotebookLM Deep Analysis (7 prompts sequenciais)\n")
 
     order = [
         "parte1_dna_formato",
@@ -448,7 +361,8 @@ def compile_sop(dna: dict, niche_name: str = "") -> str:
         "parte3_storytelling_regras",
         "parte4_estrategia_competitivo",
         "parte5_sop_ia_template",
-        "parte6_dna_visual",
+        "parte6_thumbs_alto_ctr",
+        "parte7_dna_visual_branding",
     ]
 
     total_words = 0
@@ -462,7 +376,7 @@ def compile_sop(dna: dict, niche_name: str = "") -> str:
             if content and not content.startswith("Erro:"):
                 sections.append(f"\n---\n\n## {label}\n\n{content}")
 
-    sections.append(f"\n---\n\n*Total: {total_words} palavras | {len([k for k in order if k in dna and not dna[k].get('content','').startswith('Erro:')])} de 6 partes extraidas*")
+    sections.append(f"\n---\n\n*Total: {total_words} palavras | {len([k for k in order if k in dna and not dna[k].get('content','').startswith('Erro:')])} de 7 partes extraidas*")
 
     return "\n".join(sections)
 

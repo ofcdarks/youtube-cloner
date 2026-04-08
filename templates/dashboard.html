@@ -149,13 +149,13 @@
                         &#128203; SOP Manual <span style="font-size:10px;color:var(--fg-dim);font-weight:400;">(opcional — melhora a qualidade)</span>
                     </label>
                     <div style="display:flex;gap:6px;">
-                        <button type="button" onclick="generateNlmPrompt()" style="padding:5px 12px;font-size:11px;background:#7c3aed;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:500;">&#128203; Copiar Prompt 1/6</button>
+                        <button type="button" onclick="generateNlmPrompt()" style="padding:5px 12px;font-size:11px;background:#7c3aed;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:500;">&#128203; Copiar Prompt 1/7</button>
                     </div>
                 </div>
                 <p style="font-size:11px;color:var(--fg-dim);margin-bottom:8px;line-height:1.5;">
-                    <strong>Como usar:</strong> 1) Clique "Copiar Prompt 1/6" &rarr; 2) Cole no NotebookLM (ou qualquer AI) e aguarde resposta &rarr; 3) Clique "Proximo Prompt" e repita ate 6/6 &rarr; 4) Copie TODAS as respostas e cole abaixo &rarr; 5) "Analisar Canal"
+                    <strong>Como usar:</strong> 1) Clique "Copiar Prompt 1/7" &rarr; 2) Cole no NotebookLM (ou qualquer AI) e aguarde resposta &rarr; 3) Clique "Proximo Prompt" e repita ate 7/7 &rarr; 4) Copie TODAS as respostas e cole abaixo &rarr; 5) "Analisar Canal"
                 </p>
-                <textarea id="nlm-sop-response" class="form-input" style="min-height:100px;resize:vertical;font-size:12px;font-family:monospace;" placeholder="Cole aqui o SOP gerado (respostas dos 6 prompts). Se deixar vazio, a IA gera automaticamente via transcricoes." oninput="updateNlmInfo()"></textarea>
+                <textarea id="nlm-sop-response" class="form-input" style="min-height:100px;resize:vertical;font-size:12px;font-family:monospace;" placeholder="Cole aqui o SOP gerado (respostas dos 7 prompts). Se deixar vazio, a IA gera automaticamente via transcricoes." oninput="updateNlmInfo()"></textarea>
                 <div id="nlm-sop-info" style="font-size:10px;color:var(--fg-dim);margin-top:4px;"></div>
             </div>
         </div>
@@ -493,7 +493,7 @@ function generateNlmPrompt() {
 
     var prompts = [
         // PROMPT 1 — DNA + FORMATO (~3500 chars)
-        `PARTE 1 de 6 — AUTOPSIA DO CANAL
+        `PARTE 1 de 7 — AUTOPSIA DO CANAL
 
 Faca uma analise EXTREMAMENTE DETALHADA deste canal para criar um SOP de replicacao no nicho "${nicheName}".
 
@@ -516,7 +516,7 @@ Faca uma analise EXTREMAMENTE DETALHADA deste canal para criar um SOP de replica
 IMPORTANTE: Use exemplos REAIS dos videos. Cite trechos especificos. Nao generalize.`,
 
         // PROMPT 2 — ROTEIRO + HOOKS (~3800 chars)
-        `PARTE 2 de 6 — ENGENHARIA DE ROTEIRO
+        `PARTE 2 de 7 — ENGENHARIA DE ROTEIRO
 
 3. ANATOMIA DO ROTEIRO (analise 5+ videos)
 - HOOK (0-5s): Liste a PRIMEIRA FRASE de cada video analisado
@@ -540,7 +540,7 @@ i) Outros tipos que o canal usa
 Cite o TEXTO EXATO de cada hook encontrado.`,
 
         // PROMPT 3 — STORYTELLING + REGRAS (~3700 chars)
-        `PARTE 3 de 6 — STORYTELLING + REGRAS DE OURO
+        `PARTE 3 de 7 — STORYTELLING + REGRAS DE OURO
 
 5. TECNICAS DE STORYTELLING — 5 exemplos CONCRETOS de cada:
 - OPEN LOOPS: misterios plantados que resolvem depois. Cite o trecho exato e quando resolve.
@@ -561,7 +561,7 @@ ANTI-PATTERNS (o que NUNCA fazem):
 Seja detalhado. Cada regra com exemplo real.`,
 
         // PROMPT 4 — ESTRATEGIA + COMPETITIVO (~3800 chars)
-        `PARTE 4 de 6 — ESTRATEGIA + INTELIGENCIA COMPETITIVA
+        `PARTE 4 de 7 — ESTRATEGIA + INTELIGENCIA COMPETITIVA
 
 7. PILARES DE CONTEUDO: 5-7 categorias com nome, %, 3 exemplos reais, qual performa melhor
 
@@ -582,7 +582,7 @@ Seja detalhado. Cada regra com exemplo real.`,
 Use evidencias reais para cada ponto.`,
 
         // PROMPT 5 — SYSTEM PROMPT + TEMPLATE (~3500 chars)
-        `PARTE 5 de 6 — MANUAL DE REPLICACAO PARA IA
+        `PARTE 5 de 7 — MANUAL DE REPLICACAO PARA IA
 
 15. SYSTEM PROMPT COMPLETO (300+ palavras) para IA gerar roteiros identicos:
 - Persona com backstory
@@ -610,178 +610,69 @@ O hook prende em 5s? Tem 3+ open loops? Tom consistente? Spikes a cada 2-3min? C
 
 INSTRUCAO: Minimo 1500 palavras nesta parte. Cada exemplo deve ser ESCRITO por voce no estilo exato do canal.`,
 
-        // PROMPT 6 — DNA VISUAL COMPLETO (thumbs + branding + video style) (~9000 chars)
-        `PARTE 6 de 6 — DNA VISUAL COMPLETO DO CANAL
+        // PROMPT 6 — THUMBS DE ALTO CTR (~3500 chars)
+        `PARTE 6 de 7 — THUMBS DE ALTO CTR
 
-Analise visual EXTREMAMENTE DETALHADA de TUDO que e visivel no canal do nicho "${nicheName}": thumbs, logo, banner, estilo dos videos, B-roll, color grading, tipografia, intro/outro. Objetivo: recriar a identidade visual por completo e alimentar um agente automatizado que vai gerar assets novos no mesmo estilo. CADA item aqui vai virar input pra IA de geracao de imagem/video.
+Analise visual DETALHADA das thumbnails do canal + concorrentes do nicho "${nicheName}". Objetivo: recriar thumbs que gerem CTR >= 8%.
 
-1. TOP 10 THUMBS DO CANAL ORIGINAL (da mais clicavel pra menos). Para CADA uma:
-- Titulo exato do video
-- Views aproximadas (se souber)
-- COMPOSICAO: posicao do hero subject (left/center/right), tamanho relativo em % do frame, POV (close/medio/wide), angulo
-- BACKGROUND: cenario, profundidade, luz (god rays, golden hour, neon, fogo, neblina)
-- PERSONAGEM (se houver): expressao facial, direcao do olhar, roupa/armadura/uniforme, etnia/genero, era historica
-- TEXTO OVERLAY: palavras exatas, numero de palavras, fonte (serif/sans/marker/handwritten), peso, cor principal + outline, tamanho relativo, posicao
-- PALETA DOMINANTE: 3 cores em HEX + mood (quente/frio/neutro)
-- ELEMENTOS GRAFICOS: setas, circulos, highlights, particulas, lens flare, grain
-- PSYCHOLOGY HOOK: o que faz essa thumb ser clicavel em 1 frase (curiosity gap, face reaction, contraste brutal, misterio, stakes altos...)
+1. TOP 10 THUMBS DO CANAL (da mais clicavel pra menos). Para CADA:
+- Titulo exato + views aproximadas
+- COMPOSICAO: hero subject position (left/center/right), % do frame, POV, angulo
+- BACKGROUND: cenario, luz (god rays, golden hour, neon, fogo, neblina)
+- PERSONAGEM: expressao, olhar, roupa, era historica
+- TEXTO OVERLAY: palavras exatas, fonte (serif/sans/marker), cor + outline, posicao
+- PALETA: 3 cores HEX + mood
+- PSYCHOLOGY HOOK: por que clica em 1 frase
 
-2. PADROES REPETIDOS (o que se repete em 80%+ das thumbs do canal):
-- Arquetipo visual dominante (ex: "heroi em 3/4 view + background epico + texto serif dourado")
-- Paleta mestre: 3-5 cores hex que aparecem em quase todas
-- Familia tipografica identificada (nome especifico se possivel: Trajan, Cinzel, Impact, Permanent Marker...)
-- Regra de composicao (tercos, centralizado, assimetrico)
-- % que usam rosto humano close-up vs cena ampla
-- % que usam texto vs so imagem
-- Numero medio de palavras no texto (se houver)
+2. PADROES REPETIDOS (80%+ das thumbs):
+- Arquetipo visual dominante, paleta mestre (3-5 HEX), familia tipografica, regra de composicao
+- % rosto humano vs cena ampla, % com texto, media de palavras
 
-3. TOP 5 THUMBS DE CONCORRENTES DIRETOS do nicho (canais similares, mesmo publico, CTR comprovado). Para cada: mesma analise do item 1, MAIS o que elas fazem DIFERENTE do canal original e se esse diferencial e vantagem ou risco.
+3. TOP 5 THUMBS DE CONCORRENTES do nicho. Mesma analise + diferencial vs canal original.
 
-4. PALETA MESTRE CONSOLIDADA — 5 cores em HEX com funcao:
-- Primary (dominante em fundos/grandes areas)
-- Secondary (contraste/sombra)
-- Accent (texto/highlight principal)
-- Warning (alertas, perigo, stakes — geralmente vermelho/laranja)
-- Neutral (branco/creme/preto pra respiro)
+4. PALETA MESTRE — 5 cores HEX: Primary, Secondary, Accent, Warning, Neutral
 
-5. TIPOGRAFIA MESTRE — 2 fontes (primaria pro titulo grande, secundaria pro subtitulo/tag). Nome da fonte, peso, estilo. Se nao conseguir identificar a exata, cite a familia (ex: "serif condensada tipo Trajan Pro").
+5. TIPOGRAFIA — 2 fontes (titulo + subtitulo): nome, peso, estilo
 
-6. 5 TEMPLATES REPRODUZIVEIS — descreva 5 layouts que o canal repete e que eu posso recriar pra qualquer novo titulo:
-- Template nome (ex: "Hero + Serif Gold")
-- Descricao visual em 3 frases
-- Para que tipo de titulo funciona (ex: "titulos com nome de personagem historico")
-- Elementos fixos (posicao do texto, paleta, arquetipo)
-- Elementos variaveis (o que muda de video pra video)
+6. 5 TEMPLATES REPRODUZIVEIS: nome, descricao 3 frases, tipo de titulo, fixos vs variaveis
 
-7. ANTI-PADROES — liste 5 coisas que o canal NUNCA faz nas thumbs (ex: "nunca usa emoji", "nunca usa fundo branco", "nunca centraliza o rosto").
+7. ANTI-PADROES — 5 coisas que NUNCA faz nas thumbs
 
-8. PROMPT BASE EM INGLES pra gerar novas thumbs (ImageFX/Midjourney/DALL-E) que replique o estilo exato do canal. Deve incluir: "cinematic movie poster YouTube thumbnail 1280x720", estilo, paleta, arquetipo, iluminacao, mood, "NO LOGO NO WATERMARK". ~80 palavras.
+8. PROMPT BASE INGLES (~80 palavras) pra ImageFX replicar o estilo. Inclua "cinematic movie poster YouTube thumbnail 1280x720", paleta, arquetipo, "NO LOGO NO WATERMARK".
 
-═══ DNA VISUAL COMPLETO DO CANAL (alem das thumbs) ═══
+CITE cores HEX reais, fontes especificas. Nada generico. Minimo 1200 palavras.`,
 
-9. LOGO / AVATAR DO CANAL
-- Estilo: emblema/icone/letra/mascote/simbolo abstrato?
-- Forma base (circulo, escudo, hexagono, quadrado)
-- Cores em HEX (background + simbolo + detalhes)
-- Estilo grafico (flat, gradiente, 3d, vintage, metalico, minimalista)
-- Mood/sensacao transmitida (autoridade, misterio, energia, premium...)
-- PROMPT EM INGLES pra recriar: ~60 palavras, comeca com "square YouTube channel logo icon," e termina com "NO white background, NO padding, fills 95% of frame, 4k"
+        // PROMPT 7 — DNA VISUAL: BRANDING + VIDEO STYLE + JSON (~3500 chars)
+        `PARTE 7 de 7 — DNA VISUAL DO CANAL (BRANDING + VIDEO STYLE)
 
-10. BANNER / HEADER DO CANAL
-- Tema visual central (paisagem, colagem, foto unica, tipografico)
-- Elementos presentes (personagens, monumentos, texturas, frase, logo)
-- Paleta HEX dominante (3 cores)
-- Tratamento de luz (dramatico, suave, neon, cinematografico)
-- Texto presente no banner (se houver): palavras exatas, fonte, cor
-- PROMPT EM INGLES ~70 palavras, comeca com "ultra-wide cinematic YouTube channel banner 16:9,"
+Analise visual de TODA identidade alem das thumbs do canal "${nicheName}". Este output vai alimentar um agente automatizado que gera assets visuais.
 
-11. ESTILO VISUAL DOS VIDEOS (o "look" do video, nao as thumbs)
-- Tipo de imagem dominante: B-roll de arquivo? Imagens geradas por IA? Animacao? Talking head? Misto?
-- Color grading dominante (teal & orange, dessaturado vintage, alto contraste, monochrome, warm golden, cold blue...)
-- Lente/framing tipico (wide cinematico, close-up intimo, drone, angulo baixo heroico, sweeping pans)
-- Iluminacao (golden hour, god rays, firelight, fluorescent cold, mixed volumetric)
-- Texturas/filtros visiveis (film grain, vhs, letterbox, light leaks, dust particles)
-- Movimento (camera parada, ken burns, parallax, drone swoops, shake sutil)
-- Transicoes entre shots (cortes duros, crossfade, match cuts, whip pan, zoom in)
-- Ritmo visual: quantos shots por minuto em media?
+1. LOGO / AVATAR
+- Estilo (emblema/icone/letra/mascote), forma (circulo/escudo/hex), cores HEX, estilo grafico (flat/gradiente/metalico), mood
+- PROMPT INGLES ~60 palavras: "square YouTube channel logo icon, [descricao], NO white background, NO padding, fills 95% of frame, 4k"
 
-12. TEXT OVERLAY DENTRO DOS VIDEOS (captions, lower thirds, quote cards)
-- Frequencia (toda palavra? so palavras-chave? so numeros?)
-- Estilo (kinetic typography, static caption, lower third TV news, big bold block)
-- Fonte + cor + outline + fundo
-- Posicao dominante (centro, bottom, top, moving)
-- Animacao (pop, fade, slide, none)
+2. BANNER / HEADER
+- Tema visual, elementos, paleta HEX (3 cores), luz, texto (se houver)
+- PROMPT INGLES ~70 palavras: "ultra-wide cinematic YouTube channel banner 16:9, [descricao]"
 
-13. INTRO / OUTRO
-- Intro: existe? Duracao em segundos? Descricao visual em 2 frases
-- Outro: existe? Tem end screen com videos sugeridos + subscribe prompt? Layout?
-- Musica de intro/outro: descricao do mood (epic orchestral, dark ambient, hopeful cinematic...)
+3. ESTILO VISUAL DOS VIDEOS (o "look", nao as thumbs)
+- Tipo dominante: B-roll arquivo / IA / animacao / talking head / misto
+- Color grading, lente, iluminacao, texturas (film grain, letterbox)
+- Movimento (ken burns, parallax, drone), transicoes (hard cuts, crossfade, match cuts)
+- Shots por minuto em media
 
-14. BRANDING CONSOLIDADO — ASSINATURA VISUAL DO CANAL EM 1 PARAGRAFO
-- Em 4-6 frases, descreva o "visual signature" do canal como se estivesse ensinando outro designer a recriar. Precisa ser tao especifico que qualquer designer leia e consiga reproduzir sem precisar ver o canal.
+4. TEXT OVERLAY NOS VIDEOS (captions, lower thirds)
+- Frequencia, estilo (kinetic/static/bold block), fonte + cor + outline, posicao, animacao
 
-═══ OUTPUT FINAL — BLOCO JSON IMPORTAVEL ═══
+5. INTRO / OUTRO
+- Intro: existe? Duracao? Descricao 2 frases. Outro: end screen? Layout?
+- Musica: mood (epic orchestral, dark ambient, hopeful cinematic)
 
-Ao FINAL da sua resposta, entregue um bloco JSON valido dentro de \\\`\\\`\\\`json ... \\\`\\\`\\\` contendo o DNA visual estruturado. Esse JSON vai ser importado direto por um agente automatizado, entao os campos precisam estar no formato exato abaixo:
+6. ASSINATURA VISUAL — 4-6 frases descrevendo o visual signature do canal.
 
-\\\`\\\`\\\`json
-{
-  "niche": "${nicheName}",
-  "palette": {
-    "primary": "#hex",
-    "secondary": "#hex",
-    "accent": "#hex",
-    "warning": "#hex",
-    "neutral": "#hex"
-  },
-  "typography": {
-    "primary_font": "Nome ou familia",
-    "secondary_font": "Nome ou familia",
-    "weight": "bold/black/regular",
-    "style": "serif/sans/marker/handwritten"
-  },
-  "thumbnail": {
-    "dominant_archetype": "descricao em 1 frase",
-    "composition_rule": "tercos/centralizado/assimetrico",
-    "hero_subject_position": "left/center/right",
-    "uses_human_face_pct": 80,
-    "avg_text_words": 3,
-    "text_color": "#hex",
-    "text_outline_color": "#hex",
-    "base_prompt_en": "prompt ingles ~80 palavras pra gerar novas thumbs"
-  },
-  "logo": {
-    "shape": "circle/shield/square/hex",
-    "style": "flat/gradient/metallic/vintage/minimalist",
-    "colors_hex": ["#hex", "#hex"],
-    "mood": "premium/authority/mystery/energy",
-    "base_prompt_en": "prompt ingles ~60 palavras"
-  },
-  "banner": {
-    "theme": "descricao",
-    "palette_hex": ["#hex", "#hex", "#hex"],
-    "lighting": "dramatic/soft/neon/cinematic",
-    "has_text": true,
-    "base_prompt_en": "prompt ingles ~70 palavras"
-  },
-  "video_look": {
-    "dominant_content_type": "ai_generated/stock_broll/animation/talking_head/mixed",
-    "color_grading": "teal_orange/desaturated_vintage/warm_golden/cold_blue/high_contrast",
-    "lens_style": "cinematic_wide/close_up/drone/heroic_low_angle",
-    "lighting": "golden_hour/god_rays/firelight/cold_fluorescent",
-    "textures": ["film_grain", "letterbox"],
-    "motion": "ken_burns/parallax/drone_swoops/static",
-    "transitions": "hard_cuts/crossfade/match_cuts/whip_pan",
-    "shots_per_minute_avg": 12
-  },
-  "text_overlay": {
-    "frequency": "keywords_only/every_word/numbers_only/none",
-    "style": "kinetic/static_caption/lower_third/bold_block",
-    "font": "nome ou familia",
-    "color": "#hex",
-    "outline": "#hex",
-    "position": "center/bottom/top"
-  },
-  "intro_outro": {
-    "has_intro": true,
-    "intro_duration_sec": 5,
-    "intro_description": "2 frases",
-    "has_end_screen": true,
-    "music_mood": "epic_orchestral/dark_ambient/hopeful_cinematic"
-  },
-  "brand_signature": "paragrafo de 4-6 frases descrevendo o visual signature consolidado",
-  "templates": [
-    {"name": "nome do template", "fixed_elements": "o que nao muda", "variable_elements": "o que muda", "use_case": "quando usar"}
-  ],
-  "anti_patterns": ["o que NUNCA fazer 1", "2", "3", "4", "5"]
-}
-\\\`\\\`\\\`
+Ao final, entregue JSON valido com o DNA visual estruturado: palette, typography, thumbnail, logo, banner, video_look, text_overlay, intro_outro, brand_signature, templates, anti_patterns. Cada campo com cores HEX reais e fontes especificas.
 
-IMPORTANTE GERAL DA PARTE 6:
-- Cite numeros, cores HEX reais, fontes especificas. Nada generico.
-- Se nao tiver certeza da fonte, diga "familia serif condensada" em vez de inventar um nome falso.
-- O JSON final DEVE ser valido (sem trailing commas, aspas duplas, hex com #).
-- Minimo 2000 palavras nesta parte (a mais longa e importante das 6).`
+CITE dados reais. Nada generico. Minimo 1200 palavras.`
     ];
 
     // Copy first prompt
