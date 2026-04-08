@@ -131,10 +131,13 @@ async def startup():
     except Exception as e:
         logger.debug(f"Seed: {e}")
 
-    # One-time project imports from output/import_*.json
+    # One-time project imports from output/import_*.json or seed_output/import_*.json
     try:
-        _import_dir = OUTPUT_DIR
-        for _imp_file in sorted(PROJECT_DIR.glob("output/import_*.json")):
+        _import_paths = list(OUTPUT_DIR.glob("import_*.json"))
+        _seed_dir = PROJECT_DIR / "seed_output"
+        if _seed_dir.exists():
+            _import_paths += list(_seed_dir.glob("import_*.json"))
+        for _imp_file in sorted(_import_paths):
             _imp_data = json.loads(_imp_file.read_text(encoding="utf-8"))
             _imp_name = _imp_data["project"]["name"]
             # Check if project already exists (by name)
