@@ -3643,8 +3643,15 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         )
 
         # Use admin_ai_model from DB settings (set in admin panel), fallback to env AI_MODEL
-        from database import get_setting
+        from database import get_setting, set_setting
         admin_model = get_setting("admin_ai_model") or None
+        # Fix: some model IDs listed by LaoZhang don't work on their Bedrock backend
+        # Force a known-working model if the current one is problematic
+        _KNOWN_BROKEN = {"claude-3-7-sonnet-latest", "claude-3-7-sonnet-20250219", "claude-sonnet-4-6"}
+        if admin_model in _KNOWN_BROKEN:
+            admin_model = "claude-3-5-sonnet-latest"
+            set_setting("admin_ai_model", admin_model)
+            logger.info(f"[AI] Auto-fixed broken model → {admin_model}")
         response = await asyncio.to_thread(
             chat, user_prompt,
             system_prompt,
