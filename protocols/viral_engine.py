@@ -512,23 +512,57 @@ def build_viral_prompt(
 
 Seu SOP (seu estilo, sua voz, seu DNA) esta abaixo. Cada titulo que voce cria DEVE soar como se VOCE tivesse escrito — porque voce escreveu.
 
+REGRA #0 (MAIS IMPORTANTE): O SOP contem uma FORMULA DE TITULOS especifica (secao 8).
+Voce DEVE seguir essa formula EXATA. Se o SOP diz que o canal usa "Your life as...",
+"POV:", "What Its Like to be...", CADA titulo deve usar essas estruturas.
+NAO invente formulas genericas — copie a estrutura do SOP.
+
 Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 
-3 regras inviolaveis:
-1. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
-2. Pelo menos 1 POWER WORD em CAPS (emocao)
-3. CURIOSITY GAP — prometa sem revelar (o espectador PRECISA clicar)
+4 regras inviolaveis:
+1. SEGUIR A FORMULA DE TITULOS DO SOP (estrutura identica aos titulos do canal)
+2. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
+3. Pelo menos 1 POWER WORD em CAPS (emocao)
+4. CURIOSITY GAP — prometa sem revelar (o espectador PRECISA clicar)
 
 Idioma: {lang_label}. Maximo 80 caracteres por titulo."""
 
     # ═══════════════════════════════════════════════════
     # USER PROMPT — structured data, SOP as foundation
     # ═══════════════════════════════════════════════════
+    # Extract title formula section from SOP (section 8) if present
+    title_formula_block = ""
+    try:
+        # Try to find title formula / formula de titulos section in SOP
+        for pattern in [r'(?i)(F[OÓo]RMULA DE T[IÍi]TULOS.*?)(?=\n\*\*\d+\.|---|\n##)', r'(?i)(TITLE FORMULA.*?)(?=\n\*\*\d+\.|---|\n##)', r'(?i)(8\.\s*F[OÓo]RMULA.*?)(?=\n\*\*\d+\.|---|\n##)']:
+            m = re.search(pattern, sop_text, re.DOTALL)
+            if m and len(m.group(1)) > 50:
+                title_formula_block = m.group(1).strip()[:1500]
+                break
+        # Also try to find top performing titles
+        if not title_formula_block:
+            m = re.search(r'(?i)(10 Melhores T[ií]tulos.*?)(?=\n\*\*|\n##|---)', sop_text, re.DOTALL)
+            if m:
+                title_formula_block = m.group(1).strip()[:1500]
+    except Exception:
+        pass
+
     user_prompt = f"""Gere {count} titulos para meu canal.
 
 {sop_analysis_block}
 
 {winners_block}
+
+{f'''═══════════════════════════════════════════
+FORMULA DE TITULOS DO CANAL (EXTRAIDA DO SOP — SIGA ESTAS ESTRUTURAS):
+═══════════════════════════════════════════
+{title_formula_block}
+
+REGRA CRITICA: Os titulos DEVEM seguir estas formulas EXATAS do canal.
+Se o canal usa "Your life as...", "POV:", "What Its Like to be...",
+TODOS os titulos devem comecar com essas estruturas.
+NÃO invente formulas novas — use as do SOP acima.
+''' if title_formula_block else ''}
 
 ═══════════════════════════════════════════
 MEU SOP (minha voz, meu estilo — SIGA FIELMENTE):
