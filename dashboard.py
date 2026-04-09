@@ -399,6 +399,23 @@ async def index(request: Request, project: str = "", user=Depends(require_auth))
                 pass
         sop_source = meta.get("sop_source", "") if isinstance(meta, dict) else ""
 
+    # Extract recommended flag from pillars JSON for template rendering
+    for n in niches:
+        n["recommended"] = False
+        n["recommended_reason"] = ""
+        try:
+            pillars_raw = n.get("pillars", "[]")
+            if isinstance(pillars_raw, str):
+                pillars_raw = json.loads(pillars_raw)
+            if isinstance(pillars_raw, list):
+                for p in pillars_raw:
+                    if isinstance(p, dict) and p.get("__recommended"):
+                        n["recommended"] = True
+                        n["recommended_reason"] = p.get("__reason", "")
+                        break
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     return render(request, "dashboard.html", {
         "user": user,
         "all_projects": projects,
@@ -1123,8 +1140,15 @@ Seja EXTREMAMENTE detalhado. Cada secao deve ter ao menos 200 palavras. SOP tota
         _channel_ref = f'"{niche_name}" ({url})' if url else f'"{niche_name}" (template de nicho, sem canal de referencia)'
         niche_prompt = f"""Baseado neste canal {_channel_ref}, gere 5 sub-nichos derivados.
 SOP: {sop_content[:3000]}
-Retorne JSON: [{{"name":"...","description":"...","rpm_range":"$X-Y","competition":"Baixa/Media/Alta","color":"#hex","pillars":["..."]}}]
-Retorne APENAS o JSON.{lang_instruction}"""
+
+REGRAS OBRIGATORIAS:
+1. O campo "name" deve ser no IDIOMA ORIGINAL do canal ({lang_label}).
+2. O campo "description" deve ser SEMPRE em Portugues Brasileiro (PT-BR), independente do idioma do canal. Descricao curta de 1-2 frases explicando o sub-nicho.
+3. Inclua o campo "recommended" (true/false) — marque como true o nicho com MELHOR potencial baseado em: RPM alto + competicao baixa/media + tendencia de crescimento. Maximo 1-2 nichos recomendados.
+4. O campo "recommended_reason" (string PT-BR) — explique em 5-8 palavras porque e recomendado (ex: "RPM alto, pouca concorrencia, tendencia subindo").
+
+Retorne JSON: [{{"name":"...","description":"descricao em PT-BR","rpm_range":"$X-Y","competition":"Low/Medium/High","color":"#hex","pillars":["..."],"recommended":false,"recommended_reason":""}}]
+Retorne APENAS o JSON."""
 
         niche_response = chat(niche_prompt, max_tokens=2000, temperature=0.7)
         niche_json_match = re.search(r'\[.*\]', niche_response, re.DOTALL)
@@ -1136,9 +1160,16 @@ Retorne APENAS o JSON.{lang_instruction}"""
             try:
                 niche_list = json.loads(niche_json_match.group())
                 for i, n in enumerate(niche_list[:5]):
+                    # Store recommended flag inside pillars JSON for template rendering
+                    pillars_data = n.get("pillars", [])
+                    if not isinstance(pillars_data, list):
+                        pillars_data = []
+                    # Inject recommended metadata as special entry
+                    if n.get("recommended"):
+                        pillars_data.append({"__recommended": True, "__reason": n.get("recommended_reason", "")})
                     save_niche(project_id, n.get("name", f"Nicho {i+1}"), n.get("description", ""),
                               n.get("rpm_range", ""), n.get("competition", ""),
-                              n.get("color", niche_colors[i % 5]), chosen=(i == 0), pillars=n.get("pillars", []))
+                              n.get("color", niche_colors[i % 5]), chosen=(i == 0), pillars=pillars_data)
                     niches_generated += 1
             except (json.JSONDecodeError, Exception):
                 save_niche(project_id, niche_name, "Nicho principal", chosen=True, color="#e040fb")

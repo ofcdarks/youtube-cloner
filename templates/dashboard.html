@@ -171,6 +171,7 @@
                 <div class="niche-indicator" style="background:{{ n.color }}"></div>
                 <div class="niche-name">{{ n.name }}
                     {% if n.chosen %}<span class="chosen-badge">ESCOLHIDO</span>{% endif %}
+                    {% if n.recommended %}<span class="chosen-badge" style="background:#059669;margin-left:4px" title="{{ n.recommended_reason }}">RECOMENDADO</span>{% endif %}
                 </div>
                 <div class="niche-desc">{{ n.description }}</div>
                 <div class="niche-stats">
