@@ -759,9 +759,13 @@ Retorne APENAS o JSON.{lang_instruction}"""
             next_num += 1
 
         return JSONResponse({"ok": True, "generated": len(saved), "ideas": saved})
+    except ValueError as e:
+        logger.error(f"generate-ideas config error: {e}")
+        return JSONResponse({"error": f"Configuracao: {str(e)}"}, status_code=400)
     except Exception as e:
-        logger.error(f"generate-ideas error: {e}")
-        return JSONResponse({"error": "Falha ao gerar ideias"}, status_code=500)
+        error_msg = str(e)[:300] if str(e) else "Erro desconhecido"
+        logger.error(f"generate-ideas error: {e}", exc_info=True)
+        return JSONResponse({"error": f"Falha ao gerar ideias: {error_msg}"}, status_code=500)
 
 
 @router.post("/api/generate-script")

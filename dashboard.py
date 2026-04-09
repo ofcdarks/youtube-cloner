@@ -3748,9 +3748,14 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
             "keywords_total": total,
             "cached_keywords": bool(cached) if 'cached' in dir() else False,
         })
+    except ValueError as e:
+        logger.error(f"regenerate-titles config error: {e}")
+        return JSONResponse({"error": f"Configuracao: {str(e)}"}, status_code=400)
     except Exception as e:
+        error_msg = str(e)[:300] if str(e) else "Erro desconhecido"
         logger.error(f"regenerate-titles error: {e}", exc_info=True)
-        return JSONResponse({"error": "Falha ao re-gerar titulos."}, status_code=500)
+        # Show real error to admin for debugging (admin-only route)
+        return JSONResponse({"error": f"Falha ao re-gerar titulos: {error_msg}"}, status_code=500)
 
 
 # ═══════════════════════════════════════════════════════════
