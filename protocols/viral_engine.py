@@ -546,11 +546,13 @@ Estes sao os titulos REAIS do canal que mais performaram:
 REGRA SUPREMA: CADA titulo gerado DEVE comecar com uma destas estruturas:
 {chr(10).join(['  ' + f for f in _sop_formulas[:5]]) if _sop_formulas else '  (extrair do SOP)'}
 
-Se o canal usa "Your life as..." → TODOS os titulos usam "Your life as..."
-Se o canal usa "The entire story of..., i guess" → USE essa formula
-Se o canal usa "What Its Like to be Every [Rank]" → USE essa formula
-NAO invente formulas novas como "The FORBIDDEN...", "The DARK...", "The INCREDIBLE..."
-USE APENAS as formulas do canal.
+Os titulos de REFERENCIA do SOP sao apenas ESTRUTURA -- NAO copie eles.
+Crie titulos 100% ORIGINAIS com temas NOVOS usando as mesmas formulas.
+NUNCA gere "Your life as a Necron" ou "Most Epic Deaths in History" --
+esses ja existem nos canais de referencia.
+Use TEMAS FRESCOS que ninguem fez ainda.
+NAO invente formulas genericas como "The FORBIDDEN...", "The DARK...", "The INCREDIBLE..."
+USE APENAS as formulas do SOP com temas novos.
 ═══════════════════════════════════════════════════════════════════════════════
 
 Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
@@ -589,27 +591,34 @@ Idioma: {lang_label}. Maximo 80 caracteres por titulo."""
     _auto_block = _nl.join(auto_lines) if auto_lines else '(sem dados)'
     _golden_block = ('OPORTUNIDADES DE OURO (volume alto + competicao baixa -- PRIORIZE):' + _nl + _nl.join(golden_lines)) if golden_lines else ''
 
-    user_prompt = f"""Gere {count} titulos para meu canal.
+    user_prompt = f"""Gere {count} titulos ORIGINAIS para meu canal.
 
 {_sep}
-PASSO 1 -- LEIA PRIMEIRO: TITULOS REAIS DO CANAL (os que mais performaram):
+PASSO 1 -- FORMULAS DE TITULO (extraidas do SOP dos canais de REFERENCIA):
 {_sep}
+Estes sao exemplos de titulos dos CANAIS DE REFERENCIA que estudamos:
 {_formula_examples if _formula_examples else '(ver SOP)'}
 
-INSTRUCAO: Os {count} titulos que voce gerar DEVEM seguir EXATAMENTE a mesma
-estrutura dos titulos acima. Copie o padrao. NAO invente estruturas novas.
-Estruturas validas (baseadas nos titulos reais):
-  - "Your life as [personagem] ([universo])"
-  - "Your life in [universo] ([tipo])"
-  - "The entire story of [game/tema], i guess"
-  - "What It's Like to be Every [rank/tipo]"
-  - "Your life as Every [tipo] Rank"
-  - "[Superlativo] [tema] in History"
+IMPORTANTE: Estes titulos sao REFERENCIA DE ESTRUTURA, nao para copiar.
+Voce deve criar titulos 100% ORIGINAIS usando a MESMA ESTRUTURA mas com
+temas NOVOS e DIFERENTES. NUNCA copie um titulo de referencia literalmente.
+
+Estruturas validas que voce deve usar (variando os temas):
+  - "POV: Your life as [personagem novo] ([universo])"
+  - "POV: Your life in [universo novo] ([tipo])"
+  - "POV: What It's Like to be Every [rank/tipo novo]"
+  - "POV: What It's Like to be [situacao nova]"
+  - "POV: You're a [papel] Who [situacao]"
+  - "POV: The entire story of [tema], i guess"
+
+REGRA DO PREFIXO: O canal se chama POV. TODOS os titulos DEVEM comecar com "POV:" seguido da formula.
+
 Estruturas PROIBIDAS (genericas demais -- NAO USE):
   - "The FORBIDDEN truth about..."
   - "The DARK secrets of..."
   - "The INCREDIBLE story of..."
   - "Why X HIDES its DARK truth"
+  - Qualquer titulo SEM o prefixo "POV:"
 
 {sop_analysis_block}
 
