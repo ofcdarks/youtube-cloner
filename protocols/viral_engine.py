@@ -556,16 +556,18 @@ BUSCAS REAIS NO YOUTUBE (autocomplete):
 {demand_summary}
 
 ═══════════════════════════════════════════
-INSTRUCOES:
+INSTRUCOES (GERE EXATAMENTE {count} TITULOS):
 ═══════════════════════════════════════════
+QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Conte antes de entregar.
+
 1. CADA titulo DEVE conter pelo menos 1 keyword da lista de volume
 2. Keyword nos PRIMEIROS 40 caracteres
 3. 1+ POWER WORD em CAPS (use as MINHAS: {', '.join(formulas['power_words'][:8])})
 4. CURIOSITY GAP em cada titulo
 5. Distribua igualmente entre os sub-nichos
-6. Para as 10 ALTA, inclua variante B (title_b)
+6. Para os 10 primeiros (ALTA prioridade), inclua variante B (title_b)
 7. O campo "pillar" = nome do sub-nicho
-8. Mix: ~10 ALTA, ~12 MEDIA, ~8 BAIXA
+8. Mix: ~10 ALTA, ~12 MEDIA, ~{count - 22} BAIXA = {count} TOTAL
 9. Maximo 80 caracteres por titulo
 
 Retorne APENAS JSON válido:

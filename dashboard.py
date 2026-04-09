@@ -3654,7 +3654,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             chat, user_prompt,
             system_prompt,
             admin_model,  # model from admin panel DB setting
-            MAX_TOKENS_LARGE,  # max_tokens
+            16000,  # max_tokens — needs room for 35 titles in JSON
             0.85,  # temperature — slightly higher for creativity
         )
 
