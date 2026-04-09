@@ -282,17 +282,33 @@
 })();
 
 function saveAdminModel() {
-    var model = document.getElementById('admin-ai-model').value;
-    apiPost('/api/admin/set-ai-model', {model: model})
+    var sel = document.getElementById('admin-ai-model');
+    var model = sel ? sel.value : '';
+    if (!model) { showToast('Selecione um modelo', 'error'); return; }
+    var statusEl = document.getElementById('model-status');
+    if (statusEl) { statusEl.textContent = 'Salvando...'; statusEl.style.color = '#f59e0b'; }
+    fetch('/api/admin/set-ai-model', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || '{{ csrf_token }}'
+        },
+        body: JSON.stringify({model: model})
+    })
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.ok) {
-            document.getElementById('model-status').textContent = model;
-            document.getElementById('model-status').style.color = '#22c55e';
-            showToast('Modelo salvo: ' + model, 'success', 3000);
+            if (statusEl) { statusEl.textContent = model; statusEl.style.color = '#22c55e'; }
+            if (typeof showToast === 'function') showToast('Modelo salvo: ' + model, 'success', 3000);
         } else {
-            showToast('Erro: ' + (data.error || ''), 'error');
+            if (statusEl) { statusEl.textContent = 'ERRO'; statusEl.style.color = '#ef4444'; }
+            if (typeof showToast === 'function') showToast('Erro: ' + (data.error || ''), 'error');
         }
+    })
+    .catch(function(e) {
+        if (statusEl) { statusEl.textContent = 'ERRO'; statusEl.style.color = '#ef4444'; }
+        if (typeof showToast === 'function') showToast('Erro de rede: ' + e.message, 'error');
+        console.error('saveAdminModel error:', e);
     });
 }
 
