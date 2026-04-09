@@ -107,18 +107,41 @@
 
         <!-- AI Model Selection -->
         <div class="form-group" style="margin-top:16px;padding-top:16px;border-top:1px solid #1e293b">
-            <label style="font-weight:600">Modelo IA para Alunos (quando usa API do Admin)</label>
+            <label style="font-weight:600">Modelo IA (LaoZhang API)</label>
             <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-                <select id="admin-ai-model" class="form-input" style="flex:1;max-width:400px" title="Modelo de IA">
-                    <option value="claude-3-7-sonnet-latest" {{ 'selected' if admin_ai_model == 'claude-3-7-sonnet-latest' else '' }}>Claude 3.7 Sonnet (recomendado — melhor custo-beneficio)</option>
-                    <option value="claude-sonnet-4-6" {{ 'selected' if admin_ai_model == 'claude-sonnet-4-6' else '' }}>Claude Sonnet 4.6 (mais recente)</option>
-                    <option value="claude-3-5-sonnet-latest" {{ 'selected' if admin_ai_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet (economico)</option>
-                    <option value="gpt-4o" {{ 'selected' if admin_ai_model == 'gpt-4o' else '' }}>GPT-4o (OpenAI)</option>
-                    <option value="gpt-4o-mini" {{ 'selected' if admin_ai_model == 'gpt-4o-mini' else '' }}>GPT-4o Mini (mais barato)</option>
-                    <option value="deepseek-v3.2" {{ 'selected' if admin_ai_model == 'deepseek-v3.2' else '' }}>DeepSeek V3.2 (ultra barato)</option>
+                <select id="admin-ai-model" class="form-input" style="flex:1;max-width:460px" title="Modelo de IA">
+                    <optgroup label="Claude — Anthropic">
+                        <option value="claude-sonnet-4-6" {{ 'selected' if admin_ai_model == 'claude-sonnet-4-6' else '' }}>Claude Sonnet 4.6 (mais recente, top)</option>
+                        <option value="claude-sonnet-4-5-20250929" {{ 'selected' if admin_ai_model == 'claude-sonnet-4-5-20250929' else '' }}>Claude Sonnet 4.5</option>
+                        <option value="claude-sonnet-4-20250514" {{ 'selected' if admin_ai_model == 'claude-sonnet-4-20250514' else '' }}>Claude Sonnet 4</option>
+                        <option value="claude-3-7-sonnet-latest" {{ 'selected' if admin_ai_model == 'claude-3-7-sonnet-latest' else '' }}>Claude 3.7 Sonnet (estavel)</option>
+                        <option value="claude-3-5-sonnet-latest" {{ 'selected' if admin_ai_model == 'claude-3-5-sonnet-latest' else '' }}>Claude 3.5 Sonnet (economico)</option>
+                        <option value="claude-haiku-4-5-20251001" {{ 'selected' if admin_ai_model == 'claude-haiku-4-5-20251001' else '' }}>Claude Haiku 4.5 (ultra rapido/barato)</option>
+                        <option value="claude-3-5-haiku-latest" {{ 'selected' if admin_ai_model == 'claude-3-5-haiku-latest' else '' }}>Claude 3.5 Haiku (mais barato)</option>
+                    </optgroup>
+                    <optgroup label="GPT — OpenAI">
+                        <option value="gpt-4o" {{ 'selected' if admin_ai_model == 'gpt-4o' else '' }}>GPT-4o</option>
+                        <option value="gpt-4o-mini" {{ 'selected' if admin_ai_model == 'gpt-4o-mini' else '' }}>GPT-4o Mini (barato)</option>
+                        <option value="chatgpt-4o-latest" {{ 'selected' if admin_ai_model == 'chatgpt-4o-latest' else '' }}>ChatGPT-4o Latest</option>
+                        <option value="o3-mini" {{ 'selected' if admin_ai_model == 'o3-mini' else '' }}>o3-mini (reasoning)</option>
+                        <option value="gpt-4.1" {{ 'selected' if admin_ai_model == 'gpt-4.1' else '' }}>GPT-4.1</option>
+                        <option value="gpt-4.1-mini" {{ 'selected' if admin_ai_model == 'gpt-4.1-mini' else '' }}>GPT-4.1 Mini</option>
+                    </optgroup>
+                    <optgroup label="DeepSeek">
+                        <option value="deepseek-v3.2" {{ 'selected' if admin_ai_model == 'deepseek-v3.2' else '' }}>DeepSeek V3.2 (ultra barato)</option>
+                        <option value="deepseek-r1" {{ 'selected' if admin_ai_model == 'deepseek-r1' else '' }}>DeepSeek R1 (reasoning barato)</option>
+                    </optgroup>
+                    <optgroup label="Gemini — Google">
+                        <option value="gemini-2.5-flash" {{ 'selected' if admin_ai_model == 'gemini-2.5-flash' else '' }}>Gemini 2.5 Flash (rapido)</option>
+                        <option value="gemini-2.5-pro" {{ 'selected' if admin_ai_model == 'gemini-2.5-pro' else '' }}>Gemini 2.5 Pro</option>
+                    </optgroup>
+                    <optgroup label="Grok — xAI">
+                        <option value="grok-3" {{ 'selected' if admin_ai_model == 'grok-3' else '' }}>Grok 3</option>
+                        <option value="grok-3-mini" {{ 'selected' if admin_ai_model == 'grok-3-mini' else '' }}>Grok 3 Mini</option>
+                    </optgroup>
                 </select>
                 <button type="button" class="btn-primary" style="padding:6px 16px;font-size:12px" onclick="saveAdminModel()">Salvar</button>
-                <span id="model-status" style="font-size:11px;color:#888">{{ admin_ai_model or 'claude-3-7-sonnet-latest' }}</span>
+                <span id="model-status" style="font-size:11px;color:#888">{{ admin_ai_model or 'claude-sonnet-4-6' }}</span>
             </div>
         </div>
     </div>
