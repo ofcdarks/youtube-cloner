@@ -466,6 +466,32 @@ function regenerateFromNiches() {
     );
 }
 
+function changeProjectLanguage(lang) {
+    if (!lang) return;
+    fetch('/api/admin/set-project-language', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.CSRF_TOKEN || ''
+        },
+        body: JSON.stringify({
+            project_id: window.__CURRENT_PROJECT_ID || '',
+            language: lang
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.ok) {
+            showToast('Idioma alterado para ' + lang, 'success', 2000);
+        } else {
+            showToast('Erro: ' + (data.error || ''), 'error');
+        }
+    })
+    .catch(function(e) {
+        showToast('Erro: ' + e.message, 'error');
+    });
+}
+
 function regenerateNiches() {
     showConfirm(
         'Regenerar Nichos',

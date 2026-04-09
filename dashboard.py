@@ -4176,6 +4176,21 @@ Retorne APENAS JSON valido: [{{"name":"...","description":"descricao em PT-BR 2-
         return JSONResponse({"error": f"Falha ao regenerar nichos: {error_msg}"}, status_code=500)
 
 
+@app.post("/api/admin/set-project-language")
+@limiter.limit("20/minute")
+async def api_set_project_language(request: Request, user=Depends(require_admin)):
+    """Change the language of a project. Affects title/niche generation."""
+    body = await request.json()
+    project_id = body.get("project_id", "").strip()
+    language = body.get("language", "").strip()
+    if not project_id or not language:
+        return JSONResponse({"error": "project_id e language obrigatorios"}, status_code=400)
+    from database import get_db
+    with get_db() as conn:
+        conn.execute("UPDATE projects SET language=? WHERE id=?", (language, project_id))
+    return JSONResponse({"ok": True, "language": language})
+
+
 @app.post("/api/admin/set-ai-model")
 @limiter.limit("10/minute")
 async def api_set_ai_model(request: Request, user=Depends(require_admin)):

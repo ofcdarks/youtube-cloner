@@ -54,9 +54,17 @@
         {% if current_project.channel_original %}
         <span class="sep">|</span> Canal: <a href="{{ current_project.channel_original }}" target="_blank" style="color:#a78bfa;text-decoration:underline">{{ current_project.channel_original }}</a>
         {% endif %}
-        {% if current_project.language %}
-        <span class="sep">|</span> <span style="background:rgba(59,130,246,.15);color:#3b82f6;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">&#127760; {{ current_project.language }}</span>
-        {% endif %}
+        <span class="sep">|</span>
+        <select id="projectLangSelect" title="Idioma do projeto" aria-label="Idioma do projeto" onchange="changeProjectLanguage(this.value)" style="background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer">
+            <option value="en" {{ 'selected' if current_project.language == 'en' else '' }}>&#127760; English</option>
+            <option value="es" {{ 'selected' if current_project.language == 'es' else '' }}>&#127466;&#127480; Espanol</option>
+            <option value="pt-BR" {{ 'selected' if current_project.language == 'pt-BR' else '' }}>&#127463;&#127479; Portugues BR</option>
+            <option value="fr" {{ 'selected' if current_project.language == 'fr' else '' }}>&#127467;&#127479; Francais</option>
+            <option value="de" {{ 'selected' if current_project.language == 'de' else '' }}>&#127465;&#127466; Deutsch</option>
+            <option value="it" {{ 'selected' if current_project.language == 'it' else '' }}>&#127470;&#127481; Italiano</option>
+            <option value="ja" {{ 'selected' if current_project.language == 'ja' else '' }}>&#127471;&#127477; Japones</option>
+            <option value="ko" {{ 'selected' if current_project.language == 'ko' else '' }}>&#127472;&#127479; Coreano</option>
+        </select>
         {% if sop_source %}
         <span class="sep">|</span> <span class="sop-badge">SOP via {{ sop_source }}</span>
         {% endif %}
