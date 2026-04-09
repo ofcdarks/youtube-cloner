@@ -3611,10 +3611,13 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             channel_best_videos=channel_best_videos,
         )
 
+        # Use admin_ai_model from DB settings (set in admin panel), fallback to env AI_MODEL
+        from database import get_setting
+        admin_model = get_setting("admin_ai_model") or None
         response = await asyncio.to_thread(
             chat, user_prompt,
             system_prompt,
-            None,  # model (use default)
+            admin_model,  # model from admin panel DB setting
             MAX_TOKENS_LARGE,  # max_tokens
             0.85,  # temperature — slightly higher for creativity
         )
