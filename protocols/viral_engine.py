@@ -508,22 +508,57 @@ def build_viral_prompt(
     # ═══════════════════════════════════════════════════
     # SYSTEM PROMPT — short, surgical, SOP-driven
     # ═══════════════════════════════════════════════════
+    # Extract the exact title templates from SOP for system prompt
+    _sop_formulas = []
+    try:
+        # Find "10 Melhores Titulos" or top titles in SOP
+        _top_match = re.search(r'(?i)(?:10 Melhores|Best.*Titles|Top.*Titles)(.*?)(?:\n\*\*|\n##|Template)', sop_text, re.DOTALL)
+        if _top_match:
+            _lines = _top_match.group(1).strip().split('\n')
+            for _l in _lines:
+                _l = _l.strip().lstrip('0123456789.*) ')
+                if len(_l) > 10 and not _l.startswith('['):
+                    # Clean: remove view counts and references
+                    _clean = re.sub(r'\([\d.,]+[KMkm]?\s*views?\)', '', _l).strip()
+                    _clean = re.sub(r'\[\d+[,\s\d]*\]', '', _clean).strip()
+                    if _clean:
+                        _sop_formulas.append(_clean)
+        # Also find template examples
+        _tmpl_match = re.search(r'(?i)(?:Template|Exemplos?:)(.*?)(?:\n\*\*\d|\n##|---)', sop_text, re.DOTALL)
+        if _tmpl_match:
+            for _l in _tmpl_match.group(1).strip().split('\n'):
+                _l = _l.strip().lstrip('0123456789.*) ')
+                if len(_l) > 10:
+                    _sop_formulas.append(_l)
+    except Exception:
+        pass
+
+    _formula_examples = ''
+    if _sop_formulas:
+        _formula_examples = '\n'.join([f'  - "{t}"' for t in _sop_formulas[:12]])
+
     system_prompt = f"""Voce E o dono do canal "{channel_name}". Voce nao esta ajudando — voce esta ESCREVENDO seus proprios titulos.
 
-Seu SOP (seu estilo, sua voz, seu DNA) esta abaixo. Cada titulo que voce cria DEVE soar como se VOCE tivesse escrito — porque voce escreveu.
+═══ FORMULA OBRIGATORIA — TODOS OS TITULOS DEVEM SEGUIR ESTAS ESTRUTURAS ═══
+Estes sao os titulos REAIS do canal que mais performaram:
+{_formula_examples if _formula_examples else '(ver SOP abaixo)'}
 
-REGRA #0 (MAIS IMPORTANTE): O SOP contem uma FORMULA DE TITULOS especifica (secao 8).
-Voce DEVE seguir essa formula EXATA. Se o SOP diz que o canal usa "Your life as...",
-"POV:", "What Its Like to be...", CADA titulo deve usar essas estruturas.
-NAO invente formulas genericas — copie a estrutura do SOP.
+REGRA SUPREMA: CADA titulo gerado DEVE comecar com uma destas estruturas:
+{chr(10).join(['  ' + f for f in _sop_formulas[:5]]) if _sop_formulas else '  (extrair do SOP)'}
+
+Se o canal usa "Your life as..." → TODOS os titulos usam "Your life as..."
+Se o canal usa "The entire story of..., i guess" → USE essa formula
+Se o canal usa "What Its Like to be Every [Rank]" → USE essa formula
+NAO invente formulas novas como "The FORBIDDEN...", "The DARK...", "The INCREDIBLE..."
+USE APENAS as formulas do canal.
+═══════════════════════════════════════════════════════════════════════════════
 
 Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 
-4 regras inviolaveis:
-1. SEGUIR A FORMULA DE TITULOS DO SOP (estrutura identica aos titulos do canal)
-2. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
-3. Pelo menos 1 POWER WORD em CAPS (emocao)
-4. CURIOSITY GAP — prometa sem revelar (o espectador PRECISA clicar)
+3 regras apos a formula:
+1. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
+2. Pelo menos 1 POWER WORD em CAPS (emocao)
+3. CURIOSITY GAP — prometa sem revelar
 
 Idioma: {lang_label}. Maximo 80 caracteres por titulo."""
 
@@ -547,51 +582,68 @@ Idioma: {lang_label}. Maximo 80 caracteres por titulo."""
     except Exception:
         pass
 
+    _sep = '=' * 43
+    _nl = chr(10)
+    _formula_block_str = ('FORMULA DE TITULOS DO CANAL (SECAO 8 DO SOP):' + _nl + title_formula_block + _nl) if title_formula_block else ''
+    _kw_block = _nl.join(kw_lines) if kw_lines else '(sem dados)'
+    _auto_block = _nl.join(auto_lines) if auto_lines else '(sem dados)'
+    _golden_block = ('OPORTUNIDADES DE OURO (volume alto + competicao baixa -- PRIORIZE):' + _nl + _nl.join(golden_lines)) if golden_lines else ''
+
     user_prompt = f"""Gere {count} titulos para meu canal.
+
+{_sep}
+PASSO 1 -- LEIA PRIMEIRO: TITULOS REAIS DO CANAL (os que mais performaram):
+{_sep}
+{_formula_examples if _formula_examples else '(ver SOP)'}
+
+INSTRUCAO: Os {count} titulos que voce gerar DEVEM seguir EXATAMENTE a mesma
+estrutura dos titulos acima. Copie o padrao. NAO invente estruturas novas.
+Estruturas validas (baseadas nos titulos reais):
+  - "Your life as [personagem] ([universo])"
+  - "Your life in [universo] ([tipo])"
+  - "The entire story of [game/tema], i guess"
+  - "What It's Like to be Every [rank/tipo]"
+  - "Your life as Every [tipo] Rank"
+  - "[Superlativo] [tema] in History"
+Estruturas PROIBIDAS (genericas demais -- NAO USE):
+  - "The FORBIDDEN truth about..."
+  - "The DARK secrets of..."
+  - "The INCREDIBLE story of..."
+  - "Why X HIDES its DARK truth"
 
 {sop_analysis_block}
 
 {winners_block}
 
-{f'''═══════════════════════════════════════════
-FORMULA DE TITULOS DO CANAL (EXTRAIDA DO SOP — SIGA ESTAS ESTRUTURAS):
-═══════════════════════════════════════════
-{title_formula_block}
+{_formula_block_str}
 
-REGRA CRITICA: Os titulos DEVEM seguir estas formulas EXATAS do canal.
-Se o canal usa "Your life as...", "POV:", "What Its Like to be...",
-TODOS os titulos devem comecar com essas estruturas.
-NÃO invente formulas novas — use as do SOP acima.
-''' if title_formula_block else ''}
-
-═══════════════════════════════════════════
-MEU SOP (minha voz, meu estilo — SIGA FIELMENTE):
-═══════════════════════════════════════════
+{_sep}
+MEU SOP (minha voz, meu estilo -- SIGA FIELMENTE):
+{_sep}
 {sop_text[:3000]}
 
-═══════════════════════════════════════════
+{_sep}
 NICHOS (titulos EXCLUSIVAMENTE sobre estes):
-═══════════════════════════════════════════
+{_sep}
 {niches_text}
 
-═══════════════════════════════════════════
+{_sep}
 KEYWORDS COM VOLUME REAL ({len(kw_lines)} keywords):
-═══════════════════════════════════════════
-{chr(10).join(kw_lines) if kw_lines else '(sem dados)'}
+{_sep}
+{_kw_block}
 
-{f'''OPORTUNIDADES DE OURO (volume alto + competicao baixa — PRIORIZE):
-{chr(10).join(golden_lines)}''' if golden_lines else ''}
+{_golden_block}
 
-═══════════════════════════════════════════
+{_sep}
 BUSCAS REAIS NO YOUTUBE (autocomplete):
-═══════════════════════════════════════════
-{chr(10).join(auto_lines) if auto_lines else '(sem dados)'}
+{_sep}
+{_auto_block}
 
 {demand_summary}
 
-═══════════════════════════════════════════
+{_sep}
 INSTRUCOES (GERE EXATAMENTE {count} TITULOS):
-═══════════════════════════════════════════
+{_sep}
 QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Conte antes de entregar.
 
 1. CADA titulo DEVE conter pelo menos 1 keyword da lista de volume
