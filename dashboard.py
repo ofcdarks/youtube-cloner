@@ -4077,6 +4077,105 @@ async def api_generate_agent(request: Request, user=Depends(require_admin)):
         return JSONResponse({"error": "Falha ao gerar agente."}, status_code=500)
 
 
+@app.post("/api/admin/regenerate-niches")
+@limiter.limit("3/minute")
+async def api_regenerate_niches(request: Request, user=Depends(require_admin)):
+    """Delete all niches and regenerate 5 based on SOP analysis."""
+    body = await request.json()
+    project_id = body.get("project_id", "").strip()
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    from database import get_db, get_project, get_setting, set_setting
+    from services import get_project_sop
+    from protocols.ai_client import chat
+    from config import LANG_LABELS
+    import asyncio
+
+    project = get_project(project_id)
+    if not project:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    sop = get_project_sop(project_id)
+    if not sop:
+        return JSONResponse({"error": "SOP nao encontrado para este projeto"}, status_code=400)
+
+    lang = project.get("language", "en")
+    lang_label = LANG_LABELS.get(lang, lang)
+    niche_name = project.get("niche_chosen", project.get("name", ""))
+
+    try:
+        admin_model = get_setting("admin_ai_model") or "gpt-4o"
+
+        niche_prompt = f"""Voce e um estrategista de canais YouTube com 10 anos de experiencia.
+Analise este SOP de um canal e gere 5 sub-nichos derivados OTIMIZADOS para crescimento.
+
+CANAL: "{niche_name}"
+IDIOMA DO CANAL: {lang_label}
+
+SOP (DNA do canal):
+{sop[:4000]}
+
+REGRAS OBRIGATORIAS:
+1. O campo "name" deve ser no IDIOMA ORIGINAL do canal ({lang_label}).
+2. O campo "description" deve ser SEMPRE em Portugues Brasileiro (PT-BR), independente do idioma do canal. Descricao de 2-3 frases explicando o sub-nicho, publico-alvo, e potencial de views baseado nos dados do SOP.
+3. O campo "recommended" (true/false) — marque como true os 1-2 nichos com MELHOR potencial baseado em: RPM alto + competicao baixa/media + tendencia de crescimento + performance comprovada nos dados do SOP.
+4. O campo "recommended_reason" (string PT-BR curta) — explique em 8-12 palavras porque e recomendado (ex: "RPM alto, 1M+ views comprovado, competicao baixa, tendencia subindo").
+5. Baseie a analise nos DADOS REAIS do SOP: views dos videos, pilares de conteudo, publico-alvo, formula de titulos.
+6. rpm_range no formato "$X-$Y", competition como "Low", "Medium" ou "High".
+7. Inclua cores hex variadas para cada nicho.
+
+Retorne APENAS JSON valido: [{{"name":"...","description":"descricao em PT-BR 2-3 frases","rpm_range":"$X-$Y","competition":"Low/Medium/High","color":"#hex","pillars":["pilar1","pilar2","pilar3"],"recommended":false,"recommended_reason":""}}]"""
+
+        response = await asyncio.to_thread(
+            chat, niche_prompt,
+            "Voce e um analista de canais YouTube especializado em nichos faceless.",
+            admin_model,
+            3000,
+            0.7,
+        )
+
+        niche_json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if not niche_json_match:
+            return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
+
+        niche_list = json.loads(niche_json_match.group())
+        niche_colors = ["#e040fb", "#448aff", "#ff5252", "#ffd740", "#00e5ff"]
+
+        # Delete old niches
+        with get_db() as conn:
+            conn.execute("DELETE FROM niches WHERE project_id=?", (project_id,))
+
+        # Save new niches
+        from database import save_niche
+        generated = 0
+        for i, n in enumerate(niche_list[:5]):
+            pillars_data = n.get("pillars", [])
+            if not isinstance(pillars_data, list):
+                pillars_data = []
+            if n.get("recommended"):
+                pillars_data.append({"__recommended": True, "__reason": n.get("recommended_reason", "")})
+            save_niche(
+                project_id, n.get("name", f"Nicho {i+1}"), n.get("description", ""),
+                n.get("rpm_range", ""), n.get("competition", ""),
+                n.get("color", niche_colors[i % 5]), chosen=bool(n.get("recommended")),
+                pillars=pillars_data
+            )
+            generated += 1
+
+        from database import log_activity
+        log_activity(project_id, "niches_regenerated", f"{generated} nichos regenerados via AI")
+
+        return JSONResponse({"ok": True, "generated": generated})
+
+    except ValueError as e:
+        return JSONResponse({"error": f"Configuracao: {str(e)}"}, status_code=400)
+    except Exception as e:
+        error_msg = str(e)[:300]
+        logger.error(f"regenerate-niches error: {e}", exc_info=True)
+        return JSONResponse({"error": f"Falha ao regenerar nichos: {error_msg}"}, status_code=500)
+
+
 @app.post("/api/admin/set-ai-model")
 @limiter.limit("10/minute")
 async def api_set_ai_model(request: Request, user=Depends(require_admin)):

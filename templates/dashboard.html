@@ -164,7 +164,10 @@
 
     <!-- NICHOS -->
     <div class="section">
-        <div class="section-title"><span class="sec-icon">&#128161;</span> Nichos Gerados</div>
+        <div class="section-title" style="display:flex;align-items:center;gap:12px">
+            <span><span class="sec-icon">&#128161;</span> Nichos Gerados</span>
+            <button type="button" class="score-btn score-btn-purple" onclick="regenerateNiches()" id="regen-niches-btn" style="font-size:11px;padding:4px 12px">&#128260; Regenerar Nichos</button>
+        </div>
         <div class="grid-5">
             {% for n in nichos %}
             <div class="niche-card {% if n.chosen %}niche-selected{% endif %}" onclick="selectNiche(this, this.dataset.niche)" data-niche="{{ n.name|e }}" role="button" tabindex="0" aria-label="Selecionar nicho: {{ n.name }}">

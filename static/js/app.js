@@ -466,6 +466,46 @@ function regenerateFromNiches() {
     );
 }
 
+function regenerateNiches() {
+    showConfirm(
+        'Regenerar Nichos',
+        'Isso vai <strong>APAGAR todos os nichos atuais</strong> e gerar 5 novos baseados no SOP do projeto.<br><br>As descricoes serao em PT-BR e os melhores nichos terao selo RECOMENDADO.<br><br>Continuar?',
+        function() {
+            var btn = document.getElementById('regen-niches-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
+            showProgressModal('Regenerando Nichos');
+            updateProgress(30, 'Analisando SOP e gerando 5 nichos otimizados...');
+
+            fetch('/api/admin/regenerate-niches', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.CSRF_TOKEN || ''
+                },
+                body: JSON.stringify({
+                    project_id: window.__CURRENT_PROJECT_ID || '',
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    updateProgress(100, data.generated + ' nichos gerados!');
+                    showToast(data.generated + ' nichos gerados com sucesso!', 'success');
+                    setTimeout(function() { closeProgressModal(); reloadWithProject(); }, 1500);
+                } else {
+                    closeProgressModal();
+                    showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+                }
+                if (btn) { btn.disabled = false; btn.textContent = '\uD83D\uDD04 Regenerar Nichos'; }
+            })
+            .catch(function(e) {
+                closeProgressModal();
+                showToast('Erro: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.textContent = '\uD83D\uDD04 Regenerar Nichos'; }
+            });
+        }
+    );
+}
 
 /* ── Generate Script ─────────────────────────────────── */
 
