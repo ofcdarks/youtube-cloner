@@ -574,7 +574,7 @@ Antes de publicar qualquer video, responda SIM/NAO. Se qualquer resposta for NAO
 3. A musica e celtic/peaceful em loop continuo SEM drops ou beats? (SIM obrigatorio)
 4. Ha ASMR mecanico (clicks, vapor, engrenagens) em pelo menos 60pct das cenas? (SIM obrigatorio)
 5. A iluminacao e golden hour ou luz quente em toda a duracao? (SIM obrigatorio)
-6. O robo protagonista aparece em pelo menos 70pct das cenas? (SIM obrigatorio)
+6. A regra 30/70 esta aplicada? (30-40pct cenas = atividade do titulo, 60-70pct = outras situacoes do mundo vivo) (SIM obrigatorio)
 7. A roupa e design do robo NAO mudam durante o video? (SIM obrigatorio)
 8. Todas as transicoes sao crossfades de 1-2s (SEM cortes secos)? (SIM obrigatorio)
 9. A escala miniatura esta visivel e clara em todas as cenas? (SIM obrigatorio)
