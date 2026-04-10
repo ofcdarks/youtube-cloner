@@ -719,6 +719,7 @@ REGRAS:
 - Cada ideia deve ser UNICA e diferente das existentes
 - Siga a mesma estrutura do SOP (hook forte, numeros impactantes, historia real)
 - Inclua para cada ideia: titulo viral, hook dos primeiros 30s, resumo de 2 linhas, pilar de conteudo, prioridade (ALTA/MEDIA/BAIXA)
+- COMPRIMENTO DO TITULO: MINIMO 70 caracteres, MAXIMO 100 caracteres. Titulos curtos NAO performam — use frases completas, numeros, emocao e curiosidade. Nunca menos de 70 chars.
 {f'- Distribua igualmente entre os sub-nichos escolhidos. O campo pillar DEVE ser um dos nichos escolhidos.' if chosen_niches else ''}
 
 TITULOS JA EXISTENTES (NAO REPETIR):
@@ -738,6 +739,14 @@ Retorne APENAS o JSON.{lang_instruction}"""
             return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
 
         new_ideas = json.loads(json_match.group())
+
+        # Enforce title length: truncate >100, warn <70
+        for idea in new_ideas:
+            title = idea.get("title", "")
+            if len(title) > 100:
+                idea["title"] = title[:97] + "..."
+            if len(title) < 70:
+                logger.warning(f"Short title ({len(title)} chars): {title}")
 
         # Map volume from pre-researched keywords (no extra API call)
         # Exclude generic single words that match too broadly

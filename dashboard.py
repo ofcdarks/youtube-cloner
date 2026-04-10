@@ -1232,8 +1232,9 @@ SOP do canal (referencia de tom e estilo):
 {sop_content[:3000]}
 
 REGRAS OBRIGATORIAS DO YOUTUBE:
-- CADA titulo DEVE ter no MAXIMO 100 caracteres (incluindo espacos)
-- Titulos devem ser impactantes mesmo sendo curtos
+- CADA titulo DEVE ter MINIMO 70 caracteres e MAXIMO 100 caracteres (incluindo espacos)
+- Titulos curtos NAO performam — use frases completas com numeros, emocao, curiosidade e open loops
+- NUNCA gerar titulos com menos de 70 caracteres
 
 Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
 O campo "pillar" DEVE ser o nome do sub-nicho correspondente.
