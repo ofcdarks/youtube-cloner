@@ -51,4 +51,4 @@ output/projects/
 # Misc
 *.log
 *.bak
-seed_output/
+# seed_output/ — needed for deploy imports (do NOT ignore)
