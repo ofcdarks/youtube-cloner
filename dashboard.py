@@ -1342,7 +1342,7 @@ Para CADA um dos 5 videos:
 
             # Collect SEO result
             try:
-                seo_content = future_seo.result(timeout=240)
+                seo_content = future_seo.result(timeout=120)
                 if seo_content and len(seo_content) > 100:
                     save_file(project_id, "seo", "SEO Pack", f"seo_pack_{project_id}.md", seo_content)
                     seo_generated = 10
@@ -1353,7 +1353,7 @@ Para CADA um dos 5 videos:
 
             # Collect Thumbnail result
             try:
-                thumb_content = future_thumb.result(timeout=240)
+                thumb_content = future_thumb.result(timeout=120)
                 if thumb_content and len(thumb_content) > 100:
                     save_file(project_id, "outros", "Thumbnail Prompts - Midjourney DALL-E", f"thumbnail_prompts_{project_id}.md", thumb_content)
                     log_activity(project_id, "thumbnail_prompts", "Thumbnail Prompts gerados")
@@ -1363,7 +1363,7 @@ Para CADA um dos 5 videos:
 
             # Collect Music result
             try:
-                music_content = future_music.result(timeout=240)
+                music_content = future_music.result(timeout=120)
                 if music_content and len(music_content) > 100:
                     save_file(project_id, "outros", "Music Prompts - Suno Udio MusicGPT", f"music_prompts_{project_id}.md", music_content)
                     log_activity(project_id, "music_prompts", "Music Prompts gerados")
@@ -1373,7 +1373,7 @@ Para CADA um dos 5 videos:
 
             # Collect Teaser result
             try:
-                teaser_content = future_teaser.result(timeout=240)
+                teaser_content = future_teaser.result(timeout=120)
                 if teaser_content and len(teaser_content) > 100:
                     save_file(project_id, "outros", "Teaser Prompts - Shorts Reels TikTok", f"teaser_prompts_{project_id}.md", teaser_content)
                     log_activity(project_id, "teaser_prompts", "Teaser Prompts gerados")
@@ -1425,7 +1425,7 @@ INSTRUCOES:
                 for future in concurrent.futures.as_completed(future_to_title):
                     i, t = future_to_title[future]
                     try:
-                        roteiro = future.result(timeout=240)
+                        roteiro = future.result(timeout=120)
                         if roteiro and len(roteiro) > 500:
                             save_file(project_id, "roteiro", f"Roteiro - {t[:50]}", f"roteiro_{project_id}_{i+1}.md", roteiro)
 

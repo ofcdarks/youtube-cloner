@@ -564,18 +564,30 @@ async def api_score_all(
 async def api_score_title(request: Request, user=Depends(require_auth)):
     body = await request.json()
     idea_id = body.get("id")
+    force = body.get("force", False)
     if not idea_id:
         return JSONResponse({"error": "id obrigatorio"}, status_code=400)
 
     from database import get_idea, update_idea_score
     from protocols.title_scorer import score_title
+    import json as _json
 
     idea = get_idea(int(idea_id))
     if not idea:
         return JSONResponse({"error": "Ideia nao encontrada"}, status_code=404)
 
-    result = score_title(idea["title"])
-    update_idea_score(int(idea_id), result["final_score"], result["rating"], result)
+    # Return cached score if already scored and not forcing rescore
+    if not force and idea.get("score", 0) > 0 and idea.get("score_details"):
+        try:
+            cached = _json.loads(idea["score_details"]) if isinstance(idea["score_details"], str) else idea["score_details"]
+            if cached and cached.get("final_score"):
+                return JSONResponse({"ok": True, "score": idea["score"], "rating": idea.get("rating", ""), "details": cached, "cached": True})
+        except (ValueError, TypeError):
+            pass
+
+    import asyncio
+    result = await asyncio.to_thread(score_title, idea["title"])
+    await asyncio.to_thread(update_idea_score, int(idea_id), result["final_score"], result["rating"], result)
     return JSONResponse({"ok": True, "score": result["final_score"], "rating": result["rating"], "details": result})
 
 

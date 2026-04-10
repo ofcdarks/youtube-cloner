@@ -541,19 +541,19 @@ function generateScript(id, title) {
         if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
         showProgressModal('Gerando Roteiro');
-        updateProgress(15, 'Preparando prompt...');
+        updateProgress(10, 'Enviando para a API...');
 
-        // Simulate progress
-        let step = 0;
-        const msgs = ['Analisando SOP do canal...', 'Escrevendo roteiro...', 'Finalizando...'];
+        // Real elapsed timer instead of fake progress
+        const startTime = Date.now();
         const scriptInterval = setInterval(() => {
-            if (step < msgs.length) {
-                updateProgress(30 + step * 25, msgs[step]);
-                step++;
-            } else {
-                clearInterval(scriptInterval);
-            }
-        }, 8000);
+            const elapsed = Math.round((Date.now() - startTime) / 1000);
+            const pct = Math.min(85, 10 + elapsed);
+            const msg = elapsed < 15 ? 'Analisando SOP do canal...'
+                      : elapsed < 40 ? 'Escrevendo roteiro... (' + elapsed + 's)'
+                      : elapsed < 70 ? 'Finalizando... (' + elapsed + 's)'
+                      : 'Aguardando resposta da API... (' + elapsed + 's)';
+            updateProgress(pct, msg);
+        }, 1000);
 
         apiPost('/api/generate-script', {idea_id: id})
         .then(r => r.json())
@@ -701,8 +701,17 @@ function closeScriptResultModal() {
     var modal = document.getElementById('script-result-modal');
     if (modal) {
         modal.remove();
-        // Reload to refresh the project files panel (Roteiros + Narracoes)
-        if (typeof reloadWithProject === 'function') reloadWithProject();
+        // AJAX refresh of file panel instead of full page reload
+        var filesPanel = document.querySelector('.files-panel, .project-files, [data-files-panel]');
+        if (filesPanel && window.__CURRENT_PROJECT_ID) {
+            api('/api/health').then(() => {
+                if (typeof reloadWithProject === 'function') reloadWithProject();
+            }).catch(() => {
+                if (typeof reloadWithProject === 'function') reloadWithProject();
+            });
+        } else if (typeof reloadWithProject === 'function') {
+            reloadWithProject();
+        }
     }
 }
 

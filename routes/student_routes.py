@@ -558,7 +558,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
-            async with httpx.AsyncClient(timeout=240) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(api_url, json={
                     "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
@@ -572,7 +572,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
                 script = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
-            async with httpx.AsyncClient(timeout=240) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
                     "model": ai_model,
                     "max_tokens": 8000,
@@ -588,7 +588,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
         elif provider == "google":
             api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
-            async with httpx.AsyncClient(timeout=240) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(f"{api_url}?key={api_key}", json={
                     "contents": [{"parts": [{"text": prompt}]}],
                 })
@@ -1027,7 +1027,7 @@ REGRAS:
 
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
-            async with httpx.AsyncClient(timeout=180) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(api_url, json={
                     "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": judge_prompt}],
@@ -1040,7 +1040,7 @@ REGRAS:
                 result_text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
-            async with httpx.AsyncClient(timeout=180) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
                     "model": ai_model,
                     "max_tokens": 4000,
@@ -1056,7 +1056,7 @@ REGRAS:
 
         elif provider == "google":
             api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
-            async with httpx.AsyncClient(timeout=180) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(f"{api_url}?key={api_key}", json={
                     "contents": [{"parts": [{"text": system_msg + "\n\n" + judge_prompt}]}],
                 })
@@ -1231,7 +1231,7 @@ Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
 
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
-            async with httpx.AsyncClient(timeout=240) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(api_url, json={
                     "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
@@ -1243,7 +1243,7 @@ Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
                 script = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
-            async with httpx.AsyncClient(timeout=240) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
                     "model": ai_model,
                     "max_tokens": 8000,
@@ -1257,7 +1257,7 @@ Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
                 script = content_blocks[0].get("text", "") if content_blocks else ""
 
         elif provider == "google":
-            async with httpx.AsyncClient(timeout=240) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(
                     f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}",
                     json={"contents": [{"parts": [{"text": system_msg + "\n\n" + prompt}]}]},
