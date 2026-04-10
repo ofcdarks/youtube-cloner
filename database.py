@@ -364,6 +364,7 @@ def _run_migrations():
             created_by INTEGER DEFAULT 0
         )"""),
         ("idx_bent_ideas_project", "CREATE INDEX IF NOT EXISTS idx_bent_ideas_project ON bent_ideas(source_project_id)"),
+        ("backfill_search_volume", "SELECT 1"),  # handled below as custom migration
     ]
     with get_db() as conn:
         for migration_id, sql in migrations:
@@ -376,6 +377,22 @@ def _run_migrations():
                     conn.execute("INSERT INTO _migrations (id) VALUES (?)", (migration_id,))
             except Exception:
                 pass  # Column already exists
+
+        # Backfill search_volume from score_details JSON for already-scored ideas
+        try:
+            rows = conn.execute(
+                "SELECT id, score_details FROM ideas WHERE score > 0 AND (search_volume IS NULL OR search_volume = 0) AND score_details != '{}'"
+            ).fetchall()
+            for row in rows:
+                try:
+                    details = json.loads(row["score_details"]) if isinstance(row["score_details"], str) else row["score_details"]
+                    vol = details.get("search_volume", 0)
+                    if vol and vol > 0:
+                        conn.execute("UPDATE ideas SET search_volume=? WHERE id=?", (vol, row["id"]))
+                except (ValueError, TypeError, KeyError):
+                    pass
+        except Exception:
+            pass
 
 
 # ── Password Hashing ─────────────────────────────────────
@@ -663,9 +680,10 @@ def toggle_idea_used(idea_id: int) -> int:
 
 def update_idea_score(idea_id: int, score: int, rating: str = "", details: dict | None = None):
     with get_db() as conn:
+        search_vol = (details or {}).get("search_volume", 0) if details else 0
         conn.execute(
-            "UPDATE ideas SET score=?, rating=?, score_details=? WHERE id=?",
-            (score, rating, json.dumps(details or {}), idea_id),
+            "UPDATE ideas SET score=?, rating=?, score_details=?, search_volume=? WHERE id=?",
+            (score, rating, json.dumps(details or {}), search_vol, idea_id),
         )
 
 

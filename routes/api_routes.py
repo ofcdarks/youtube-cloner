@@ -637,6 +637,10 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         # Pre-research demand data (YouTube trending + Google Trends)
         demand_summary = ""
         demand_data = {}
+        # Get chosen niches FIRST so we can use them in demand research
+        from database import get_niches
+        chosen_niches = [n for n in get_niches(pid) if n.get("chosen")]
+
         try:
             from protocols.trend_research import research_niche_demand
             from database import get_db as _gdb
@@ -647,14 +651,12 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
                     yt_key = yt_row["value"]
             from database import get_project
             proj_data = get_project(pid)
-            demand_data = research_niche_demand(niche, proj_data.get("language", "pt-BR") if proj_data else "pt-BR", yt_key)
+            # Use chosen niche names for demand research when available
+            demand_niche = " + ".join([n["name"] for n in chosen_niches]) if chosen_niches else niche
+            demand_data = research_niche_demand(demand_niche, proj_data.get("language", "pt-BR") if proj_data else "pt-BR", yt_key)
             demand_summary = demand_data.get("summary", "")
         except Exception:
             pass
-
-        # Get chosen niches for focused title generation
-        from database import get_niches
-        chosen_niches = [n for n in get_niches(pid) if n.get("chosen")]
         if chosen_niches:
             niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in chosen_niches])
             niches_instruction = f"\n\nSUB-NICHOS ESCOLHIDOS (gere titulos APENAS sobre estes):\n{niches_text}\nO campo 'pillar' DEVE ser o nome do sub-nicho.\n"
@@ -700,8 +702,16 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         except Exception as e:
             logger.warning(f"Niche keyword research failed (non-blocking): {e}")
 
-        prompt = f"""Gere {count} novas ideias de videos para o canal "{niche}".
-{niches_instruction}
+        # When chosen niches exist, make them the PRIMARY focus of the prompt
+        if chosen_niches:
+            chosen_names = ", ".join([n["name"] for n in chosen_niches])
+            prompt_header = f"""Gere {count} novas ideias de videos para o canal "{niche}".
+FOCO OBRIGATORIO: Todos os titulos devem ser sobre os sub-nichos escolhidos: {chosen_names}.
+{niches_instruction}"""
+        else:
+            prompt_header = f"""Gere {count} novas ideias de videos para o canal "{niche}"."""
+
+        prompt = f"""{prompt_header}
 {demand_summary}
 {keywords_block}
 
@@ -709,7 +719,7 @@ REGRAS:
 - Cada ideia deve ser UNICA e diferente das existentes
 - Siga a mesma estrutura do SOP (hook forte, numeros impactantes, historia real)
 - Inclua para cada ideia: titulo viral, hook dos primeiros 30s, resumo de 2 linhas, pilar de conteudo, prioridade (ALTA/MEDIA/BAIXA)
-{f'- Distribua igualmente entre os sub-nichos escolhidos' if chosen_niches else ''}
+{f'- Distribua igualmente entre os sub-nichos escolhidos. O campo pillar DEVE ser um dos nichos escolhidos.' if chosen_niches else ''}
 
 TITULOS JA EXISTENTES (NAO REPETIR):
 {chr(10).join(f'- {t}' for t in existing_titles[:30])}
