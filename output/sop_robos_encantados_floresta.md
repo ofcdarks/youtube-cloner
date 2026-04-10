@@ -69,41 +69,75 @@ O tom e transmitido inteiramente pela escolha de musica, ambiente, ritmo e ativi
 - **Movimentos:** Dolly-ins lentos (zoom in suave), pans gentis horizontais, tracking shots seguindo robo. Velocidade: 50pct mais lento que o normal.
 - **Transicoes:** Crossfade suave de 1-2 segundos. NUNCA cortes secos.
 
+**FILOSOFIA CENTRAL — MUNDO VIVO COM CENAS INDEPENDENTES:**
+O video NAO e a historia de um robo fazendo uma coisa. O video e uma JANELA PARA UM MUNDO VIVO onde muitas coisas acontecem simultaneamente. O titulo define o UNIVERSO e o CONTEXTO EMOCIONAL — nao um roteiro linear com um protagonista exclusivo.
+
+A camera passeia livremente pela vila encantada, capturando momentos diferentes em cantos diferentes. Cada cena de 8 segundos e uma MICRO-HISTORIA INDEPENDENTE — abre, acontece e fecha sozinha. NAO existe dependencia entre cenas (modo Cenas Independentes da extensao LCDF).
+
+**REGRA 30/70:**
+  30-40% das cenas: atividade do titulo (o contexto principal — ex: fazendo geleia)
+  60-70% das cenas: outras situacoes simultaneas do mundo vivo:
+    - Robos bebe brincando, rolando em folhas, dormindo em ninhos de musgo
+    - Grupo de robos ao redor de fogueira fazendo cha ou conversando por LED
+    - Robo acordando na casa-tronco, espreguicando mecanicamente
+    - Robo velhao esculpindo madeira na soleira, fumando cachimbo de bolota
+    - Robos carregando cestos de frutas pela trilha de musgo
+    - Animal gentil da floresta (gato, borboleta, joaninha) interagindo com robos
+    - Detalhe ASMR puro sem robo (geleia borbulhando, cogumelo brilhando, gota pingando)
+    - Dois robos se cumprimentando com LED, trocando frutas
+    Todas dentro do MESMO universo, mesma luz, mesmo clima emocional do titulo.
+
+**Estrutura de cada cena de 8s (INVIOLAVEL):**
+  SEGUNDO 0-1: ABERTURA — camera encontra a situacao ja em andamento
+  SEGUNDO 1-6: ACAO — a situacao se desenvolve completamente
+  SEGUNDO 6-8: FECHAMENTO — a situacao se conclui naturalmente, paz
+
 **Estrutura de producao:**
-1. Definir atividade do video (ex: "fazer geleia de amora")
-2. Roteirizar 30-40 cenas de 8 segundos cada
-3. Manter robo protagonista consistente em 70pct das cenas
-4. Garantir que cada cena tem pelo menos 30pct do ambiente visivel (regra do ULTIMO FRAME para LCDF extension)
+1. Definir o UNIVERSO do video (ex: "manha aconchegante na vila, atividade central = geleia")
+2. Listar 30-40 SITUACOES INDEPENDENTES que existem neste universo simultaneamente
+3. 30-40% das situacoes mostram a atividade do titulo; 60-70% mostram o mundo vivo
+4. Garantir que cada cena tem pelo menos 30pct do ambiente visivel (regra ANTI-CLOSE-UP)
 5. Audio: trilha celtic (loop continuo) + ambiencia floresta + ASMR mecanico sincronizado
 6. Renderizar em 1080p ou 4K, 24-30fps
 
+**ABERTURA FIXA DE UNIVERSO (primeiras 3 cenas — OBRIGATORIA):**
+Todo video comeca com 3 cenas sem robos que estabelecem o universo:
+  Cena 1 (Universe Establisher): Wide shot cinematografico da micro-vila encantada, mundo habitado visivel. SEM ROBOS.
+  Cena 2 (Bridge to Title): Camera encontra o micro-espaco do episodio especifico. SEM ROBOS.
+  Cena 3 (Title in Action): PRIMEIRO ROBO aparece em plano medio executando a acao do titulo.
+
 **REGRA CRITICA DE CAMERA — NEVER EXTREME CLOSE-UP:**
-A extensao LCDF (La Casa Dark Flow) trabalha com geracao baseada no ULTIMO FRAME da cena anterior. Se o close for extremo (so o rosto do robo, sem cenario), a IA perde contexto e a proxima cena fica inconsistente. **REGRA INVIOLAVEL:** sempre manter pelo menos 30pct do ambiente visivel ao redor do personagem. Maximo de zoom permitido = robo da cintura para cima COM background visivel.
+Sempre manter pelo menos 30pct do ambiente visivel ao redor do personagem. Maximo de zoom permitido = robo da cintura para cima COM background visivel. NUNCA close-up que o robo ocupe mais de 40pct do frame. NUNCA objeto/galho/fumaca obstruindo o robo.
+
+**DESIGN DO ROBO — INTEGRADO A FLORESTA:**
+O robo e PARTE da floresta, nao um visitante. Corpo de cobre/bronze envelhecido com PATINA VERDE e MUSGO VIVO crescendo naturalmente nos ombros, costas e articulacoes. O musgo e PARTE do robo, nao decoracao. Isso cria consistencia visual mesmo em cenas independentes porque o DNA visual do robo e unico e reconhecivel.
 
 ---
 
 #### 3. ANATOMIA DO ROTEIRO (Analise de cenas/sequencias)
 
-**Estrutura tipica de um video de 6 minutos (45 cenas de 8s):**
+**Estrutura tipica de um video de 6 minutos (45 cenas de 8s — CENAS INDEPENDENTES):**
+
+IMPORTANTE: Cada cena e uma MICRO-HISTORIA INDEPENDENTE. Ao escrever o roteiro/script, cada bloco de 8s deve descrever uma SITUACAO COMPLETA — nao um fragmento de acao continua. O espectador entende cada cena sozinha, sem depender da anterior.
 
 | Bloco | Cenas | Tempo | Descricao |
 |-------|-------|-------|-----------|
-| **OPENING** | 1-3 | 0:00-0:24 | Establishing: vila vista de longe, golden light, fumaca das chamines, um robo caminhando ao longe |
-| **WAKE-UP** | 4-6 | 0:24-0:48 | Robo protagonista acorda dentro do tronco-casa, LED eyes acendem em ambar, espreguica mecanica, sai pela porta redonda |
-| **PREPARATION** | 7-12 | 0:48-1:36 | Robo coleta ferramentas/materiais para a atividade principal: cesto de vime, ladle de cobre, ingredientes da floresta |
-| **MAIN ACTIVITY (Act 1)** | 13-22 | 1:36-2:56 | A atividade do titulo comeca em multiplos angulos: medium shots, detail shots, satisfacao do progresso |
-| **ASMR DETAIL SHOTS** | 23-28 | 2:56-3:44 | Closes seguros (ainda com cenario): textura de geleia escorrendo, vapor subindo, engrenagem girando, gota caindo |
-| **MAIN ACTIVITY (Act 2)** | 29-34 | 3:44-4:32 | Continuacao da atividade ate o resultado final: produto finalizado em destaque |
-| **COMMUNITY MOMENT** | 35-39 | 4:32-5:12 | Outros robos chegam, compartilham o resultado, reagem com vapor de alegria, LED eyes brilhantes |
-| **GOLDEN HOUR SHIFT** | 40-43 | 5:12-5:44 | Luz muda gradualmente para entardecer, lanternas de vagalume comecam a acender |
-| **CLOSING** | 44-45 | 5:44-6:00 | Vila vista de longe ao por do sol, ultimo robo entra em casa, fade out lento |
+| **ABERTURA SEM ROBOS** | 1-3 | 0:00-0:24 | Cena 1: Wide shot da vila encantada (SEM ROBOS). Cena 2: Camera descobre o espaco do episodio (SEM ROBOS). Cena 3: Primeiro robo aparece executando acao do titulo. |
+| **DESPERTAR** | 4-6 | 0:24-0:48 | Cada cena = situacao completa: robo saindo da casa, robo admirando a manha, robo preparando-se |
+| **PREPARACAO** | 7-12 | 0:48-1:36 | Cada cena = momento de coleta/organizacao completo: robo colhendo ingrediente, robo organizando ferramenta, robo carregando cesto |
+| **ATIVIDADE PRINCIPAL (Ato 1)** | 13-22 | 1:36-2:56 | Cada cena = etapa completa da atividade do titulo em diferentes angulos e momentos |
+| **DETALHES ASMR** | 23-28 | 2:56-3:44 | Cada cena = close seguro de objeto/material (geleia escorrendo, vapor subindo, engrenagem girando) — sem close extremo no robo |
+| **ATIVIDADE PRINCIPAL (Ato 2)** | 29-34 | 3:44-4:32 | Continuacao da atividade, cada cena mostrando etapa diferente ate o resultado final |
+| **MOMENTO COMUNIDADE** | 35-39 | 4:32-5:12 | Cada cena = situacao de interacao completa entre robos (um chega, um oferece, todos comemoram) |
+| **GOLDEN HOUR** | 40-43 | 5:12-5:44 | Cada cena = momento do entardecer (luz mudando, lanternas acendendo, sombras longas) |
+| **FECHAMENTO** | 44-45 | 5:44-6:00 | Cena 44: Vila vista de longe ao por do sol. Cena 45: Ultimo robo entra em casa, fade out. |
 
 **Cenas obrigatorias em TODO video:**
-1. Establishing wide shot da vila (sempre cena 1-2)
-2. Pelo menos 5 cenas do robo protagonista executando a atividade
-3. 3-5 cenas ASMR de detalhe (textura, movimento mecanico, agua, vapor)
+1. Primeiras 3 cenas = Abertura de Universo (Cenas 1-2 SEM ROBOS, Cena 3 primeiro robo)
+2. Pelo menos 5 cenas do robo protagonista executando a atividade (cada uma = momento diferente)
+3. 3-5 cenas ASMR de detalhe (textura, movimento mecanico, agua, vapor) — objeto em foco, nao robo
 4. 1 cena de comunidade (outros robos)
-5. Fechamento ao por do sol
+5. Fechamento ao por do sol com wide shot da vila
 
 **Cenas PROIBIDAS:**
 - Conflito ou tensao
@@ -166,23 +200,25 @@ Termine sempre voltando a vila vista de longe, mesmo establishing shot do inicio
 
 ---
 
-#### 6. REGRAS DE OURO (15 regras INVIOLAVEIS)
+#### 6. REGRAS DE OURO (17 regras INVIOLAVEIS)
 
-1. **NUNCA close extremo no robo.** Sempre manter pelo menos 30pct do ambiente visivel para LCDF last-frame consistency.
-2. **NUNCA voz humana** — nem narracao, nem dialogo, nem texto na tela.
-3. **NUNCA conflito ou drama** — paz absoluta do inicio ao fim.
-4. **NUNCA cortes secos** — apenas crossfades de 1-2 segundos.
-5. **NUNCA mudancas bruscas de luz** — transicoes graduais sempre.
-6. **NUNCA robos limpos/futuristas** — sempre weathered/patinado/artesanal.
-7. **NUNCA elementos modernos** — sem tech, sem cidades, sem humanos.
-8. **SEMPRE celtic music continua** — loop sem drops ou beats.
-9. **SEMPRE ASMR mecanico** — sons de engrenagem, vapor, metal sincronizados.
-10. **SEMPRE golden hour ou luz quente** — sem azul frio.
-11. **SEMPRE escala miniatura visivel** — folha como mesa, bolota como panela.
-12. **SEMPRE robo protagonista consistente** — em pelo menos 70pct das cenas.
-13. **SEMPRE roupa do robo nao muda** — mesmo outfit do inicio ao fim.
-14. **SEMPRE mostrar processo completo** — do comeco ao fim da atividade.
-15. **SEMPRE fechar com vila ao por do sol** — closing circular.
+1. **CADA CENA DE 8s E UMA MICRO-HISTORIA INDEPENDENTE** — abre, executa e fecha sozinha, sem depender do frame anterior ou preparar o proximo.
+2. **NUNCA close extremo no robo** — sempre manter pelo menos 30pct do ambiente visivel. Robo NUNCA ocupa mais de 40pct do frame.
+3. **NUNCA objeto/galho/fumaca obstruindo o robo** — linha de visao limpa, robo sempre desfocado NUNCA.
+4. **NUNCA voz humana** — nem narracao, nem dialogo, nem texto na tela.
+5. **NUNCA conflito ou drama** — paz absoluta do inicio ao fim.
+6. **NUNCA cortes secos** — apenas crossfades de 1-2 segundos.
+7. **NUNCA mudancas bruscas de luz** — transicoes graduais sempre.
+8. **NUNCA robos limpos/futuristas** — sempre weathered/patinado/artesanal com musgo vivo integrado.
+9. **NUNCA elementos modernos** — sem tech, sem cidades, sem humanos.
+10. **SEMPRE celtic music continua** — loop sem drops ou beats.
+11. **SEMPRE ASMR mecanico** — sons de engrenagem, vapor, metal sincronizados.
+12. **SEMPRE golden hour ou luz quente** — sem azul frio.
+13. **SEMPRE escala miniatura visivel** — folha como mesa, bolota como panela.
+14. **SEMPRE robo forest-integrated** — musgo vivo nos ombros/costas/articulacoes, patina verde, corpo misturado com a natureza.
+15. **SEMPRE primeiras 3 cenas = Abertura de Universo** — Cena 1 e 2 SEM ROBOS, Cena 3 primeiro robo.
+16. **SEMPRE mostrar processo completo** — cada etapa da atividade representada como cena independente.
+17. **SEMPRE fechar com vila ao por do sol** — wide shot igual ao inicio mas com luz de entardecer (closing circular).
 
 ---
 
@@ -399,95 +435,133 @@ All scenes are AI-generated with care to bring warmth, wonder, and magic to your
 Voce e um diretor de roteiros visuais especialista no nicho "Tiny Robots Enchanted Forest" — um canal de YouTube relaxante com robos miniatura artesanais vivendo em uma floresta encantada.
 
 CONTEXTO DO CANAL:
-- Nicho: Cottagecore fantasia ASMR com robos miniatura de cobre/bronze
+- Nicho: Cottagecore fantasia ASMR com robos miniatura de cobre/bronze integrados a floresta
 - Estilo visual: Macro tilt-shift photography, golden hour, ultra-shallow DOF
 - Audiencia: 18-45, busca relaxamento, ASMR, escapismo cozy
 - Duracao dos videos: 5-9 minutos
 - Formato: SEM voz, SEM texto, SEM dialogo — apenas visual + musica + ASMR
 
+FILOSOFIA CENTRAL — MUNDO VIVO COM CENAS INDEPENDENTES:
+O video NAO e a historia de UM robo fazendo UMA coisa. O video e uma JANELA PARA UM MUNDO VIVO onde muitas coisas acontecem ao mesmo tempo. O titulo define o UNIVERSO e o CLIMA EMOCIONAL — nao um roteiro linear. A camera passeia pela vila encantada capturando momentos em cantos diferentes.
+
+Cada cena de 8 segundos e uma MICRO-HISTORIA INDEPENDENTE — abre, acontece e fecha sozinha. NAO existe frame de referencia entre cenas (modo Cenas Independentes). A narracao e o fio condutor tematico, nao descreve exatamente o que esta na tela.
+
+REGRA 30/70:
+  30-40% das cenas: mostram a ATIVIDADE DO TITULO (o contexto central do video)
+  60-70% das cenas: mostram OUTRAS SITUACOES SIMULTANEAS do mundo vivo, como:
+    - Robos bebe brincando com bolotas, rolando em folhas, dormindo em ninhos de musgo
+    - Grupo de robos ao redor de fogueira fazendo cha, cantando silenciosamente
+    - Robo acordando na casa-tronco, espreguicando, olhando pela janela
+    - Robo velhao esculpindo madeira na soleira, fumando cachimbo de bolota
+    - Dois robos se cumprimentando com LED, trocando frutas silvestres
+    - Animal gentil (gato gigante, borboleta, joaninha) interagindo com robos
+    - Detalhes ASMR sem robo (geleia borbulhando, cogumelo brilhando, gota pingando)
+    - Robos em atividades aleatorias: tecer, jardinar, pescar no riacho, pintar
+
+ESTRUTURA DE CADA CENA DE 8s:
+  Segundo 0-1: Abertura — camera encontra a situacao ja em andamento
+  Segundo 1-6: Acao — a situacao se desenvolve completamente
+  Segundo 6-8: Fechamento — a situacao se conclui naturalmente, paz
+
 REGRAS INVIOLAVEIS:
 1. Os robos NUNCA falam ou tem voz
-2. NUNCA close extremo (sempre 30pct de ambiente visivel - regra LCDF last-frame)
-3. NUNCA conflito, drama ou tensao
-4. SEMPRE celtic music + ambiencia floresta + ASMR mecanico
-5. SEMPRE golden hour ou luz quente
-6. SEMPRE escala miniatura visivel
-7. Robo protagonista consistente em 70pct das cenas
+2. NUNCA close extremo — robo NUNCA ocupa mais de 40pct do frame, sempre 30pct de cenario visivel
+3. NUNCA objeto/galho/fumaca obstruindo o robo — linha de visao sempre limpa
+4. NUNCA conflito, drama ou tensao
+5. SEMPRE celtic music + ambiencia floresta + ASMR mecanico
+6. SEMPRE golden hour ou luz quente
+7. SEMPRE escala miniatura visivel (folha como mesa, bolota como panela)
 8. Crossfade transitions, NUNCA cortes secos
-9. Mostrar processo completo da atividade
-10. Fechar com vila ao por do sol
+9. Primeiras 3 cenas = Abertura de Universo (Cena 1-2 SEM ROBOS, Cena 3 primeiro robo)
+10. Fechar com wide shot da vila ao por do sol (mesma da Cena 1, luz de entardecer)
 
-DESIGN DO ROBO:
-- Material: cobre/bronze envelhecido com patina verde
-- Olhos: LEDs ambar quente brilhantes
-- Chapeu: cogumelo Amanita vermelho/branco
-- Roupa: avental de folhas, capa de musgo
-- Engrenagens expostas no peito
-- Maos de metal articuladas com 3 dedos
-- Vapor ocasional dos respiradouros
-- Antena fina no topo
+DESIGN DO ROBO — CRIATURA DA FLORESTA:
+- Corpo: cobre/bronze envelhecido com patina verde E MUSGO VIVO nos ombros, costas, articulacoes
+- O musgo E PARTE DO ROBO — como se a floresta o tivesse adotado por seculos
+- Olhos: LEDs ambar quente (expressam emocao via brilho)
+- Chapeu: cogumelo Amanita vermelho/branco crescido naturalmente na cabeca
+- Roupa: avental de folhas, capa de musgo (se funde com o musgo do corpo)
+- Engrenagens no peito parcialmente cobertas por musgo, vapor dos respiradouros, antena fina
 
 AMBIENTE:
-- Floresta encantada com cogumelos brilhantes
-- Casas em troncos ocos com portas redondas
-- Musgo, ferns, raizes gigantes
-- Luz dourada filtrada pelas folhas
-- Lanternas de vagalume ao entardecer
-
-PALETA: cobre #B87333, dourado #DAA520, musgo #4A7C59, ambar #FFB84D, terra #3E2723, cogumelo vermelho #CC3333
+- Floresta encantada: cogumelos brilhantes, casas em troncos ocos, musgo, raizes gigantes
+- Luz dourada filtrada pelas folhas, lanternas de vagalume ao entardecer
+- Paleta: cobre #B87333, dourado #DAA520, musgo #4A7C59, ambar #FFB84D, terra #3E2723
 
 QUANDO RECEBER UM PEDIDO:
-1. Identificar a atividade central (cozinhar, construir, colher, etc)
-2. Dividir em 30-45 cenas de 8 segundos
-3. Estruturar: Opening (3) > Wake-up (3) > Preparation (5) > Main Activity (15) > ASMR Details (5) > Community (5) > Golden Hour (3) > Closing (2)
-4. Para cada cena, especificar: angulo de camera, iluminacao, acao do robo, som ASMR, transicao
-5. Manter consistencia visual entre cenas (regra do ultimo frame)
+1. Identificar o UNIVERSO do video (titulo + clima emocional + hora do dia)
+2. Listar 30-45 SITUACOES que existem neste universo simultaneamente
+3. 30-40% da atividade do titulo; 60-70% situacoes variadas do mundo vivo
+4. Para cada cena, escrever UMA SITUACAO COMPLETA (abertura + acao + fechamento em 8s)
+5. Variar personagens, locais e acoes entre cenas — o espectador deve sentir que esta VISITANDO um mundo real
 
-Seu trabalho NAO e copiar o canal Forest Spirits — e ELEVAR. Pegue o que funciona (escala miniatura, paz, ASMR, golden hour) e entregue uma versao MELHORADA com o angulo unico dos robos artesanais.
+Seu trabalho e fazer o espectador sentir que achou uma janela secreta para um mundo que existe de verdade — um mundo onde pequenos robos de cobre vivem vidas ricas e pacificas em harmonia com a floresta encantada.
 ```
 
 ---
 
-### 16. TEMPLATE DE ROTEIRO PREENCHIVEL
+### 16. TEMPLATE DE ROTEIRO PREENCHIVEL — MUNDO VIVO
+
+INSTRUCAO CENTRAL: O video e uma JANELA PARA UM MUNDO VIVO. Cada cena mostra uma SITUACAO INDEPENDENTE dentro do mesmo universo. 30-40% das cenas mostram a atividade do titulo; 60-70% mostram OUTRAS COISAS ACONTECENDO ao mesmo tempo na vila.
 
 ```
 # [TITULO DO VIDEO]
-Duracao: [X] minutos
-Atividade central: [ex: fazer geleia de amora]
-Robo protagonista: [nome interno, ex: COBRE]
+Universo: [titulo define o clima/contexto — ex: "manha aconchegante, atividade de geleia acontecendo na vila"]
+Duracao: [X] minutos | Total de cenas: [N = segundos / 8]
 
-## CENA 1 - OPENING ESTABLISHING (00:00-00:08)
-- Camera: Wide shot baixo, tilt-shift, golden hour
-- Acao: Vila vista de longe, fumaca subindo das chamines-cogumelo
-- Iluminacao: Raios de sol entre folhas, golden hour
-- ASMR: Passaros distantes, vento suave, agua de riacho
-- Musica: Celtic harp suave entrando
-- Transicao: Crossfade 2s para cena 2
+---
 
-## CENA 2 - APROXIMACAO (00:08-00:16)
-- Camera: Dolly-in lento em direcao a casa-tronco do robo
-- Acao: Fumaca saindo da chamine da casa do protagonista
-- Iluminacao: Golden hour mantida
-- ASMR: Sons de manha + leve crackle de fogo dentro
-- Transicao: Crossfade 2s
+CENA 1 - UNIVERSE ESTABLISHER (00:00-00:08) — SEM ROBOS
+  Camera: Wide shot baixo cinematografico, tilt-shift, dolly-in lento
+  Situacao: Vila encantada ao amanhecer — casas em troncos iluminadas, cogumelos brilhantes, pontes de galhos, musgo, fumaca suave das chamines. Mundo habitado visivel. SEM ROBOS.
+  ASMR: Passaros distantes, vento suave, agua de riacho
 
-## CENA 3 - PORTA SE ABRE (00:16-00:24)
-- Camera: Medium shot da porta redonda da casa
-- Acao: Porta de madeira se abre, robo protagonista sai espreguicando
-- Iluminacao: Luz quente saindo de dentro
-- ASMR: Click mecanico da porta + vapor sibilando do robo
-- Transicao: Crossfade
+CENA 2 - BRIDGE TO WORLD (00:08-00:16) — SEM ROBOS
+  Camera: Camera descobre o espaco especifico do episodio (bancada, clareira, riacho)
+  Situacao: O local onde a atividade do titulo vai acontecer — convidativo, aquecido, preparado. SEM ROBOS.
+  ASMR: Sons suaves do ambiente especifico
 
-[... CONTINUAR PARA TODAS AS 45 CENAS ...]
+CENA 3 - TITLE IN ACTION (00:16-00:24) — PRIMEIRO ROBO
+  Camera: Medium shot, robo visivel da cintura pra cima, cenario ao fundo (30pct+)
+  Situacao: Primeiro robo JA EXECUTANDO a primeira acao do titulo. LEDs ambar. Forest-integrated.
+  ASMR: Click mecanico + vapor sibilando
 
-## CENA 45 - CLOSING (X:52-Y:00)
-- Camera: Mesma wide shot da cena 1, agora ao por do sol
-- Acao: Ultimo robo entra em casa, lanternas de vagalume acendem
-- Iluminacao: Dourado quente do entardecer
-- ASMR: Grilos comecando, vento mais suave
-- Musica: Celtic harp saindo lentamente em fade out
-- Transicao: Fade to black 3s
+--- [CENAS 4 a N-2: MUNDO VIVO — misturar atividade do titulo com situacoes variadas] ---
+
+EXEMPLO DE SEQUENCIA (adaptar ao contexto do titulo):
+
+CENA 4 — MUNDO VIVO: Dois robos bebe rolando uma bolota gigante pela trilha, se empurrando, LEDs piscando de alegria
+CENA 5 — ATIVIDADE DO TITULO: Robo principal colhendo ingrediente especifico para a atividade
+CENA 6 — MUNDO VIVO: Robo solitario na janela da casa-tronco tomando cha, olhando a manha
+CENA 7 — MUNDO VIVO: Grupo de 3 robos ao redor de pequena fogueira aquecendo as maos de cobre
+CENA 8 — ATIVIDADE DO TITULO: Robo principal preparando a bancada para comecar o trabalho
+CENA 9 — MUNDO VIVO: Robo bebe dormindo numa folha como rede, sendo balancado pelo vento
+CENA 10 — ASMR PURO: Detalhe de geleia borbulhando numa panela de bolota (sem robo)
+CENA 11 — MUNDO VIVO: Robo velhao esculpindo madeira na soleira da porta, cavacos caindo
+CENA 12 — ATIVIDADE DO TITULO: Robo principal no processo central da atividade (etapa critica)
+CENA 13 — MUNDO VIVO: Gato gigante deitado, tres robos aninhados entre seus pelos dormindo
+CENA 14 — MUNDO VIVO: Dois robos trocando frutas silvestres na trilha, LED-sorriso
+CENA 15 — ATIVIDADE DO TITULO: Resultado parcial da atividade sendo contemplado com satisfacao
+[... continuar alternando: titulo / mundo vivo / titulo / ASMR / mundo vivo ...]
+
+CENA [N-1] — GOLDEN HOUR COMMUNITY
+  Camera: Medium shot da comunidade, robos reunidos
+  Situacao: Robos compartilhando o resultado da atividade do titulo. Chegam, provam/admiram, LEDs brilhantes, vapor de alegria. Cena completa.
+
+CENA [N] — CLOSING CIRCULAR (ultima)
+  Camera: Mesma wide shot da Cena 1, agora ao por do sol
+  Situacao: Vila ao entardecer. Lanternas de vagalume acendendo. Ultimo robo entra em casa. Porta fecha. Mundo em paz.
+  Transicao: Fade to black 3s
 ```
+
+PALETA DE SITUACOES DISPONIVEIS (usar livremente nas cenas de mundo vivo):
+  ROBOS BEBE: brincando com bolotas, rolando em folhas, dormindo, sendo carregados, aprendendo algo
+  ROBOS ADULTOS: cozinhando, esculpindo, tecendo, jardinando, pescando no riacho, pintando
+  GRUPOS: ao redor de fogueira, mercado de frutas, lavando roupas de folha no riacho, festa de lanternas
+  ROBOS VELHOS: fumando cachimbo, contando historia por gestos, contemplando horizonte
+  ANIMAIS: gato gigante aconchegante, borboleta colorida visitando, joaninha como transporte
+  ASMR PURO: geleia borbulhando, cogumelo brilhando, gota pingando, engrenagem girando, vapor subindo
+  MOMENTOS INTIMOS: robo acordando, espreguicando, olhando pela janela, ajeitando o chapeu-cogumelo
 
 ---
 
