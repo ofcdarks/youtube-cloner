@@ -3654,6 +3654,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             admin_model,  # model from admin panel DB setting
             16000,  # max_tokens — needs room for 35 titles in JSON
             0.85,  # temperature — slightly higher for creativity
+            180,  # timeout — large prompt needs more time
         )
 
         json_match = re.search(r'\[.*\]', response, re.DOTALL)

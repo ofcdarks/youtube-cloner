@@ -2,7 +2,7 @@
 AI Client - Usa laozhang.ai (OpenAI-compatible) para gerar conteudo.
 
 Features:
-- Timeout configuravel (default 90s)
+- Timeout configuravel (default 120s)
 - Retry automatico com backoff exponencial (3 tentativas)
 - Structured logging
 """
@@ -29,7 +29,7 @@ RETRY_BACKOFF_BASE = 2  # seconds — exponential: 2, 4, 8
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
-def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 8000, temperature: float = 0.7, timeout: int = 90) -> str:
+def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 8000, temperature: float = 0.7, timeout: int = 120) -> str:
     """Envia prompt para a API e retorna resposta.
 
     Args:
