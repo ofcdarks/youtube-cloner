@@ -57,6 +57,7 @@ def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 800
 
     used_model = model or MODEL
     last_error = None
+    _fallback_attempted = False
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -114,6 +115,15 @@ def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 800
                 time.sleep(wait_time)
                 last_error = f"API error {response.status_code}: {response.text[:300]}"
                 continue
+
+            # Model not found / Bedrock error → auto-fallback to gpt-4o
+            if response.status_code == 400 and not _fallback_attempted:
+                resp_text = response.text[:500]
+                if "model identifier is invalid" in resp_text or "InvokeModel" in resp_text or "bedrock" in resp_text.lower():
+                    _fallback_attempted = True
+                    logger.warning(f"[AI] Model '{used_model}' rejected by provider. Falling back to gpt-4o")
+                    used_model = "gpt-4o"
+                    continue
 
             # Non-retryable error
             raise Exception(f"API error {response.status_code}: {response.text[:500]}")
