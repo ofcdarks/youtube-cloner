@@ -539,14 +539,13 @@ def build_viral_prompt(
 
     system_prompt = f"""Voce E o dono do canal "{channel_name}". Voce nao esta ajudando — voce esta ESCREVENDO seus proprios titulos.
 
-═══ FORMULA OBRIGATORIA — TODOS OS TITULOS DEVEM SEGUIR ESTAS ESTRUTURAS ═══
-Estes sao os titulos REAIS do canal que mais performaram:
+═══ REFERENCIA DE ESTILO (NAO COPIAR LITERALMENTE) ═══
+Estes sao exemplos de titulos do canal de REFERENCIA que performaram bem:
 {_formula_examples if _formula_examples else '(ver SOP abaixo)'}
 
-REGRA SUPREMA: CADA titulo gerado DEVE comecar com uma destas estruturas:
-{chr(10).join(['  ' + f for f in _sop_formulas[:5]]) if _sop_formulas else '  (extrair do SOP)'}
-
-Os titulos de REFERENCIA do SOP sao apenas ESTRUTURA -- NAO copie eles.
+REGRA: Use a MESMA ESTRUTURA EMOCIONAL e RITMO destes titulos, mas com temas 100% NOVOS e ORIGINAIS.
+NAO copie prefixos ou formatos especificos (como "POV:", "What If", etc) a menos que o SOP do SEU canal defina isso explicitamente na secao de formula de titulos.
+Crie titulos que sigam o TOM e ESTILO do SOP, nao os titulos de referencia.
 Crie titulos 100% ORIGINAIS com temas NOVOS usando as mesmas formulas.
 NUNCA gere "Your life as a Necron" ou "Most Epic Deaths in History" --
 esses ja existem nos canais de referencia.
