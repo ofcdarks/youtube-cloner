@@ -562,7 +562,7 @@ Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 2. Pelo menos 1 POWER WORD em CAPS (emocao)
 3. CURIOSITY GAP — prometa sem revelar
 
-Idioma: {lang_label}. Maximo 80 caracteres por titulo."""
+Idioma: {lang_label}. MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo. Titulos curtos NAO performam."""
 
     # ═══════════════════════════════════════════════════
     # USER PROMPT — structured data, SOP as foundation
@@ -663,7 +663,7 @@ QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Con
 6. Para os 10 primeiros (ALTA prioridade), inclua variante B (title_b)
 7. O campo "pillar" = nome do sub-nicho
 8. Mix: ~10 ALTA, ~12 MEDIA, ~{count - 22} BAIXA = {count} TOTAL
-9. Maximo 80 caracteres por titulo
+9. MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo — titulos curtos NAO performam, use frases completas com numeros, emocao e open loops
 
 Retorne APENAS JSON válido:
 [{{"title":"...","title_b":"...(opcional para ALTA)","hook":"primeiros 30s do video","summary":"2 linhas","pillar":"nome do sub-nicho","priority":"ALTA"}}]"""

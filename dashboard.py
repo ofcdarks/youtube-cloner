@@ -3710,7 +3710,7 @@ CADA titulo DEVE:
 - Conter keyword de volume: {', '.join(f'"{kw["keyword"]}"' for kw in niche_keywords[:10])}
 - Ter POWER WORD em CAPS
 - Criar CURIOSITY GAP
-- Maximo 80 caracteres
+- MINIMO 70 caracteres, MAXIMO 100 caracteres — titulos curtos NAO performam
 - Seguir o estilo do SOP
 
 Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]"""
@@ -3754,6 +3754,43 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
             idea["_trending"] = is_trending
 
         kw_hit_count = sum(1 for idea in new_ideas if idea.get("vol", 0) and idea.get("vol", 0) > 0)
+
+        # Auto-expand short titles (<70 chars) via AI retry
+        short_titles = [idea for idea in new_ideas if len(idea.get("title", "")) < 70]
+        if short_titles:
+            logger.info(f"Expanding {len(short_titles)} short titles (<70 chars)")
+            short_list = "\n".join([f'- "{t["title"]}" ({len(t["title"])} chars)' for t in short_titles])
+            expand_prompt = f"""Estos {len(short_titles)} titulos de YouTube son DEMASIADO CORTOS (menos de 70 caracteres).
+Reescribe CADA UNO para que tenga ENTRE 70 y 100 caracteres, manteniendo el mismo tema y emocion.
+
+TITULOS CORTOS:
+{short_list}
+
+REGLAS:
+- MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo
+- Agrega numeros especificos, open loops, emociones fuertes
+- Mantener el mismo tema original
+
+JSON: [{{"original": "titulo original", "expanded": "titulo expandido 70-100 chars"}}]
+Solo JSON."""
+            try:
+                expand_resp = await asyncio.to_thread(
+                    chat, expand_prompt,
+                    "Expande titulos cortos de YouTube a 70-100 caracteres.",
+                    admin_model, 4000, 0.7
+                )
+                expand_match = re.search(r'\[.*\]', expand_resp, re.DOTALL)
+                if expand_match:
+                    expansions = json.loads(expand_match.group())
+                    expand_map = {e["original"]: e["expanded"] for e in expansions if 70 <= len(e.get("expanded", "")) <= 100}
+                    replaced = 0
+                    for idea in new_ideas:
+                        if idea["title"] in expand_map:
+                            idea["title"] = expand_map[idea["title"]]
+                            replaced += 1
+                    logger.info(f"Expanded {replaced}/{len(short_titles)} short titles")
+            except Exception as e:
+                logger.warning(f"Title expansion failed (keeping originals): {e}")
 
         generated = 0
         for i, idea in enumerate(new_ideas[:30]):
