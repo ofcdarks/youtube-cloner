@@ -533,6 +533,11 @@ def build_viral_prompt(
     except Exception:
         pass
 
+    # Filter out POV-prefixed titles unless this IS a POV channel
+    _is_pov_channel = 'pov' in channel_name.lower()
+    if not _is_pov_channel:
+        _sop_formulas = [t for t in _sop_formulas if not t.strip().upper().startswith('POV')]
+
     _formula_examples = ''
     if _sop_formulas:
         _formula_examples = '\n'.join([f'  - "{t}"' for t in _sop_formulas[:12]])
