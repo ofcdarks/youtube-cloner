@@ -3690,26 +3690,25 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         accepted, rejected = filter_best_titles(new_ideas, niche_keywords, lang[:2])
         logger.info(f"Quality gate R1: {len(accepted)} accepted, {len(rejected)} rejected")
 
-        # REGENERATION LOOP — if too many rejected, ask AI to replace them
-        if len(accepted) < 28 and len(rejected) >= 3:
+        # REGENERATION LOOP — if not enough titles (rejected OR AI returned too few)
+        if len(accepted) < 28:
             missing = 30 - len(accepted)
-            rejected_titles = [r.get("title", "") for r in rejected[:5]]
-            rejected_issues = []
-            for r in rejected[:5]:
-                issues = r.get("_viral_issues", [])
-                if issues:
-                    rejected_issues.append(f'  "{r.get("title", "")[:50]}" — problemas: {", ".join(issues)}')
+            existing_accepted = [a.get("title", "") for a in accepted[:10]]
+            existing_list = "\n".join([f'- {t}' for t in existing_accepted])
 
-            regen_prompt = f"""Estes {len(rejected)} titulos foram REJEITADOS pelo quality gate:
-{chr(10).join(rejected_issues)}
+            regen_prompt = f"""Preciso de mais {missing} titulos para completar 30. Ja tenho {len(accepted)}.
 
-Gere {missing} titulos SUBSTITUTOS que corrijam esses problemas.
+TITULOS JA ACEITOS (NAO REPETIR):
+{existing_list}
+
+Gere EXATAMENTE {missing} titulos NOVOS e DIFERENTES.
 CADA titulo DEVE:
 - Conter keyword de volume: {', '.join(f'"{kw["keyword"]}"' for kw in niche_keywords[:10])}
 - Ter POWER WORD em CAPS
 - Criar CURIOSITY GAP
-- MINIMO 70 caracteres, MAXIMO 100 caracteres — titulos curtos NAO performam
+- MINIMO 70 caracteres, MAXIMO 100 caracteres
 - Seguir o estilo do SOP
+- Distribuir entre os sub-nichos: {', '.join([n['name'] for n in chosen])}
 
 Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...","pillar":"...","priority":"ALTA"}}]"""
 
