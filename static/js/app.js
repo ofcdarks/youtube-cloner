@@ -122,8 +122,8 @@ function showConfirm(title, message, onConfirm) {
     requestAnimationFrame(() => overlay.classList.add('active'));
 
     overlay.querySelector('#confirm-ok').addEventListener('click', () => {
-        overlay.remove();
         onConfirm();
+        overlay.remove();
     });
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
