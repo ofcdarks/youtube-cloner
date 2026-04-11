@@ -740,13 +740,47 @@ Retorne APENAS o JSON.{lang_instruction}"""
 
         new_ideas = json.loads(json_match.group())
 
-        # Enforce title length: truncate >100, warn <70
+        # Enforce title length: truncate >100, auto-expand <70 via AI retry
+        short_titles = [idea for idea in new_ideas if len(idea.get("title", "")) < 70]
+        if short_titles:
+            logger.info(f"Expanding {len(short_titles)} short titles (<70 chars)")
+            short_list = "\n".join([f'- "{t["title"]}" ({len(t["title"])} chars)' for t in short_titles])
+            expand_prompt = f"""Estos {len(short_titles)} titulos de YouTube son DEMASIADO CORTOS (menos de 70 caracteres).
+Reescribe CADA UNO para que tenga ENTRE 70 y 100 caracteres, manteniendo el mismo tema y emocion.
+
+TITULOS CORTOS:
+{short_list}
+
+REGLAS:
+- MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo
+- Agrega numeros especificos (edades, cantidades, dias)
+- Agrega open loops ("lo que nadie te dice", "la verdad oculta", "el secreto que")
+- Agrega emociones ("nunca imagine", "lagrimas", "cambio todo")
+- Mantener el mismo tema original
+
+JSON: [{{"original": "titulo original", "expanded": "titulo expandido 70-100 chars"}}]
+Solo JSON."""
+            try:
+                expand_resp = chat(expand_prompt, system="Expande titulos cortos de YouTube a 70-100 caracteres.", max_tokens=4000, temperature=0.7)
+                expand_match = re.search(r'\[.*\]', expand_resp, re.DOTALL)
+                if expand_match:
+                    expansions = json.loads(expand_match.group())
+                    expand_map = {e["original"]: e["expanded"] for e in expansions if len(e.get("expanded", "")) >= 70}
+                    replaced = 0
+                    for idea in new_ideas:
+                        if idea["title"] in expand_map:
+                            expanded = expand_map[idea["title"]]
+                            if len(expanded) <= 100:
+                                idea["title"] = expanded
+                                replaced += 1
+                    logger.info(f"Expanded {replaced}/{len(short_titles)} short titles")
+            except Exception as e:
+                logger.warning(f"Title expansion failed (keeping originals): {e}")
+
+        # Final truncation for any still >100
         for idea in new_ideas:
-            title = idea.get("title", "")
-            if len(title) > 100:
-                idea["title"] = title[:97] + "..."
-            if len(title) < 70:
-                logger.warning(f"Short title ({len(title)} chars): {title}")
+            if len(idea.get("title", "")) > 100:
+                idea["title"] = idea["title"][:97] + "..."
 
         # Map volume from pre-researched keywords (no extra API call)
         # Exclude generic single words that match too broadly
