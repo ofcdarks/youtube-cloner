@@ -485,8 +485,16 @@
                     {% endif %}
                 </div>
                 {% if cat_key == 'roteiro' and f.id %}
-                <!-- Exportar para o Agente — destaque, linha própria, maior -->
-                <div style="margin:8px 0 6px 20px;">
+                <!-- Minutagem real da narração + Exportar para o Agente -->
+                <div style="margin:8px 0 6px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:6px;background:var(--bg-surface,#12122a);border:1px solid var(--border,#2a2a4a);border-radius:8px;padding:6px 12px;">
+                        <span style="font-size:12px;color:#a78bfa;">⏱️ Duração real:</span>
+                        <input type="number" id="real-duration-{{ f.id }}" min="1" max="60" step="1"
+                               placeholder="{{ f.duration or 'min' }}"
+                               style="width:50px;background:#1a1a3e;border:1px solid #3a3a5a;border-radius:4px;color:#fff;padding:4px 6px;font-size:13px;text-align:center;"
+                               title="Após gravar a narração, coloque aqui a duração REAL em minutos. O agente usará esse valor para calcular o número correto de cenas (duração × 60 ÷ 8 = total de cenas).">
+                        <span style="font-size:11px;color:#888;">min</span>
+                    </div>
                     <button type="button"
                             style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(239,68,68,0.35);letter-spacing:0.3px;display:inline-flex;align-items:center;gap:8px;transition:transform 0.15s ease,box-shadow 0.15s ease;"
                             onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(239,68,68,0.5)'"
@@ -1229,7 +1237,14 @@ function exportToPipeline(fileId) {
         }
         var cleanNarration = narrationLines.join('\n');
         var wordCount = cleanNarration.split(/\s+/).length;
-        var durationMin = Math.round(wordCount / 150);
+        var estimatedMin = Math.round(wordCount / 150);
+
+        // Check if user set a manual duration (from the real narration recording)
+        var realDurationInput = document.getElementById('real-duration-' + fileId);
+        var realDuration = realDurationInput ? parseInt(realDurationInput.value) : 0;
+        var durationMin = (realDuration > 0) ? realDuration : estimatedMin;
+        var durationSource = (realDuration > 0) ? 'real' : 'estimada';
+        var totalScenes = Math.ceil(durationMin * 60 / 8);
 
         // Find the title from the page
         var fileItem = document.querySelector('#file-' + fileId);
@@ -1244,7 +1259,14 @@ function exportToPipeline(fileId) {
         exportText += cleanNarration;
 
         navigator.clipboard.writeText(exportText).then(function() {
-            showToast('Roteiro exportado! ' + wordCount + ' palavras (~' + durationMin + ' min).\n\nAgora cole no Claude/Gemini junto com o agente do seu nicho.', 'success', 8000);
+            var msg = 'Roteiro exportado! ' + wordCount + ' palavras | ' + durationMin + ' min (' + durationSource + ')';
+            if (realDuration > 0) {
+                msg += ' | ' + totalScenes + ' cenas (8s cada)';
+            } else {
+                msg += '\n\n💡 Dica: Preencha a "Duração real" após gravar a narração para o agente calcular as cenas com precisão.';
+            }
+            msg += '\n\nAgora cole no Claude/Gemini junto com o agente do seu nicho.';
+            showToast(msg, 'success', 10000);
         });
     })
     .catch(function(e) { showToast('Erro: ' + e.message, 'error'); });
