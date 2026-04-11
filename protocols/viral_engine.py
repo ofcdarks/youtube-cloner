@@ -603,22 +603,19 @@ IMPORTANTE: Estes titulos sao REFERENCIA DE ESTRUTURA, nao para copiar.
 Voce deve criar titulos 100% ORIGINAIS usando a MESMA ESTRUTURA mas com
 temas NOVOS e DIFERENTES. NUNCA copie um titulo de referencia literalmente.
 
-Estruturas validas que voce deve usar (variando os temas):
-  - "POV: Your life as [personagem novo] ([universo])"
-  - "POV: Your life in [universo novo] ([tipo])"
-  - "POV: What It's Like to be Every [rank/tipo novo]"
-  - "POV: What It's Like to be [situacao nova]"
-  - "POV: You're a [papel] Who [situacao]"
-  - "POV: The entire story of [tema], i guess"
-
-REGRA DO PREFIXO: O canal se chama POV. TODOS os titulos DEVEM comecar com "POV:" seguido da formula.
+Use as formulas de titulo encontradas na SECAO 8 DO SOP abaixo.
+Se o SOP define um prefixo ou formato especifico, siga-o fielmente.
+Se o SOP NAO define formato especifico, use formulas virais genericas:
+  - Numeros impactantes + emocao + open loop
+  - Pergunta que gera curiosidade
+  - Historia pessoal com reviravolta
+  - Contraste temporal (antes vs depois)
 
 Estruturas PROIBIDAS (genericas demais -- NAO USE):
   - "The FORBIDDEN truth about..."
   - "The DARK secrets of..."
   - "The INCREDIBLE story of..."
   - "Why X HIDES its DARK truth"
-  - Qualquer titulo SEM o prefixo "POV:"
 
 {sop_analysis_block}
 
