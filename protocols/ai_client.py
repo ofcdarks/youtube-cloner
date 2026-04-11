@@ -21,7 +21,7 @@ try:
 except ImportError:
     API_KEY = os.environ.get("LAOZHANG_API_KEY", "")
     BASE_URL = os.environ.get("LAOZHANG_BASE_URL", "https://api.laozhang.ai/v1")
-    MODEL = os.environ.get("AI_MODEL", "gpt-4o")
+    MODEL = os.environ.get("AI_MODEL", "claude-sonnet-4-6")
 
 # Retry configuration
 MAX_RETRIES = 3

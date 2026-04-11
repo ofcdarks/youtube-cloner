@@ -2972,7 +2972,7 @@ async def admin_panel(request: Request, user=Depends(require_admin)):
         pass
 
     from database import get_setting
-    admin_ai_model = get_setting("admin_ai_model") or "claude-3-7-sonnet-latest"
+    admin_ai_model = get_setting("admin_ai_model") or "claude-sonnet-4-6"
 
     return render(request, "admin_panel.html", {
         "user": user,
@@ -3645,11 +3645,8 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
 
         # Use admin_ai_model from DB settings (set in admin panel), fallback to env AI_MODEL
         from database import get_setting, set_setting
-        admin_model = get_setting("admin_ai_model") or None
-        # Fix: LaoZhang routes Claude through Bedrock which rejects most model IDs.
-        # Use GPT-4o as reliable fallback (routes through OpenAI, always works).
-        if not admin_model or "bedrock" in str(admin_model).lower():
-            admin_model = "gpt-4o"
+        from config import AI_MODEL as _default_model
+        admin_model = get_setting("admin_ai_model") or _default_model
         logger.info(f"[AI] Using model: {admin_model}")
         response = await asyncio.to_thread(
             chat, user_prompt,
@@ -4143,7 +4140,8 @@ async def api_regenerate_niches(request: Request, user=Depends(require_admin)):
     niche_name = project.get("niche_chosen", project.get("name", ""))
 
     try:
-        admin_model = get_setting("admin_ai_model") or "gpt-4o"
+        from config import AI_MODEL as _def_model
+        admin_model = get_setting("admin_ai_model") or _def_model
 
         niche_prompt = f"""Voce e um estrategista de canais YouTube com 10 anos de experiencia.
 Analise este SOP de um canal e gere 5 sub-nichos derivados OTIMIZADOS para crescimento.

@@ -39,7 +39,7 @@ DASH_EMAIL = os.environ.get("DASH_EMAIL", "")
 # ── AI Settings ──────────────────────────────────────────
 LAOZHANG_API_KEY = os.environ.get("LAOZHANG_API_KEY", "")
 LAOZHANG_BASE_URL = os.environ.get("LAOZHANG_BASE_URL", "https://api.laozhang.ai/v1")
-AI_MODEL = os.environ.get("AI_MODEL", "gpt-4o")
+AI_MODEL = os.environ.get("AI_MODEL", "claude-sonnet-4-6")
 
 # ── DataForSEO (keyword volume — pay-as-you-go) ────────
 DATAFORSEO_LOGIN = os.environ.get("DATAFORSEO_LOGIN", "")

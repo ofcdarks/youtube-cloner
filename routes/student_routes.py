@@ -18,7 +18,7 @@ def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
     """Get API key, provider, and model for a student.
 
     Returns: (api_key, provider, model)
-    If use_admin_api is enabled, returns admin's LaoZhang key with claude-3-7-sonnet-latest.
+    If use_admin_api is enabled, returns admin's LaoZhang key with claude-sonnet-4-6.
     Otherwise returns the student's own configured key with provider-default model.
     """
     from database import _decrypt_api_key
@@ -29,7 +29,7 @@ def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
         if LAOZHANG_API_KEY:
             # Get admin-configured model from settings
             from database import get_setting
-            admin_model = get_setting("admin_ai_model") or "claude-3-7-sonnet-latest"
+            admin_model = get_setting("admin_ai_model") or "claude-sonnet-4-6"
             return LAOZHANG_API_KEY, "laozhang", admin_model
 
     # Fall back to student's own key with default models per provider

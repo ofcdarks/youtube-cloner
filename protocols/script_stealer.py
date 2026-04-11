@@ -58,7 +58,7 @@ DOCUMENTO DE NICHOS:
 {niche_doc[:4000]}"""
 
     response = client.messages.create(
-        model="claude-sonnet-4-6-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=6000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -101,7 +101,7 @@ SOP:
 Escreva o roteiro completo agora. Inclua indicações de [B-ROLL], [TRANSIÇÃO], [PAUSA DRAMÁTICA] onde apropriado."""
 
     response = client.messages.create(
-        model="claude-sonnet-4-6-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=8000,
         messages=[{"role": "user", "content": prompt}]
     )
