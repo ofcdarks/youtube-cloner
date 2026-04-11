@@ -630,7 +630,7 @@ Estruturas PROIBIDAS (genericas demais -- NAO USE):
 {_sep}
 MEU SOP (minha voz, meu estilo -- SIGA FIELMENTE):
 {_sep}
-{sop_text[:3000]}
+{sop_text[:3000] if _is_pov_channel else sop_text[:3000].replace('POV:', '').replace('POV ', '').replace('h) IMERSÃO/POV', 'h) IMERSÃO')}
 
 {_sep}
 NICHOS (titulos EXCLUSIVAMENTE sobre estes):
@@ -665,9 +665,22 @@ QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Con
 7. O campo "pillar" = nome do sub-nicho
 8. Mix: ~10 ALTA, ~12 MEDIA, ~{count - 22} BAIXA = {count} TOTAL
 9. MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo — titulos curtos NAO performam, use frases completas com numeros, emocao e open loops
+{f'10. PROIBIDO: NUNCA comecar titulo com "POV:" ou "POV " — este canal NAO e um canal POV. Use o estilo do SOP.' if not _is_pov_channel else ''}
 
 Retorne APENAS JSON válido:
 [{{"title":"...","title_b":"...(opcional para ALTA)","hook":"primeiros 30s do video","summary":"2 linhas","pillar":"nome do sub-nicho","priority":"ALTA"}}]"""
+
+    # DEBUG: Log if POV leaked into prompt for non-POV channels
+    if not _is_pov_channel and 'POV' in (system_prompt + user_prompt):
+        import logging
+        _dbg = logging.getLogger("ytcloner.viral_engine")
+        # Find where POV appears
+        for label, text in [("SYSTEM", system_prompt), ("USER", user_prompt)]:
+            idx = text.find('POV')
+            while idx != -1:
+                context = text[max(0, idx-60):idx+60]
+                _dbg.warning(f"[POV-LEAK] {label} at char {idx}: ...{context}...")
+                idx = text.find('POV', idx + 1)
 
     return system_prompt, user_prompt
 
