@@ -1281,7 +1281,7 @@ Escreva o SOP completo adaptado em {target_label}."""
                     system=f"Especialista em localizacao de conteudo YouTube para {target_label}. Adaptacao cultural profunda, nao traducao.",
                     max_tokens=12000,
                     temperature=0.7,
-                    timeout=300,
+                    timeout=180,
                 )
             except Exception as e:
                 log.exception(f"[CLONE] phase=adapt_sop error: {e}")
@@ -1345,7 +1345,7 @@ Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...
                 try:
                     titles_response = chat(
                         titles_prompt,
-                        max_tokens=8000, temperature=0.8, timeout=240,
+                        max_tokens=8000, temperature=0.8, timeout=180,
                     )
                     json_match = _re.search(r"\[.*\]", titles_response, _re.DOTALL)
                     if json_match:
