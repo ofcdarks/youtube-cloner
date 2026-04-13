@@ -363,8 +363,8 @@
                         <span style="color:{{ '#ff5252' if item.priority == 'ALTA' else '#ffd740' if item.priority == 'MEDIA' else '#69f0ae' }}">{{ item.priority }}</span>
                     </div>
                     {% if not readonly %}<div class="kanban-card-actions">
-                        <button onclick="moveCard({{ item.id }}, 'writing')">Comecar &#10132;</button>
-                        {% if has_api_key %}<button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>{% endif %}
+                        <button onclick="moveCard({{ item.id }}, 'writing')" style="background:#3b82f6;color:white;border:none;font-weight:600;padding:6px 12px;">&#9654; Comecar Agora</button>
+                        {% if has_api_key %}<button class="btn-script" onclick="studentGenerateScript({{ item.id }})" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:6px 12px;">&#9998; Auto-Gerar Roteiro</button>{% endif %}
                     </div>{% endif %}
                 </div>
                 {% endfor %}
@@ -378,16 +378,18 @@
                         <span style="color:#b388ff">{{ item.pillar }}</span>
                         {% if item.score %}<span style="color:{% if item.score >= 80 %}#4caf50{% elif item.score >= 60 %}#448aff{% else %}#ffd740{% endif %}">Score: {{ item.score }}</span>{% endif %}
                     </div>
-                    {% if not readonly %}<div class="kanban-card-actions">
-                        <button onclick="moveCard({{ item.id }}, 'pending')">&#10094; Voltar</button>
-                        {% if has_api_key %}
-                            {% if item.script_generated %}
-                            <button class="btn-script" style="background:#22c55e20;color:#22c55e;border-color:#22c55e40" onclick="studentGenerateScript({{ item.id }})" title="Re-gerar roteiro (substitui o atual)">&#128260; Re-gerar</button>
-                            {% else %}
-                            <button class="btn-script" onclick="studentGenerateScript({{ item.id }})">&#9998; Gerar Roteiro</button>
+                    {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
+                        <div style="display:flex;gap:6px">
+                            <button onclick="moveCard({{ item.id }}, 'pending')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
+                            {% if has_api_key %}
+                                {% if item.script_generated %}
+                                <button class="btn-script" style="background:#1e293b;color:#eab308;border:1px solid #eab30860;padding:6px 10px;" onclick="studentGenerateScript({{ item.id }})" title="Re-gerar roteiro (substitui o atual)">&#128260; Re-gerar</button>
+                                {% else %}
+                                <button class="btn-script" onclick="studentGenerateScript({{ item.id }})" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:6px 10px;">&#9998; Gerar Roteiro</button>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
-                        <button onclick="moveCard({{ item.id }}, 'recording')">Gravar &#10132;</button>
+                        </div>
+                        <button onclick="moveCard({{ item.id }}, 'recording')" style="background:#a855f7;color:white;border:none;font-weight:600;padding:6px 12px;">&#127908; Gravar &#9654;</button>
                     </div>{% endif %}
                 </div>
                 {% endfor %}
@@ -398,7 +400,10 @@
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'recording')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
-                    {% if not readonly %}<div class="kanban-card-actions"><button onclick="moveCard({{ item.id }}, 'writing')">&#10094; Voltar</button><button onclick="moveCard({{ item.id }}, 'editing')">Editar &#10132;</button></div>{% endif %}
+                    {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
+                        <button onclick="moveCard({{ item.id }}, 'writing')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
+                        <button onclick="moveCard({{ item.id }}, 'editing')" style="background:#f97316;color:white;border:none;font-weight:600;padding:6px 12px;">&#128396; Editar &#9654;</button>
+                    </div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -408,7 +413,10 @@
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'editing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
-                    {% if not readonly %}<div class="kanban-card-actions"><button onclick="moveCard({{ item.id }}, 'recording')">&#10094; Voltar</button><button onclick="showPublishDialog({{ item.id }})">Publicar &#10132;</button></div>{% endif %}
+                    {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
+                        <button onclick="moveCard({{ item.id }}, 'recording')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
+                        <button onclick="showPublishDialog({{ item.id }})" style="background:#22c55e;color:white;border:none;font-weight:600;padding:6px 12px;">&#10004; Publicar &#9654;</button>
+                    </div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -418,7 +426,7 @@
                 <div class="kanban-card" id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.video_url %}<a href="{{ item.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.75em">&#127909; Assistir</a>{% endif %}</div>
-                    {% if not item.video_url and not readonly %}<div class="kanban-card-actions"><button class="btn-link" onclick="addVideoLink({{ item.id }})">&#128279; Adicionar Link</button></div>{% endif %}
+                    {% if not item.video_url and not readonly %}<div class="kanban-card-actions" style="width:100%"><button class="btn-link" onclick="addVideoLink({{ item.id }})" style="width:100%;padding:6px">&#128279; Adicionar Link do Video Publicado</button></div>{% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -505,13 +513,21 @@
                     </button>
                 </div>
                 <!-- Demais ações secundárias -->
-                <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px 20px;">
-                    <button type="button" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="generateAll({{ f.id }}, this)" title="Gerar SEO + Thumbnail + Music + Teaser de uma vez">&#9889; Gerar Tudo</button>
-                    <button type="button" style="background:#22c55e;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="copyNarration({{ f.id }})" title="Copiar narracao limpa (sem marcacoes) para ElevenLabs">&#127908; Copiar Narracao</button>
-                    <button type="button" style="background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'seo', this)">&#128200; SEO</button>
-                    <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)">&#127912; Thumb</button>
-                    <button type="button" style="background:#e040fb;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'music', this)">&#127925; Music</button>
-                    <button type="button" style="background:#00d4ff;color:#000;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer" onclick="generateCompanion({{ f.id }}, 'teaser', this)">&#127916; Teaser</button>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px 20px;padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid var(--border)">
+                    <button type="button" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(124,58,237,0.3)" onclick="generateAll({{ f.id }}, this)" title="Gerar SEO + Thumbnail + Music + Teaser de uma vez">
+                        <span style="font-size:14px">&#9889;</span> Gerar Combo (Tudo)
+                    </button>
+                    <div style="width:1px;background:var(--border);margin:0 4px;"></div>
+                    <button type="button" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600" onclick="copyNarration({{ f.id }})" title="Copiar narracao limpa para ElevenLabs">
+                        <span>&#127908;</span> Copiar Texto p/ Narracao
+                    </button>
+                    
+                    <div style="width:100%;height:1px;background:var(--border);margin:2px 0;"></div>
+                    
+                    <button type="button" style="background:var(--bg-surface);color:#e0e0e0;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:0.2s" onmouseover="this.style.background='#3b82f620';this.style.borderColor='#3b82f6'" onmouseout="this.style.background='var(--bg-surface)';this.style.borderColor='var(--border)'" onclick="generateCompanion({{ f.id }}, 'seo', this)"><span>&#128200;</span> Gerar SEO</button>
+                    <button type="button" style="background:var(--bg-surface);color:#e0e0e0;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:0.2s" onmouseover="this.style.background='#f59e0b20';this.style.borderColor='#f59e0b'" onmouseout="this.style.background='var(--bg-surface)';this.style.borderColor='var(--border)'" onclick="generateCompanion({{ f.id }}, 'thumbnail', this)"><span>&#127912;</span> Ideia Thumb</button>
+                    <button type="button" style="background:var(--bg-surface);color:#e0e0e0;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:0.2s" onmouseover="this.style.background='#e040fb20';this.style.borderColor='#e040fb'" onmouseout="this.style.background='var(--bg-surface)';this.style.borderColor='var(--border)'" onclick="generateCompanion({{ f.id }}, 'music', this)"><span>&#127925;</span> Musica</button>
+                    <button type="button" style="background:var(--bg-surface);color:#e0e0e0;border:1px solid var(--border);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:0.2s" onmouseover="this.style.background='#00d4ff20';this.style.borderColor='#00d4ff'" onmouseout="this.style.background='var(--bg-surface)';this.style.borderColor='var(--border)'" onclick="generateCompanion({{ f.id }}, 'teaser', this)"><span>&#127916;</span> Posts/Teaser</button>
                 </div>
                 {% endif %}
                 <div id="score-result-{{ f.id }}" style="display:none;margin:6px 0 10px 20px;padding:12px;background:var(--bg-surface,#12122a);border:1px solid var(--border,#2a2a4a);border-radius:8px;"></div>
