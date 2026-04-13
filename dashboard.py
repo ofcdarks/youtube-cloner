@@ -248,6 +248,18 @@ app.include_router(api_router)
 from routes.student_routes import router as student_router
 app.include_router(student_router)
 
+from routes.admin_routes import router as admin_router
+app.include_router(admin_router)
+
+from routes.drive_admin_routes import router as drive_admin_router
+app.include_router(drive_admin_router)
+
+from routes.pipeline_routes import router as pipeline_router
+app.include_router(pipeline_router)
+
+from routes.mockup_routes import router as mockup_router
+app.include_router(mockup_router)
+
 
 # ── SSE Progress Endpoint ────────────────────────────────
 
