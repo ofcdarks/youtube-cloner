@@ -187,12 +187,27 @@
 <div id="toast-container"></div>
 
 <style>
-.lab-tab { background:none; border:none; border-bottom:2px solid transparent; color:#555; padding:12px 18px; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s }
+.lab-tab { background:none; border:none; border-bottom:2px solid transparent; color:#555; padding:12px 18px; font-size:13px; font-weight:600; cursor:pointer; transition: color 0.2s }
+.lab-tab-active { color:#fff, background-color 0.2s }
+.lab-tab-active { color:#fff, border-color 0.2s }
+.lab-tab-active { color:#fff, box-shadow 0.2s }
+.lab-tab-active { color:#fff, transform 0.2s }
+.lab-tab-active { color:#fff, opacity 0.2s }
 .lab-tab-active { color:#fff; border-bottom-color:#FFD700 }
 .lab-stat { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:12px; text-align:center; border-radius:8px }
-.lab-filter { background:rgba(255,255,255,0.05); color:#888; border:none; padding:6px 14px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s }
+.lab-filter { background:rgba(255,255,255,0.05); color:#888; border:none; padding:6px 14px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; transition: color 0.2s }
+.lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF), background-color 0.2s }
+.lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF), border-color 0.2s }
+.lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF), box-shadow 0.2s }
+.lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF), transform 0.2s }
+.lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF), opacity 0.2s }
 .lab-filter-active { background:linear-gradient(135deg,#7B68EE,#5B4FCF); color:#fff }
-.niche-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:10px; padding:14px; margin-bottom:8px; transition:all 0.3s }
+.niche-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:10px; padding:14px; margin-bottom:8px; transition: color 0.3s }
+.niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)), background-color 0.3s }
+.niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)), border-color 0.3s }
+.niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)), box-shadow 0.3s }
+.niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)), transform 0.3s }
+.niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)), opacity 0.3s }
 .niche-card.expanded { background:linear-gradient(135deg,rgba(123,104,238,0.08),rgba(255,107,107,0.04)); border-color:rgba(123,104,238,0.3) }
 .niche-header { display:flex; justify-content:space-between; align-items:flex-start; cursor:pointer }
 .niche-arrow { color:#444; font-size:18px; transition:transform 0.3s }
@@ -809,3 +824,4 @@ function copyKw(text, btn) {
 }
 </script>
 {% endblock %}
+

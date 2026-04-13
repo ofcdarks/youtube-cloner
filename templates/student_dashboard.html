@@ -22,12 +22,12 @@
     <h1>YT Channel Cloner</h1>
     <div class="links">
         {% if not impersonating %}
-        <span id="notif-bell" onclick="toggleNotifs()" style="position:relative;cursor:pointer;font-size:18px;padding:4px 8px;" title="Notificacoes">
+        <button type="button" class="btn-naked" id="notif-bell" onclick="toggleNotifs()" style="position:relative;cursor:pointer;font-size:18px;padding:4px 8px;" title="Notificacoes">
             &#128276;
             {% if unread_notifs > 0 %}
             <span id="notif-badge" style="position:absolute;top:-2px;right:0;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;">{{ unread_notifs }}</span>
             {% endif %}
-        </span>
+        </button>
         <a href="/student" class="link-purple">Meu Painel</a>
         <a href="/logout" class="link-danger">Sair</a>
         {% endif %}
@@ -157,10 +157,10 @@
             <div style="display:flex;align-items:center;gap:10px;">
                 <span><span class="sec-icon">&#128200;</span> Analytics dos Canais</span>
                 <div id="analytics-period-tabs" style="display:flex;gap:4px;margin-left:8px;">
-                    <button onclick="switchPeriod(7)" data-period="7" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition:all .2s;">7 dias</button>
-                    <button onclick="switchPeriod(28)" data-period="28" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #7c3aed;background:#7c3aed;color:#fff;transition:all .2s;">28 dias</button>
-                    <button onclick="switchPeriod(90)" data-period="90" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition:all .2s;">90 dias</button>
-                    <button onclick="switchPeriod(0)" data-period="0" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition:all .2s;">Todo periodo</button>
+                    <button onclick="switchPeriod(7)" data-period="7" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;">7 dias</button>
+                    <button onclick="switchPeriod(28)" data-period="28" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #7c3aed;background:#7c3aed;color:#fff;transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;">28 dias</button>
+                    <button onclick="switchPeriod(90)" data-period="90" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;">90 dias</button>
+                    <button onclick="switchPeriod(0)" data-period="0" style="font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;border:1px solid #334155;background:transparent;color:#888;transition: color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;">Todo periodo</button>
                 </div>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
@@ -440,7 +440,22 @@
         <div class="section-title"><span class="sec-icon">&#128230;</span> Recursos Disponibilizados</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px">
             {% for res in resources %}
-            <a href="/api/resource/download/{{ res.id }}" style="display:flex;align-items:center;gap:10px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;text-decoration:none;min-width:220px;transition:all .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+            <a href="/api/resource/download/{{ res.id }}" style="display:flex;align-items:center;gap:10px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;text-decoration:none;min-width:220px;transition: color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
+                <div>
+                    <div style="font-size:13px, background-color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
+                <div>
+                    <div style="font-size:13px, border-color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
+                <div>
+                    <div style="font-size:13px, box-shadow .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
+                <div>
+                    <div style="font-size:13px, transform .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
+                <div>
+                    <div style="font-size:13px, opacity .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
                 <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
                 <div>
                     <div style="font-size:13px;font-weight:600;color:#fff">{{ res.label }}</div>
@@ -478,7 +493,7 @@
                 {% for f in cat.files %}
                 <div class="file-item" id="file-{{ f.id or f.name }}">
                     <span class="file-dot" style="background:{{ cat.color }}"></span>
-                    <span class="file-label" onclick="loadFile('{{ f.path }}')" role="button" tabindex="0" style="cursor:pointer;font-size:13px">{{ f.label }}</span>
+                    <button type="button" class="btn-naked file-label" onclick="loadFile('{{ f.path }}')" style="cursor:pointer;font-size:13px">{{ f.label }}</button>
                     <span class="file-size" style="font-size:12px">{% if f.size >= 1048576 %}{{ "%.1f"|format(f.size / 1048576) }}MB{% elif f.size >= 1024 %}{{ "%.1f"|format(f.size / 1024) }}KB{% elif f.size > 0 %}{{ f.size }}B{% else %}vazio{% endif %}</span>
                     {% if f.words and f.words > 0 and cat_key in ('roteiro', 'narracao') %}
                     <span style="font-size:12px;color:#22c55e;background:#22c55e18;padding:2px 6px;border-radius:3px;">{{ f.words }} palavras</span>
@@ -838,13 +853,13 @@ function loadNotifs() {
             var bg = n.read ? 'transparent' : 'rgba(167,139,250,.08)';
             var dot = n.read ? '' : '<span style="width:6px;height:6px;border-radius:50%;background:#a78bfa;flex-shrink:0;"></span>';
             var time = n.created_at ? n.created_at.substring(5,16).replace('T',' ') : '';
-            html += '<div style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:6px;background:'+bg+';margin-bottom:4px;cursor:pointer;" onclick="markRead('+n.id+')">';
+            html += '<button type="button" class="btn-naked" style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:6px;background:'+bg+';margin-bottom:4px;cursor:pointer;width:100%;" onclick="markRead('+n.id+')">';
             html += dot;
             html += '<div style="flex:1;min-width:0;">';
             html += '<div style="font-size:13px;font-weight:'+(n.read?'400':'600')+';color:var(--fg-primary,#e0e0e0);">'+n.title+'</div>';
             if(n.message) html += '<div style="font-size:11px;color:var(--fg-dim,#888);margin-top:2px;line-height:1.4;">'+n.message+'</div>';
             html += '<div style="font-size:10px;color:var(--fg-dim,#555);margin-top:4px;">'+time+'</div>';
-            html += '</div></div>';
+            html += '</div></button>';
         });
         list.innerHTML = html;
     });
@@ -1500,3 +1515,4 @@ function saveYtApiKey() {
 }
 </script>
 {% endblock %}
+
