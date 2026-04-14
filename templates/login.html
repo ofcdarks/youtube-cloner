@@ -66,14 +66,17 @@ body::before {
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    width: 64px;
+    height: 64px;
+    background: linear-gradient(135deg, #27272a, #09090b);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 14px;
     margin: 0 auto 24px;
-    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
-    font-size: 28px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    font-size: 24px;
+    font-weight: 800;
     color: #fff;
+    letter-spacing: -1px;
 }
 
 .login-box h1 {
@@ -124,17 +127,17 @@ body::before {
 }
 
 .login-box input:focus {
-    border-color: #7c3aed;
+    border-color: #71717a;
     background: rgba(2, 6, 23, 0.8);
-    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
 }
 
 .login-box button {
     width: 100%;
     margin-top: 8px;
     padding: 14px;
-    background: linear-gradient(to right, #7c3aed, #6d28d9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(to right, #3f3f46, #18181b);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 8px;
     color: #fff;
     font-size: 14px;
@@ -143,13 +146,13 @@ body::before {
     cursor: pointer;
     transition: all 0.2s ease;
     font-family: inherit;
-    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .login-box button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
-    filter: brightness(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    filter: brightness(1.2);
 }
 
 .login-error {
@@ -167,9 +170,9 @@ body::before {
 <body>
 <div class="login-wrapper">
     <div class="login-box">
-        <div class="login-logo">&#9881;</div>
-        <h1>YT Channel Cloner</h1>
-        <p>Acesso ao painel administrativo e area do aluno.</p>
+        <div class="login-logo">LCD</div>
+        <h1>LaCasaDark</h1>
+        <p>Área do Aluno!</p>
         
         {% if error %}
         <div class="login-error" role="alert">{{ error }}</div>
