@@ -6,31 +6,191 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>YT Cloner - Login</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#020617;font-family:'Inter',system-ui,-apple-system,sans-serif;color:#e4e4e7;display:flex;justify-content:center;align-items:center;min-height:100vh;-webkit-font-smoothing:antialiased}
-.login-box{background:#0e1223;border:1px solid #1e293b;border-radius:12px;padding:40px;width:380px;text-align:center}
-.login-box h1{font-size:1.5em;color:#f8fafc;font-weight:700;letter-spacing:-.3px;margin-bottom:8px}
-.login-box p{color:#64748b;font-size:13px;margin-bottom:24px}
-.login-box input{width:100%;padding:10px 14px;background:#020617;border:1px solid #1e293b;border-radius:6px;color:#f8fafc;font-size:13px;margin-bottom:12px;outline:none;font-family:inherit;transition:border-color .18s}
-.login-box input:focus{border-color:#7c3aed}
-.login-box button{width:100%;padding:10px;background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition: color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;font-family:inherit}
-.login-box button:hover{background:#6d28d9}
-.login-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#ef4444;padding:10px;border-radius:6px;margin-bottom:14px;font-size:13px}
+
+body {
+    background-color: #020617;
+    background-image: url('/static/img/login_bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #e4e4e7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+}
+
+/* Overlay sutil para garantir legibilidade */
+body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(2,6,23,0.3) 0%, rgba(2,6,23,0.8) 100%);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1;
+}
+
+.login-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 420px;
+    padding: 0 20px;
+}
+
+.login-box {
+    background: rgba(14, 18, 35, 0.65);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 48px 40px;
+    text-align: center;
+    animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.login-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    border-radius: 14px;
+    margin: 0 auto 24px;
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.4);
+    font-size: 28px;
+    color: #fff;
+}
+
+.login-box h1 {
+    font-size: 1.6em;
+    color: #f8fafc;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+}
+
+.login-box p {
+    color: #94a3b8;
+    font-size: 14px;
+    margin-bottom: 32px;
+    line-height: 1.5;
+}
+
+.input-group {
+    text-align: left;
+    margin-bottom: 16px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(2, 6, 23, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #f8fafc;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.login-box input::placeholder {
+    color: #475569;
+}
+
+.login-box input:focus {
+    border-color: #7c3aed;
+    background: rgba(2, 6, 23, 0.8);
+    box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+}
+
+.login-box button {
+    width: 100%;
+    margin-top: 8px;
+    padding: 14px;
+    background: linear-gradient(to right, #7c3aed, #6d28d9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.login-box button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+    filter: brightness(1.1);
+}
+
+.login-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
 </style>
 </head>
 <body>
-<div class="login-box">
-    <h1>YT Channel Cloner</h1>
-    <p>Acesso restrito. Faca login para continuar.</p>
-    {% if error %}
-    <div class="login-error" role="alert">{{ error }}</div>
-    {% endif %}
-    <form method="POST" action="/login">
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <input type="text" name="email" placeholder="Email" required autocomplete="username" aria-label="Email">
-        <input type="password" name="pass" placeholder="Senha" required autocomplete="current-password" aria-label="Senha">
-        <button type="submit">Entrar</button>
-    </form>
+<div class="login-wrapper">
+    <div class="login-box">
+        <div class="login-logo">&#9881;</div>
+        <h1>YT Channel Cloner</h1>
+        <p>Acesso ao painel administrativo e area do aluno.</p>
+        
+        {% if error %}
+        <div class="login-error" role="alert">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST" action="/login">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            
+            <div class="input-group">
+                <label for="email">E-mail de Acesso</label>
+                <input type="email" id="email" name="email" placeholder="nome@exemplo.com" required autocomplete="username">
+            </div>
+            
+            <div class="input-group">
+                <label for="pass">Senha Segura</label>
+                <input type="password" id="pass" name="pass" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit">Entrar no Sistema</button>
+        </form>
+    </div>
 </div>
 </body>
 </html>
