@@ -371,6 +371,13 @@
                     {% endif %}
                 </div>
                 {% endfor %}
+                {% if ideas|length > 0 %}
+                <div id="ideas-pagination" style="display:flex; justify-content:center; gap: 12px; margin-top: 20px; margin-bottom: 8px; align-items:center;">
+                    <button class="btn-naked btn-sm" onclick="changeIdeiasPage(-1)" style="border: 1px solid var(--border)">Anterior</button>
+                    <span id="ideas-page-info" style="font-size:13px; color:var(--fg-dim); font-weight: 500;">Pagina 1</span>
+                    <button class="btn-primary btn-sm" onclick="changeIdeiasPage(1)">Proxima</button>
+                </div>
+                {% endif %}
             </div>
 
             <!-- DRIVE LINKS -->
@@ -489,7 +496,53 @@ function sortIdeas(field) {
         var label = field === 'score' ? 'Score' : 'Prioridade';
         indicator.textContent = 'Ordenado por ' + label + arrow;
     }
+
+    _currentIdeiasPage = 1; // reset pagination to page 1 always when sorting
+    renderIdeiasPagination();
 }
+
+var _currentIdeiasPage = 1;
+var _ideiasPerPage = 5;
+
+function renderIdeiasPagination() {
+    var container = document.querySelector('.ideas-col-header');
+    if (!container) return;
+    var rows = Array.from(container.parentElement.querySelectorAll('.idea-row-wrap'));
+    
+    if (rows.length === 0) return;
+
+    var totalPages = Math.ceil(rows.length / _ideiasPerPage) || 1;
+    if (_currentIdeiasPage < 1) _currentIdeiasPage = 1;
+    if (_currentIdeiasPage > totalPages) _currentIdeiasPage = totalPages;
+
+    var startIdx = (_currentIdeiasPage - 1) * _ideiasPerPage;
+    var endIdx = startIdx + _ideiasPerPage;
+
+    rows.forEach(function(row, idx) {
+        row.style.display = (idx >= startIdx && idx < endIdx) ? 'block' : 'none';
+    });
+
+    var pageInfo = document.getElementById('ideas-page-info');
+    if (pageInfo) {
+        pageInfo.textContent = 'Pagina ' + _currentIdeiasPage + ' de ' + totalPages;
+    }
+}
+
+function changeIdeiasPage(delta) {
+    _currentIdeiasPage += delta;
+    renderIdeiasPagination();
+    
+    // Scroll smooth top of the table
+    var header = document.querySelector('.ideas-col-header');
+    if (header) {
+        var top = header.getBoundingClientRect().top + window.scrollY - 80;
+        window.scrollTo({top: top, behavior: 'smooth'});
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderIdeiasPagination();
+});
 
 function updateNlmInfo() {
     var ta = document.getElementById('nlm-sop-response');
