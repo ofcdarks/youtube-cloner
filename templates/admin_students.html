@@ -26,7 +26,7 @@
     <div class="section">
         <div class="section-title" style="justify-content:space-between">
             <span><span class="sec-icon">&#128101;</span> Alunos Mentorados</span>
-            <button class="btn-primary" onclick="showCreateStudentModal()">+ Criar Aluno</button>
+            <button class="btn-primary btn-solid-primary" onclick="showCreateStudentModal()">+ Criar Aluno</button>
         </div>
 
         {% if students %}
@@ -72,8 +72,8 @@
                     </td>
                     <td>
                         <button type="button" id="admin-api-{{ s.id }}"
-                            style="border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:700;
-                            {% if s.use_admin_api %}background:#7c3aed;color:#fff{% else %}background:#334155;color:#888{% endif %}"
+                            class="{% if s.use_admin_api %}btn-primary{% else %}btn-naked{% endif %} btn-sm"
+                            style="border:1px solid {% if s.use_admin_api %}rgba(124,58,237,.3){% else %}var(--border){% endif %};"
                             onclick="toggleAdminApi({{ s.id }}, {{ 'false' if s.use_admin_api else 'true' }})"
                             title="{{ 'Aluno usa API do admin (LaoZhang)' if s.use_admin_api else 'Clique para liberar API do admin' }}">
                             {% if s.use_admin_api %}&#10003; Liberado{% else %}Liberar API{% endif %}
@@ -81,27 +81,27 @@
                     </td>
                     <td>
                         {% if s.has_drive %}
-                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                            <a href="https://drive.google.com/drive/folders/{{ s.drive_folder_id }}" target="_blank" rel="noopener" style="color:#22c55e;font-size:13px;font-weight:600;text-decoration:none" title="Abrir pasta no Drive">&#128194; Abrir</a>
-                            <button type="button" style="background:#3b82f620;color:#3b82f6;border:1px solid #3b82f640;padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="syncDriveFiles({{ s.id }}, '{{ s.name }}')" title="Enviar todos os arquivos do aluno para o Drive">&#128259; Sync</button>
-                            <button type="button" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;cursor:pointer;font-size:13px;padding:4px;border-radius:6px;" onclick="deleteDriveFolder({{ s.id }}, '{{ s.name }}')" title="Remover pasta Drive">&#128465;</button>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                            <a href="https://drive.google.com/drive/folders/{{ s.drive_folder_id }}" target="_blank" rel="noopener" class="btn-success btn-sm" style="text-decoration:none" title="Abrir pasta no Drive">&#128194; Abrir</a>
+                            <button type="button" class="btn-primary btn-sm" onclick="syncDriveFiles({{ s.id }}, '{{ s.name }}')" title="Enviar todos os arquivos do aluno para o Drive">&#128259; Sync</button>
+                            <button type="button" class="btn-danger btn-sm" style="padding:6px 8px" onclick="deleteDriveFolder({{ s.id }}, '{{ s.name }}')" title="Remover pasta Drive">&#128465;</button>
                         </div>
                         {% else %}
-                        <button type="button" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="createDriveFolder({{ s.id }}, '{{ s.name }}', '{{ s.email }}')">&#128194; Criar Pasta</button>
+                        <button type="button" class="btn-success btn-sm" onclick="createDriveFolder({{ s.id }}, '{{ s.name }}', '{{ s.email }}')">&#128194; Criar Pasta</button>
                         {% endif %}
                     </td>
                     <td style="font-size:13px;color:#888">{{ s.last_login[:16] if s.last_login and s.last_login != 'Nunca' else 'Nunca' }}</td>
                     <td>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                            <a href="/admin/student/{{ s.id }}" class="btn-primary" style="font-size:12px;padding:6px 12px;text-decoration:none;border-radius:6px;">Ver Detalhes</a>
-                            <a href="/student?view_as={{ s.id }}" style="font-size:12px;font-weight:600;padding:6px 12px;text-decoration:none;background:rgba(124,58,237,0.2);color:#c4b5fd;border:1px solid rgba(124,58,237,0.4);border-radius:6px;transition:0.2s" title="Ver painel como este aluno" onmouseover="this.style.background='rgba(124,58,237,0.4)'" onmouseout="this.style.background='rgba(124,58,237,0.2)'">&#128065; Como Aluno</a>
-                            <button class="btn-success" style="font-size:12px;padding:6px 12px;border-radius:6px;" onclick="quickReleaseTitles({{ s.id }})">+5 Titulos</button>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            <a href="/admin/student/{{ s.id }}" class="btn-primary btn-sm" style="text-decoration:none;">Ver Detalhes</a>
+                            <a href="/student?view_as={{ s.id }}" class="btn-primary btn-sm" style="text-decoration:none;" title="Ver painel como este aluno">&#128065; Como Aluno</a>
+                            <button class="btn-success btn-sm" onclick="quickReleaseTitles({{ s.id }})">+5 Titulos</button>
                             {% if s.active %}
-                            <button class="btn-danger" style="font-size:12px;padding:6px 12px;border-radius:6px;background:#c2410c;border-color:#c2410c" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', true)">Bloquear</button>
+                            <button class="btn-warning btn-sm" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', true)">Bloquear</button>
                             {% else %}
-                            <button class="btn-success" style="font-size:12px;padding:6px 12px;border-radius:6px;" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', false)">Desbloquear</button>
+                            <button class="btn-success btn-sm" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', false)">Desbloquear</button>
                             {% endif %}
-                            <button class="btn-danger" style="font-size:12px;padding:6px 12px;border-radius:6px;" onclick="deleteStudent({{ s.id }}, '{{ s.name }}')">Excluir</button>
+                            <button class="btn-danger btn-sm" onclick="deleteStudent({{ s.id }}, '{{ s.name }}')">Excluir</button>
                         </div>
                     </td>
                 </tr>
