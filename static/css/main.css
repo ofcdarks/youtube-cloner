@@ -19,16 +19,16 @@
 
     --border:       #1e293b;
     --border-hover: #334155;
-    --border-accent:#7c3aed30;
+    --border-accent: rgba(245, 158, 11, 0.3);
 
     --fg-primary:   #f8fafc;
     --fg-secondary: #94a3b8;
     --fg-muted:     #64748b;
     --fg-dim:       #475569;
 
-    --accent:       #7c3aed;
-    --accent-hover: #6d28d9;
-    --accent-glow:  rgba(124,58,237,.15);
+    --accent:       #f59e0b;
+    --accent-hover: #ea580c;
+    --accent-glow:  rgba(245, 158, 11, 0.15);
     --success:      #22c55e;
     --success-soft: rgba(34,197,94,.12);
     --danger:       #ef4444;
