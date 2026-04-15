@@ -78,7 +78,7 @@
             </span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <button class="btn-success" onclick="releaseMoreTitles({{ a.id }}, 5)">+ Liberar 5 Titulos</button>
-                <button type="button" style="background:#dc2626;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="removeAssignment({{ a.id }}, '{{ a.niche|replace(\"'\", \"\") }}', '{{ (a.project_name or '')|replace(\"'\", \"\") }}')" title="Remover este projeto do aluno">&#128465; Remover Projeto</button>
+                <button type="button" style="background:#dc2626;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="removeAssignment({{ a.id }}, '{{ a.niche|replace("'", "") }}', '{{ (a.project_name or '')|replace("'", "") }}')" title="Remover este projeto do aluno">&#128465; Remover Projeto</button>
             </div>
         </div>
 
