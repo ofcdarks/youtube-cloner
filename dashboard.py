@@ -260,6 +260,9 @@ app.include_router(pipeline_router)
 from routes.mockup_routes import router as mockup_router
 app.include_router(mockup_router)
 
+from routes.import_routes import router as import_router
+app.include_router(import_router)
+
 
 # ── SSE Progress Endpoint ────────────────────────────────
 
