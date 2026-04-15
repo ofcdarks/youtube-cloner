@@ -39,7 +39,7 @@ def _get_student_ai_config(user: dict) -> tuple[str, str, str]:
         "laozhang": "gpt-4o-mini",
         "openai": "gpt-4o-mini",
         "anthropic": "claude-sonnet-4-20250514",
-        "google": "gemini-pro",
+        "google": "gemini-2.0-flash",
     }
     model = default_models.get(provider, "gpt-4o-mini")
     return api_key, provider, model
@@ -587,7 +587,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
                 script = content_blocks[0].get("text", "") if content_blocks else ""
 
         elif provider == "google":
-            api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
+            api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(f"{api_url}?key={api_key}", json={
                     "contents": [{"parts": [{"text": prompt}]}],
@@ -1055,7 +1055,7 @@ REGRAS:
                 result_text = content_blocks[0].get("text", "") if content_blocks else ""
 
         elif provider == "google":
-            api_url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent"
+            api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(f"{api_url}?key={api_key}", json={
                     "contents": [{"parts": [{"text": system_msg + "\n\n" + judge_prompt}]}],
@@ -1259,7 +1259,7 @@ Use transicoes naturais entre atos — sem headers markdown (## TITULO)."""
         elif provider == "google":
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}",
+                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
                     json={"contents": [{"parts": [{"text": system_msg + "\n\n" + prompt}]}]},
                 )
                 data = resp.json()
@@ -1858,7 +1858,7 @@ Idioma: {lang}""",
 
         elif provider == "google":
             async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={api_key}", json={
+                resp = await client.post(f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}", json={
                     "contents": [{"parts": [{"text": system + "\n\n" + prompt}]}],
                 })
                 data = resp.json()
