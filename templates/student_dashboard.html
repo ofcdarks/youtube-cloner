@@ -440,22 +440,7 @@
         <div class="section-title"><span class="sec-icon">&#128230;</span> Recursos Disponibilizados</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px">
             {% for res in resources %}
-            <a href="/api/resource/download/{{ res.id }}" style="display:flex;align-items:center;gap:10px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;text-decoration:none;min-width:220px;transition: color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
-                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
-                <div>
-                    <div style="font-size:13px, background-color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
-                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
-                <div>
-                    <div style="font-size:13px, border-color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
-                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
-                <div>
-                    <div style="font-size:13px, box-shadow .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
-                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
-                <div>
-                    <div style="font-size:13px, transform .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
-                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
-                <div>
-                    <div style="font-size:13px, opacity .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+            <a href="/api/resource/download/{{ res.id }}" style="display:flex;align-items:center;gap:10px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;text-decoration:none;min-width:220px;transition:border-color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
                 <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
                 <div>
                     <div style="font-size:13px;font-weight:600;color:#fff">{{ res.label }}</div>
