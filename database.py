@@ -1037,6 +1037,21 @@ def create_assignment(student_id: int, project_id: str, niche: str, titles_relea
     return assignment_id
 
 
+def delete_assignment(assignment_id: int) -> dict:
+    """Remove um assignment e todo o progress relacionado (cascade manual)."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT student_id, project_id, niche FROM assignments WHERE id=?",
+            (assignment_id,),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "error": "assignment nao encontrado"}
+        info = dict(row)
+        conn.execute("DELETE FROM progress WHERE assignment_id=?", (assignment_id,))
+        conn.execute("DELETE FROM assignments WHERE id=?", (assignment_id,))
+    return {"ok": True, "info": info}
+
+
 def get_assignments(student_id: int | None = None) -> list[dict]:
     with get_db() as conn:
         query = """

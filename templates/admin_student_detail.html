@@ -76,7 +76,10 @@
                 Nicho: <span style="color:#00d4ff">{{ a.niche }}</span>
                 <span style="font-size:.75em;color:#666;margin-left:8px">({{ a.total_titles }} titulos atribuidos, {{ a.completed_titles }} publicados)</span>
             </span>
-            <button class="btn-success" onclick="releaseMoreTitles({{ a.id }}, 5)">+ Liberar 5 Titulos</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn-success" onclick="releaseMoreTitles({{ a.id }}, 5)">+ Liberar 5 Titulos</button>
+                <button type="button" style="background:#dc2626;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer" onclick="removeAssignment({{ a.id }}, '{{ a.niche|replace(\"'\", \"\") }}', '{{ (a.project_name or '')|replace(\"'\", \"\") }}')" title="Remover este projeto do aluno">&#128465; Remover Projeto</button>
+            </div>
         </div>
 
         <!-- Project info -->
@@ -354,6 +357,34 @@ function removeTitle(progressId, title) {
             }
         })
         .catch(e => showToast('Erro: ' + e.message, 'error'));
+    });
+}
+
+function removeAssignment(assignmentId, niche, projectName) {
+    var msg = 'Remover projeto <b>' + (projectName || niche) + '</b> deste aluno?<br><br>';
+    msg += 'Isso apaga todos os titulos em progresso (pending/writing/recording/editing/published) ';
+    msg += 'desta atribuicao. O projeto em si NAO sera afetado — continua disponivel para outros alunos.<br><br>';
+    msg += 'Acao irreversivel.';
+    showConfirm('Remover Projeto do Aluno', msg, function() {
+        const loading = showToast('Removendo atribuicao...', 'loading');
+        apiFetch('/api/admin/remove-assignment', {
+            method: 'POST',
+            body: JSON.stringify({assignment_id: assignmentId})
+        })
+        .then(r => r.json())
+        .then(data => {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Projeto removido do aluno', 'success');
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(e => {
+            removeToast(loading);
+            showToast('Erro: ' + e.message, 'error');
+        });
     });
 }
 

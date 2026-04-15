@@ -393,6 +393,29 @@ async def api_assign_niche(request: Request, user=Depends(require_admin)):
     return JSONResponse({"ok": True, "assignment_id": aid})
 
 
+@router.post("/api/admin/remove-assignment")
+@limiter.limit("20/minute")
+async def api_remove_assignment(request: Request, user=Depends(require_admin)):
+    """Remove um projeto atribuido a um aluno. Apaga o assignment + todo o progress
+    relacionado (ideias em pending/writing/recording/editing/published)."""
+    body = await request.json()
+    assignment_id = body.get("assignment_id")
+    if not assignment_id:
+        return JSONResponse({"error": "assignment_id obrigatorio"}, status_code=400)
+    from database import delete_assignment, log_activity
+    result = delete_assignment(int(assignment_id))
+    if not result.get("ok"):
+        return JSONResponse({"error": result.get("error", "falha ao remover")}, status_code=404)
+    info = result.get("info", {})
+    log_activity(
+        info.get("project_id", ""),
+        "assignment_removed",
+        f"Admin {user.get('email')} removeu projeto {info.get('project_id','?')} "
+        f"(niche: {info.get('niche','?')}) do aluno {info.get('student_id','?')}",
+    )
+    return JSONResponse({"ok": True, "removed": info})
+
+
 @router.post("/api/admin/toggle-student")
 @limiter.limit("20/minute")
 async def api_toggle_student(request: Request, user=Depends(require_admin)):
