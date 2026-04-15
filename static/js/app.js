@@ -468,6 +468,9 @@ function regenerateFromNiches() {
 
 function changeProjectLanguage(lang) {
     if (!lang) return;
+    var select = document.getElementById('projectLangSelect');
+    if (select) select.disabled = true;
+    showToast('Adaptando titulos para ' + lang + '... (pode levar 20-60s)', 'loading', 120000);
     fetch('/api/admin/set-project-language', {
         method: 'POST',
         headers: {
@@ -482,12 +485,21 @@ function changeProjectLanguage(lang) {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.ok) {
-            showToast('Idioma alterado para ' + lang, 'success', 2000);
+            var msg = 'Idioma alterado para ' + lang;
+            if (data.translated) {
+                msg += ' (' + data.translated + '/' + data.total_ideas + ' titulos adaptados)';
+            } else if (data.warning) {
+                msg += ' - ' + data.warning;
+            }
+            showToast(msg, 'success', 3000);
+            setTimeout(function() { location.reload(); }, 800);
         } else {
+            if (select) select.disabled = false;
             showToast('Erro: ' + (data.error || ''), 'error');
         }
     })
     .catch(function(e) {
+        if (select) select.disabled = false;
         showToast('Erro: ' + e.message, 'error');
     });
 }

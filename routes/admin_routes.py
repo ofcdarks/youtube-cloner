@@ -410,16 +410,108 @@ async def api_toggle_student(request: Request, user=Depends(require_admin)):
 @router.post("/api/admin/set-project-language")
 @limiter.limit("20/minute")
 async def api_set_project_language(request: Request, user=Depends(require_admin)):
-    """Change the language of a project. Affects title/niche generation."""
+    """Change the language of a project and culturally adapt all existing titles.
+
+    Future title/niche generation uses the new language automatically. Existing
+    ideas are translated/adapted in batch via AI so the UI never shows a mix.
+    Translation failures are non-fatal — language is still updated.
+    """
+    import asyncio
+    import json as _json
+    import logging
+    import re as _re
+
+    log = logging.getLogger("ytcloner.admin.set_language")
+
     body = await request.json()
     project_id = body.get("project_id", "").strip()
     language = body.get("language", "").strip()
     if not project_id or not language:
         return JSONResponse({"error": "project_id e language obrigatorios"}, status_code=400)
-    from database import get_db
+
+    from config import LANG_LABELS, VALID_LANGS
+    if language not in VALID_LANGS:
+        return JSONResponse({"error": f"Idioma invalido. Use: {', '.join(LANG_LABELS.keys())}"}, status_code=400)
+
+    from database import get_db, get_project, get_ideas
+
+    project = get_project(project_id)
+    if not project:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    prev_language = project.get("language", "pt-BR")
+
     with get_db() as conn:
         conn.execute("UPDATE projects SET language=? WHERE id=?", (language, project_id))
-    return JSONResponse({"ok": True, "language": language})
+
+    if prev_language == language:
+        return JSONResponse({"ok": True, "language": language, "translated": 0, "note": "Idioma ja era este"})
+
+    ideas = get_ideas(project_id)
+    translated = 0
+
+    if ideas:
+        target_label = LANG_LABELS.get(language, language)
+        source_label = LANG_LABELS.get(prev_language, prev_language)
+
+        compact = [
+            {"id": i["id"], "title": i.get("title", ""), "hook": i.get("hook", "") or "", "summary": (i.get("summary", "") or "")[:400]}
+            for i in ideas
+        ]
+
+        prompt = (
+            f"Adapte culturalmente os titulos, hooks e resumos abaixo de {source_label} para {target_label}.\n"
+            f"NAO traduza literalmente — adapte referencias culturais, idiomaticas e de mercado para soar nativo em {target_label}.\n"
+            f"Limite: titulo max 100 caracteres. Hook max 200 caracteres.\n"
+            f"Retorne APENAS um array JSON valido no formato: "
+            f'[{{"id":1,"title":"...","hook":"...","summary":"..."}}, ...]\n\n'
+            f"ITENS:\n{_json.dumps(compact, ensure_ascii=False)}"
+        )
+
+        try:
+            from protocols.ai_client import chat
+            resp = await asyncio.to_thread(
+                chat, prompt,
+                system=f"Voce adapta conteudo de YouTube para {target_label}. Retorne SO JSON valido.",
+                max_tokens=8000, temperature=0.4, timeout=240,
+            )
+
+            m = _re.search(r"\[.*\]", resp, _re.DOTALL)
+            if not m:
+                raise ValueError("AI nao retornou array JSON")
+            items = _json.loads(m.group(0))
+
+            from database import enforce_title_limit
+            with get_db() as conn:
+                for it in items:
+                    idea_id = it.get("id")
+                    if not idea_id:
+                        continue
+                    title = enforce_title_limit(it.get("title", "").strip())
+                    hook = (it.get("hook", "") or "").strip()[:300]
+                    summary = (it.get("summary", "") or "").strip()[:800]
+                    if not title:
+                        continue
+                    conn.execute(
+                        "UPDATE ideas SET title=?, hook=?, summary=? WHERE id=? AND project_id=?",
+                        (title, hook, summary, idea_id, project_id),
+                    )
+                    translated += 1
+
+            log.info(f"[set-language] project={project_id} {prev_language}->{language} translated={translated}/{len(ideas)}")
+        except Exception as e:
+            log.exception(f"[set-language] translation failed: {e}")
+            return JSONResponse({
+                "ok": True, "language": language, "translated": 0,
+                "warning": f"Idioma atualizado, mas traducao falhou: {str(e)[:200]}",
+            })
+
+    return JSONResponse({
+        "ok": True, "language": language,
+        "previous_language": prev_language,
+        "translated": translated,
+        "total_ideas": len(ideas),
+    })
 
 
 @router.post("/api/admin/set-ai-model")
