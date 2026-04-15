@@ -727,11 +727,12 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         existing_titles = [i.get("title", "").strip().lower() for i in existing_ideas if i.get("title")]
 
         # Get keyword data from cache or generate
-        from protocols.keywords_everywhere import get_keyword_data, save_keyword_cache, load_keyword_cache
+        from protocols.keywords_everywhere import get_keyword_data
+        from database import save_keyword_cache, get_keyword_cache
         niche_keywords = []
         cached = False
 
-        cached_kws = load_keyword_cache(project_id)
+        cached_kws = get_keyword_cache(project_id)
         if cached_kws:
             niche_keywords = cached_kws
             cached = True
