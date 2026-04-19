@@ -61,24 +61,29 @@
                 Use depois de pipelines antigos (pre-v10) ou quando liberar novos titulos pros alunos.
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                <button type="button" onclick="backfillTitlesB(null)"
+                <button type="button" onclick="backfillTitlesB(null, false)"
                     style="padding:9px 16px;border-radius:7px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,0.3)">
-                    &#9889; Gerar B de TODAS as ideas
+                    &#9889; Gerar B (rapido, via SOP)
                 </button>
-                <span style="font-size:10.5px;color:#64748b">Processa ate 100 por vez. Pode repetir ate zerar.</span>
-                <span id="backfill-b-status" style="font-size:11.5px;color:#a78bfa;margin-left:auto"></span>
+                <button type="button" onclick="backfillTitlesB(null, true)"
+                    style="padding:9px 16px;border-radius:7px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.4);font-size:12.5px;font-weight:700;cursor:pointer" title="Gera via SOP + valida com busca YouTube + Trends (bem mais lento)">
+                    &#128269; Gerar B + Validar (via API busca)
+                </button>
+                <span style="font-size:10.5px;color:#64748b;flex:1;min-width:220px">SOP: usa DNA do canal; Validar: scorer pontua via YouTube Search + Trends (lento).</span>
+                <span id="backfill-b-status" style="font-size:11.5px;color:#a78bfa"></span>
             </div>
         </div>
     </div>
     <script>
-    function backfillTitlesB(studentId) {
+    function backfillTitlesB(studentId, withScoring) {
         var label = studentId ? 'ideas do aluno #' + studentId : 'TODAS as ideas sem variante B';
+        var extra = withScoring ? ' + validacao via YouTube Search/Trends (mais lento, ~10s por titulo)' : ' (usando SOP do canal como DNA)';
         showConfirm('Gerar Variante B em massa',
-            'Vai gerar title_b via IA para ' + label + ' (ate 100). Pode consumir tokens. Continuar?',
+            'Vai gerar title_b via IA para ' + label + ' (ate 100)' + extra + '. Continuar?',
             function() {
                 var status = document.getElementById('backfill-b-status');
-                if (status) status.textContent = '⏳ Gerando... (pode levar 2-5 min)';
-                var payload = {};
+                if (status) status.textContent = withScoring ? '⏳ Gerando + validando... (pode levar 10-20 min)' : '⏳ Gerando... (pode levar 2-5 min)';
+                var payload = { score: !!withScoring };
                 if (studentId) payload.student_id = studentId;
                 apiPost('/api/admin/backfill-titles-b', payload)
                     .then(function(r) { return r.json(); })
@@ -88,8 +93,11 @@
                             if (status) status.textContent = '';
                             return;
                         }
-                        var msg = '✓ ' + data.generated + ' gerados, ' + (data.failed || 0) + ' falhas (de ' + data.total_candidates + ' candidatos)';
-                        showToast(msg, 'success', 6000);
+                        var msg = '✓ ' + data.generated + ' gerados';
+                        if (data.scored) msg += ', ' + data.scored + ' validados';
+                        if (data.sop_used) msg += ', ' + data.sop_used + ' com SOP';
+                        msg += ' — ' + (data.failed || 0) + ' falhas (de ' + data.total_candidates + ')';
+                        showToast(msg, 'success', 8000);
                         if (status) status.textContent = msg;
                     })
                     .catch(function(e) {

@@ -1444,34 +1444,107 @@ Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...
         )
 
 
-def _generate_title_b_for_idea(idea: dict) -> str:
-    """Gera title_b via IA pra uma idea. Retorna string (vazia se falhar)."""
+def _extract_sop_sections_for_titles(sop_content: str) -> str:
+    """Extrai as secoes do SOP mais relevantes pra gerar titulos: 4 (hooks), 6 (regras), 8 (formula titulos).
+    Retorna string truncada (max ~3000 chars) pra caber no prompt sem explodir tokens."""
+    if not sop_content:
+        return ""
+    import re as _re
+    # Tenta identificar secoes relevantes por headings
+    relevant_keywords = [
+        r"playbook.*hook", r"tipos.*hook", r"regras? de ouro", r"formula.*titul",
+        r"estilo.*titul", r"titulos", r"hook", r"identidade",
+    ]
+    lines = sop_content.split("\n")
+    captured: list[str] = []
+    in_section = False
+    section_buf: list[str] = []
+    for line in lines:
+        is_heading = bool(_re.match(r"^#{1,3}\s+", line)) or bool(_re.match(r"^\d+\.\s+\*\*", line))
+        if is_heading:
+            if in_section and section_buf:
+                captured.append("\n".join(section_buf))
+            section_buf = [line]
+            low = line.lower()
+            in_section = any(_re.search(kw, low) for kw in relevant_keywords)
+        elif in_section:
+            section_buf.append(line)
+    if in_section and section_buf:
+        captured.append("\n".join(section_buf))
+    joined = "\n\n".join(captured).strip()
+    if not joined:
+        # Fallback: primeiros 2500 chars do SOP
+        joined = sop_content[:2500]
+    return joined[:3000]
+
+
+def _load_project_sop(project_id: str) -> str:
+    """Carrega o conteudo do SOP de um projeto. Retorna '' se nao achar."""
+    from database import get_files
+    try:
+        files = get_files(project_id, category="analise")
+        for f in files:
+            label = (f.get("label") or "").lower()
+            if "sop" in label:
+                return f.get("content") or ""
+    except Exception as e:
+        logger.warning(f"_load_project_sop({project_id}) failed: {e}")
+    return ""
+
+
+def _generate_title_b_for_idea(idea: dict, sop_excerpt: str = "") -> str:
+    """Gera title_b via IA seguindo o SOP do canal. Retorna string (vazia se falhar)."""
     from protocols.ai_client import chat
     lang = idea.get("language") or "pt-BR"
     lang_hint = {"pt-BR": "PT-BR", "en": "English", "es": "Espanol"}.get(lang, lang)
-    prompt = f"""Voce recebe o TITULO A de um video YouTube. Gere o TITULO B — mesmo video, mas com ANGULO COMPLETAMENTE DIFERENTE pra teste A/B.
 
+    sop_block = ""
+    if sop_excerpt:
+        sop_block = f"""
+==== SOP DO CANAL (DNA) — siga as regras de titulos/hooks daqui ====
+{sop_excerpt}
+==== FIM DO SOP ====
+"""
+
+    prompt = f"""Voce recebe o TITULO A de um video YouTube. Gere o TITULO B — mesmo video, mas com ANGULO COMPLETAMENTE DIFERENTE pra teste A/B.
+{sop_block}
 TITULO A: "{idea.get('title','')}"
 HOOK: {idea.get('hook', '')}
 RESUMO: {idea.get('summary', '')}
 NICHO: {idea.get('niche_chosen') or idea.get('proj_name', '')}
+PILAR: {idea.get('pillar', '')}
 
-Regras:
+Regras OBRIGATORIAS:
+- Siga o SOP acima (formula de titulos + estilo de hooks do canal)
 - Mesmo conteudo/tema que A — NAO inventar outro video
 - Angulo OPOSTO: se A for curiosity-gap, B numero-especifico; A pergunta, B afirmacao; A identidade, B contraste
 - 70-100 chars (mesmo range do A)
 - Idioma: {lang_hint}
-- Mesmo formato de CAPS/emoji/pontuacao que A
+- Mesmo formato de CAPS/emoji/pontuacao que A (teste justo A/B)
 
 Retorne APENAS o titulo B, sem aspas, sem prefixo, sem markdown."""
     try:
-        result = chat(prompt, system="Especialista em CTR YouTube. Resposta curta.", max_tokens=120, temperature=0.7).strip()
+        result = chat(prompt, system="Especialista em CTR YouTube. Segue SOP do canal como DNA. Resposta curta.", max_tokens=120, temperature=0.7).strip()
         result = result.strip('"\'`').strip()
         if result and len(result) >= 20 and len(result) <= 120:
             return result
     except Exception as e:
         logger.warning(f"_generate_title_b_for_idea failed: {e}")
     return ""
+
+
+def _score_title_safe(title: str, niche: str = "") -> dict:
+    """Scoring via title_scorer (YouTube search + Trends). Retorna {} se falhar/lento.
+    Protegido com timeout curto pra nao travar backfill em bulk."""
+    try:
+        from protocols.title_scorer import score_title
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(score_title, title, niche)
+            return fut.result(timeout=15) or {}
+    except Exception as e:
+        logger.warning(f"_score_title_safe failed: {e}")
+        return {}
 
 
 @router.post("/api/admin/backfill-titles-b")
@@ -1514,14 +1587,44 @@ async def api_backfill_titles_b(request: Request, user=Depends(require_admin)):
     if not ideas:
         return JSONResponse({"ok": True, "processed": 0, "message": "Nenhuma idea precisa de title_b."})
 
+    # Cache do SOP por projeto (mesma idea, mesmo SOP — nao recarrega a cada volta)
+    sop_cache: dict[str, str] = {}
+    def _get_sop_excerpt(proj_id: str) -> str:
+        if proj_id in sop_cache:
+            return sop_cache[proj_id]
+        raw = _load_project_sop(str(proj_id))
+        excerpt = _extract_sop_sections_for_titles(raw) if raw else ""
+        sop_cache[proj_id] = excerpt
+        if not excerpt:
+            logger.warning(f"No SOP found for project {proj_id} — generating without DNA context")
+        return excerpt
+
+    enable_scoring = bool(body.get("score", False))  # opcional, default off (lento)
+
     ok_count = 0
     fail_count = 0
+    scored_count = 0
     for idea in ideas:
-        b = _generate_title_b_for_idea(idea)
+        sop_ex = _get_sop_excerpt(str(idea.get("project_id") or ""))
+        b = _generate_title_b_for_idea(idea, sop_excerpt=sop_ex)
         if b:
-            # Trunca pra limite YouTube
             if len(b) > 100:
                 b = b[:97] + "..."
+
+            # Scoring opcional — usa API de busca YouTube + Trends pra validar
+            if enable_scoring:
+                niche = idea.get("niche_chosen") or idea.get("proj_name") or ""
+                score_data = _score_title_safe(b, niche)
+                if score_data and score_data.get("final_score", 0) < 30:
+                    # Score muito baixo: tenta 1x com variacao
+                    b2 = _generate_title_b_for_idea(idea, sop_excerpt=sop_ex)
+                    if b2:
+                        score_data2 = _score_title_safe(b2, niche)
+                        if score_data2.get("final_score", 0) > score_data.get("final_score", 0):
+                            b = b2[:100] if len(b2) > 100 else b2
+                if score_data:
+                    scored_count += 1
+
             update_idea_title(int(idea["id"]), idea["title"], title_b=b)
             ok_count += 1
         else:
@@ -1532,5 +1635,7 @@ async def api_backfill_titles_b(request: Request, user=Depends(require_admin)):
         "processed": ok_count + fail_count,
         "generated": ok_count,
         "failed": fail_count,
+        "scored": scored_count,
+        "sop_used": sum(1 for v in sop_cache.values() if v),
         "total_candidates": len(ideas),
     })
