@@ -1,0 +1,30 @@
+{# A/B title micro-widget — renderizado abaixo do title em cada card do kanban.
+   Regra de negocio: se o video nao tiver impressoes nas primeiras 4h, o aluno
+   troca o titulo principal pela variante B. Caso nao exista B ainda, gera sob
+   demanda via /api/student/generate-title-b.
+
+   Context esperado: item.id (progress_id), item.idea_id, item.title, item.title_b #}
+<div class="ab-title" data-idea="{{ item.idea_id }}" id="ab-{{ item.id }}" style="margin:6px 0 8px;padding:6px 8px;background:rgba(59,130,246,0.06);border:1px dashed rgba(59,130,246,0.25);border-radius:6px;">
+    {% if item.title_b %}
+        <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#93c5fd;font-weight:700;margin-bottom:3px">
+            <span>&#9878; VARIANTE B</span>
+            <span style="font-weight:400;color:#64748b">(regra 4h)</span>
+        </div>
+        <div style="font-size:11px;color:#cbd5e1;line-height:1.4;margin-bottom:5px">{{ item.title_b }}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button type="button" onclick="swapAbTitle({{ item.idea_id }}, {{ item.id }})"
+                style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);cursor:pointer;font-weight:600">
+                &#8644; Trocar pelo B
+            </button>
+            <button type="button" onclick="regenTitleB({{ item.idea_id }}, {{ item.id }})"
+                style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;border:1px solid rgba(148,163,184,0.2);cursor:pointer">
+                &#10227; Re-gerar B
+            </button>
+        </div>
+    {% else %}
+        <button type="button" onclick="regenTitleB({{ item.idea_id }}, {{ item.id }})"
+            style="width:100%;font-size:10px;padding:5px 8px;border-radius:4px;background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);cursor:pointer;font-weight:600">
+            &#10024; Gerar Titulo B (A/B Test)
+        </button>
+    {% endif %}
+</div>

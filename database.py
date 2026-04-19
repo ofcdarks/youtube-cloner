@@ -1072,7 +1072,7 @@ def get_assignments(student_id: int | None = None) -> list[dict]:
 def get_student_ideas(assignment_id: int) -> list[dict]:
     with get_db() as conn:
         rows = conn.execute(
-            """SELECT p.*, i.title, i.hook, i.summary, i.pillar, i.priority, i.score, i.rating, i.num
+            """SELECT p.*, i.title, i.title_b, i.hook, i.summary, i.pillar, i.priority, i.score, i.rating, i.num
                FROM progress p
                JOIN ideas i ON p.idea_id = i.id
                WHERE p.assignment_id=?

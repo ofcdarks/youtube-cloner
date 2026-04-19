@@ -356,6 +356,7 @@
                 {% for item in kanban.pending %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'pending')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
+                    {% include '_ab_title_block.html' %}
                     {% if item.hook %}<div class="kanban-card-hook" style="font-size:.75em;color:#94a3b8;margin:4px 0 6px;line-height:1.4;border-left:2px solid #334155;padding-left:8px;">{{ item.hook[:120] }}{% if item.hook|length > 120 %}...{% endif %}</div>{% endif %}
                     <div class="kanban-card-meta">
                         <span style="color:#b388ff">{{ item.pillar }}</span>
@@ -374,6 +375,7 @@
                 {% for item in kanban.writing %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'writing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
+                    {% include '_ab_title_block.html' %}
                     <div class="kanban-card-meta">
                         <span style="color:#b388ff">{{ item.pillar }}</span>
                         {% if item.score %}<span style="color:{% if item.score >= 80 %}#4caf50{% elif item.score >= 60 %}#448aff{% else %}#ffd740{% endif %}">Score: {{ item.score }}</span>{% endif %}
@@ -399,6 +401,7 @@
                 {% for item in kanban.recording %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'recording')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
+                    {% include '_ab_title_block.html' %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
                     {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
                         <button onclick="moveCard({{ item.id }}, 'writing')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
@@ -412,6 +415,7 @@
                 {% for item in kanban.editing %}
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'editing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
+                    {% include '_ab_title_block.html' %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
                     {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
                         <button onclick="moveCard({{ item.id }}, 'recording')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
@@ -425,6 +429,7 @@
                 {% for item in kanban.published %}
                 <div class="kanban-card" id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
+                    {% include '_ab_title_block.html' %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.video_url %}<a href="{{ item.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.75em">&#127909; Assistir</a>{% endif %}</div>
                     {% if not item.video_url and not readonly %}<div class="kanban-card-actions" style="width:100%"><button class="btn-link" onclick="addVideoLink({{ item.id }})" style="width:100%;padding:6px">&#128279; Adicionar Link do Video Publicado</button></div>{% endif %}
                 </div>
@@ -1163,6 +1168,71 @@ function updateCalendar() {
         btn.innerHTML = '&#8635; Atualizar via Analytics';
         showToast('Erro: ' + e.message, 'error');
     });
+}
+
+/* ── A/B Title: gera/troca titulo B (regra de 4h) ─────────────────────────── */
+function regenTitleB(ideaId, cardId) {
+    var loading = showToast('Gerando variação B...', 'loading');
+    apiPost('/api/student/generate-title-b', { idea_id: ideaId })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            removeToast(loading);
+            if (!data.ok) { showToast('Erro: ' + (data.error || 'falha'), 'error', 4000); return; }
+            // Re-render o bloco A/B no card sem reload
+            var block = document.getElementById('ab-' + cardId);
+            if (block) {
+                var safe = (data.title_b || '').replace(/"/g, '&quot;');
+                block.innerHTML =
+                    '<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#93c5fd;font-weight:700;margin-bottom:3px"><span>⚖ VARIANTE B</span><span style="font-weight:400;color:#64748b">(regra 4h)</span></div>' +
+                    '<div style="font-size:11px;color:#cbd5e1;line-height:1.4;margin-bottom:5px">' + (data.title_b || '') + '</div>' +
+                    '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
+                    '<button type="button" onclick="swapAbTitle(' + ideaId + ', ' + cardId + ')" style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);cursor:pointer;font-weight:600">↔ Trocar pelo B</button>' +
+                    '<button type="button" onclick="regenTitleB(' + ideaId + ', ' + cardId + ')" style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;border:1px solid rgba(148,163,184,0.2);cursor:pointer">↻ Re-gerar B</button>' +
+                    '</div>';
+            }
+            showToast(data.already_existed ? 'Variante B ja existia' : 'Variante B gerada!', 'success', 2500);
+        })
+        .catch(function(e) {
+            removeToast(loading);
+            showToast('Erro: ' + e.message, 'error');
+        });
+}
+
+function swapAbTitle(ideaId, cardId) {
+    showConfirm('Trocar para título B',
+        'Isso vai mover o título atual pra variante B e a variante B pra principal. Use quando o vídeo não tiver impressões nas primeiras 4h. Continuar?',
+        function() {
+            var loading = showToast('Trocando título...', 'loading');
+            apiPost('/api/student/swap-title', { idea_id: ideaId })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    removeToast(loading);
+                    if (!data.ok) { showToast('Erro: ' + (data.error || 'falha'), 'error', 4000); return; }
+                    // Atualiza title visivel no card + bloco B
+                    var card = document.getElementById('card-' + cardId);
+                    if (card) {
+                        var titleEl = card.querySelector('.kanban-card-title');
+                        if (titleEl) titleEl.textContent = data.title_a;
+                        var block = document.getElementById('ab-' + cardId);
+                        if (block) {
+                            var newB = document.createElement('div');
+                            newB.innerHTML =
+                                '<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#93c5fd;font-weight:700;margin-bottom:3px"><span>⚖ VARIANTE B</span><span style="font-weight:400;color:#64748b">(regra 4h)</span></div>' +
+                                '<div style="font-size:11px;color:#cbd5e1;line-height:1.4;margin-bottom:5px">' + data.title_b + '</div>' +
+                                '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
+                                '<button type="button" onclick="swapAbTitle(' + ideaId + ', ' + cardId + ')" style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);cursor:pointer;font-weight:600">↔ Trocar pelo B</button>' +
+                                '<button type="button" onclick="regenTitleB(' + ideaId + ', ' + cardId + ')" style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;border:1px solid rgba(148,163,184,0.2);cursor:pointer">↻ Re-gerar B</button>' +
+                                '</div>';
+                            block.innerHTML = newB.innerHTML;
+                        }
+                    }
+                    showToast('Título trocado!', 'success', 2500);
+                })
+                .catch(function(e) {
+                    removeToast(loading);
+                    showToast('Erro: ' + e.message, 'error');
+                });
+        });
 }
 
 /* ── Auto-fill silencioso com MÉTRICAS REAIS do canal ────────────────────────

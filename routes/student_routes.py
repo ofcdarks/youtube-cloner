@@ -2225,3 +2225,96 @@ Valores curtos (max 35 chars).""",
         import logging
         logging.getLogger("ytcloner").error(f"update-calendar error: {e}", exc_info=True)
         return JSONResponse({"error": "Falha ao atualizar calendario."}, status_code=500)
+
+
+# ── A/B Title: gera variante B sob demanda + troca A↔B ───────────────────
+
+@router.post("/api/student/generate-title-b")
+@limiter.limit("10/minute")
+async def api_generate_title_b(request: Request, user=Depends(require_auth)):
+    """Gera o titulo B (variacao com angulo oposto) pra uma idea que ainda nao tem.
+    Usado na regra '4h pra trocar titulo' quando a ideia original so tem titulo A."""
+    body = await request.json()
+    idea_id = body.get("idea_id")
+    if not idea_id:
+        return JSONResponse({"error": "idea_id obrigatorio"}, status_code=400)
+
+    from database import get_db, update_idea_title
+    with get_db() as conn:
+        # Confirma que a idea pertence a uma assignment deste aluno
+        row = conn.execute(
+            """SELECT i.id, i.title, i.title_b, i.hook, i.summary, i.pillar, p.language, p.niche_chosen, p.name AS proj_name
+               FROM ideas i
+               JOIN assignments a ON a.project_id = i.project_id
+               JOIN projects p ON p.id = i.project_id
+               WHERE i.id=? AND a.student_id=?
+               LIMIT 1""",
+            (int(idea_id), user["id"]),
+        ).fetchone()
+    if not row:
+        return JSONResponse({"error": "Idea nao encontrada ou sem permissao"}, status_code=404)
+    idea = dict(row)
+    if idea.get("title_b"):
+        return JSONResponse({"ok": True, "title_b": idea["title_b"], "already_existed": True})
+
+    try:
+        from protocols.ai_client import chat
+        lang = idea.get("language") or "pt-BR"
+        lang_hint = {"pt-BR": "PT-BR", "en": "English", "es": "Espanol"}.get(lang, lang)
+        prompt = f"""Voce recebe o TITULO A de um video YouTube. Gere o TITULO B — mesmo video, mas com ANGULO COMPLETAMENTE DIFERENTE pra teste A/B (regra de 4h).
+
+TITULO A: "{idea['title']}"
+HOOK: {idea.get('hook', '')}
+RESUMO: {idea.get('summary', '')}
+NICHO: {idea.get('niche_chosen') or idea.get('proj_name', '')}
+
+Regras:
+- Mesmo conteudo/tema que A — NAO inventar outro video
+- Angulo OPOSTO: se A for curiosity-gap, B deve ser numero-especifico; se A for pergunta, B afirmacao; se A for identidade, B contraste
+- 70-100 chars (mesmo range do A)
+- Idioma: {lang_hint}
+- Mesmo formato de CAPS/emoji/pontuacao que A (pra teste justo)
+
+Retorne APENAS o titulo B, sem aspas, sem prefixo, sem markdown."""
+        result = chat(prompt, system="Especialista em CTR YouTube. Resposta curta.", max_tokens=120, temperature=0.7).strip()
+        # Limpa artefatos comuns
+        result = result.strip('"\'`').strip()
+        if not result or len(result) < 20:
+            return JSONResponse({"error": "IA retornou titulo B invalido"}, status_code=500)
+        update_idea_title(int(idea_id), idea["title"], title_b=result)
+        return JSONResponse({"ok": True, "title_b": result, "already_existed": False})
+    except Exception as e:
+        logging.getLogger("ytcloner").error(f"generate-title-b error: {e}", exc_info=True)
+        return JSONResponse({"error": f"Falha ao gerar titulo B: {str(e)[:120]}"}, status_code=500)
+
+
+@router.post("/api/student/swap-title")
+@limiter.limit("30/minute")
+async def api_swap_title(request: Request, user=Depends(require_auth)):
+    """Aluno troca o titulo principal (A) pela variante (B) depois da regra de 4h.
+    Swap: o antigo title_a vai pra title_b (pra preservar historico) e vice-versa."""
+    body = await request.json()
+    idea_id = body.get("idea_id")
+    if not idea_id:
+        return JSONResponse({"error": "idea_id obrigatorio"}, status_code=400)
+
+    from database import get_db, update_idea_title
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT i.id, i.title, i.title_b
+               FROM ideas i
+               JOIN assignments a ON a.project_id = i.project_id
+               WHERE i.id=? AND a.student_id=?
+               LIMIT 1""",
+            (int(idea_id), user["id"]),
+        ).fetchone()
+    if not row:
+        return JSONResponse({"error": "Idea nao encontrada ou sem permissao"}, status_code=404)
+    idea = dict(row)
+    if not idea.get("title_b"):
+        return JSONResponse({"error": "Sem titulo B ainda. Gere primeiro."}, status_code=400)
+
+    new_a = idea["title_b"]
+    new_b = idea["title"]
+    update_idea_title(int(idea_id), new_a, title_b=new_b)
+    return JSONResponse({"ok": True, "title_a": new_a, "title_b": new_b})

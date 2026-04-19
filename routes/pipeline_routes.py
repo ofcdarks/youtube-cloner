@@ -311,7 +311,16 @@ REGRAS OBRIGATORIAS DO YOUTUBE:
 - Titulos curtos NAO performam — use frases completas com numeros, emocao, curiosidade e open loops
 - NUNCA gerar titulos com menos de 70 caracteres
 
-Retorne JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
+TESTE A/B (CRITICO pra regra de 4 horas):
+Pra CADA ideia gera DOIS titulos (title_a e title_b) sobre o MESMO assunto mas usando
+ANGULOS DIFERENTES — pra que se o primeiro nao trouxer impressoes nas 4h iniciais,
+o aluno troque pelo segundo. Angulos opostos funcionam melhor:
+- title_a = angulo CURIOSITY GAP (promessa/mistério, ex "O metodo que NINGUEM te contou sobre X")
+- title_b = angulo NUMERO ESPECIFICO (dado concreto, ex "Fiz isso por 47 dias e o resultado foi X")
+OU title_a = PERGUNTA vs title_b = AFIRMACAO, title_a = IDENTIDADE vs title_b = CONTRASTE.
+Ambos devem ter 70-100 chars e ser sobre o MESMO VIDEO — so muda o angulo de ataque.
+
+Retorne JSON: [{{"title_a":"...","title_b":"...","hook":"...","summary":"...","pillar":"nome do sub-nicho","priority":"ALTA"}}]
 O campo "pillar" DEVE ser o nome do sub-nicho correspondente.
 Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{lang_instruction}"""
 
@@ -328,11 +337,16 @@ Misture: ~10 ALTA, ~12 MEDIA, ~8 BAIXA. Titulos VIRAIS. Retorne APENAS o JSON.{l
             try:
                 ideas_list = json.loads(titles_json_match.group())
                 for i, idea in enumerate(ideas_list[:30]):
-                    title = idea.get("title", f"Titulo {i+1}")
+                    # Compat: aceita tanto formato novo (title_a/title_b) quanto antigo (title)
+                    title_a = idea.get("title_a") or idea.get("title", f"Titulo {i+1}")
+                    title_b = idea.get("title_b", "")
                     # save_idea() enforces 100-char limit via enforce_title_limit()
-                    save_idea(project_id, i + 1, title,
-                             idea.get("hook", ""), idea.get("summary", ""),
-                             idea.get("pillar", ""), idea.get("priority", "MEDIA"))
+                    save_idea(project_id, i + 1, title_a,
+                             hook=idea.get("hook", ""),
+                             summary=idea.get("summary", ""),
+                             pillar=idea.get("pillar", ""),
+                             priority=idea.get("priority", "MEDIA"),
+                             title_b=title_b)
                     titles_generated += 1
             except (json.JSONDecodeError, Exception):
                 pass
