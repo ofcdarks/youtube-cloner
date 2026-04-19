@@ -1356,9 +1356,9 @@ window.__AB_SUBS = {{ ab_subs|default(0) }};
 window.__AB_THRESHOLDS = (function() {
     var s = window.__AB_SUBS || 0;
     // views = sinal minimo de distribuicao (nao exige volume — 10 views em 200 impressoes ja e 5% CTR saudavel)
-    if (s < 1000)      return { impressions: 200,  views: 5,   ctr: 2.0, retention: 35, tier: 'canal novo' };
-    if (s < 10000)     return { impressions: 500,  views: 15,  ctr: 3.0, retention: 38, tier: 'crescendo' };
-    if (s < 100000)    return { impressions: 1500, views: 50,  ctr: 4.0, retention: 40, tier: 'estabelecido' };
+    if (s < 1000)      return { impressions: 200,  views: 5,   ctr: 2.0, retention: 25, tier: 'canal novo' };
+    if (s < 10000)     return { impressions: 500,  views: 15,  ctr: 3.0, retention: 32, tier: 'crescendo' };
+    if (s < 100000)    return { impressions: 1500, views: 50,  ctr: 4.0, retention: 38, tier: 'estabelecido' };
     return                      { impressions: 5000, views: 150, ctr: 5.0, retention: 42, tier: 'consolidado' };
 })();
 window.__AB_SUBS = {{ ab_subs|default(0) }};
@@ -1522,7 +1522,7 @@ function render6hQuestions() {
         bool('impressions_ok', '1. Teve mais de ' + TH.impressions.toLocaleString('pt-BR') + ' impressões?', 'Studio → Analytics → Impressões') +
         bool('views_ok', '2. Teve pelo menos ' + TH.views.toLocaleString('pt-BR') + ' views?', 'Mesmo poucas views ja e sinal valido — ex: 10 views em 200 impressoes = 5% CTR saudavel.') +
         bool('ctr_ok', '3. CTR está acima de ' + TH.ctr.toFixed(1) + '% (ou acima da media do canal)?', 'Studio → Analytics → "Taxa de cliques das impressões". Canal novo costuma ter CTR baixo — YouTube ainda esta testando publico.') +
-        bool('retention_ok', '4. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo');
+        bool('retention_ok', '4. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo. Canal novo ainda esta achando voz — 25-30% e aceitavel.');
 
     // Recomendação lógica
     var allAnswered = ['impressions_ok', 'views_ok', 'ctr_ok', 'retention_ok'].every(function(k) { return a[k] !== undefined; });
