@@ -1306,6 +1306,15 @@ function updateCalendar() {
 /* Janela A/B calculada pelo backend baseada em subs do canal — NAO configuravel pelo aluno */
 window.__AB_WINDOW_HOURS = {{ ab_window_hours|default(6) }};
 window.__AB_SUBS = {{ ab_subs|default(0) }};
+// Thresholds dinamicos por tamanho do canal (nicho tem benchmark proprio — aluno compara com "media do canal" no Studio)
+window.__AB_THRESHOLDS = (function() {
+    var s = window.__AB_SUBS || 0;
+    if (s < 1000)      return { impressions: 200,  ctr: 2.0, retention: 35, tier: 'canal novo' };
+    if (s < 10000)     return { impressions: 500,  ctr: 3.0, retention: 38, tier: 'crescendo' };
+    if (s < 100000)    return { impressions: 1500, ctr: 4.0, retention: 40, tier: 'estabelecido' };
+    return                      { impressions: 5000, ctr: 5.0, retention: 42, tier: 'consolidado' };
+})();
+window.__AB_SUBS = {{ ab_subs|default(0) }};
 
 function formatAgo(ms) {
     var h = Math.floor(ms / 3600000);
@@ -1458,10 +1467,14 @@ function render6hQuestions() {
             '<div style="display:flex;gap:6px">' + btn(true, 'Sim', '#22c55e') + btn(false, 'Não', '#ef4444') + '</div></div>';
     }
 
-    q.innerHTML =
-        bool('impressions_ok', '1. Teve mais de 500 impressões?', 'Studio → Analytics → Impressões') +
-        bool('ctr_ok', '2. CTR está acima de 4%?', 'Studio → Analytics → "Taxa de cliques das impressões"') +
-        bool('retention_ok', '3. Retenção média acima de 40%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo');
+    var TH = window.__AB_THRESHOLDS || { impressions: 500, ctr: 4.0, retention: 40, tier: 'padrao' };
+    var tierHint = '<div style="font-size:10px;color:#a78bfa;margin-bottom:10px;padding:6px 10px;border-radius:5px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2)">' +
+        '&#128200; Thresholds ajustados pro seu canal (<strong>' + TH.tier + '</strong> — ' + (window.__AB_SUBS||0).toLocaleString('pt-BR') + ' subs). ' +
+        'Compare tambem com a <strong>media do canal</strong> no Studio — e o benchmark real do seu nicho.</div>';
+    q.innerHTML = tierHint +
+        bool('impressions_ok', '1. Teve mais de ' + TH.impressions.toLocaleString('pt-BR') + ' impressões?', 'Studio → Analytics → Impressões') +
+        bool('ctr_ok', '2. CTR está acima de ' + TH.ctr.toFixed(1) + '% (ou acima da media do canal)?', 'Studio → Analytics → "Taxa de cliques das impressões". Canal novo costuma ter CTR baixo — YouTube ainda esta testando publico.') +
+        bool('retention_ok', '3. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo');
 
     // Recomendação lógica
     var allAnswered = ['impressions_ok', 'ctr_ok', 'retention_ok'].every(function(k) { return a[k] !== undefined; });
@@ -1472,7 +1485,10 @@ function render6hQuestions() {
         decision = 'wait_more_data';
         label = '⏳ Aguardar mais 2h';
         color = '#fbbf24';
-        rationale = 'Impressões baixas demais (<500) pra decisão confiável. Volte às 8h pós-publicação.';
+        var sTier = (window.__AB_THRESHOLDS && window.__AB_THRESHOLDS.tier) || '';
+        rationale = 'Impressoes baixas demais (<' + (TH.impressions).toLocaleString('pt-BR') + ') pra decisao confiavel. ' +
+            (sTier === 'canal novo' ? 'Canal novo demora pra YouTube achar publico — espere mais tempo antes de mexer. ' : '') +
+            'Volte em ~2h.';
     } else if (!a.retention_ok) {
         decision = 'content_problem';
         label = '⚠ Não trocar título';
