@@ -728,8 +728,37 @@ function renderPublishedTabs() {
     var cards = Array.from(cardsWrap.querySelectorAll('.published-card'));
     if (cards.length === 0) { container.style.display = 'none'; return; }
 
+    // Sort cards desc by completed_at (newest first)
+    cards.sort(function(a, b) {
+        var da = new Date(a.dataset.completed || 0).getTime() || 0;
+        var db = new Date(b.dataset.completed || 0).getTime() || 0;
+        return db - da;
+    });
+    cards.forEach(function(c) { cardsWrap.appendChild(c); });
+
+    // Colapsa variante B por padrao na coluna publicado (economiza espaco)
+    cards.forEach(function(c) {
+        var ab = c.querySelector('.ab-title');
+        if (ab && !ab.dataset.collapsed) {
+            ab.dataset.collapsed = '1';
+            var originalHTML = ab.innerHTML;
+            ab.dataset.originalHtml = originalHTML;
+            ab.style.cursor = 'pointer';
+            ab.innerHTML = '<div style="font-size:10px;color:#64748b;display:flex;align-items:center;gap:6px;padding:2px 0">&#9002; Ver variante B</div>';
+            ab.onclick = function(e) {
+                e.stopPropagation();
+                if (ab.dataset.collapsed === '1') {
+                    ab.innerHTML = ab.dataset.originalHtml;
+                    ab.dataset.collapsed = '0';
+                    ab.onclick = null;
+                    ab.style.cursor = '';
+                }
+            };
+        }
+    });
+
     var monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    var groups = {};  // key YYYY-MM → { label, cards: [] }
+    var groups = {};
     var noDateCards = [];
     cards.forEach(function(c) {
         var d = c.dataset.completed;
@@ -740,12 +769,31 @@ function renderPublishedTabs() {
         if (!groups[key]) groups[key] = { label: monthNames[dt.getMonth()] + '/' + dt.getFullYear(), cards: [] };
         groups[key].cards.push(c);
     });
-    var keys = Object.keys(groups).sort().reverse();
-    if (noDateCards.length) keys.push('__nodate__');
-    if (keys.length <= 1 && noDateCards.length === 0) { container.style.display = 'none'; return; }
+    var monthKeys = Object.keys(groups).sort().reverse();
+    var hasMultipleMonths = monthKeys.length > 1;
+    var manyCards = cards.length >= 5;
 
+    // Se tem 1 mês só e poucos cards, nao mostra tabs
+    if (!hasMultipleMonths && !manyCards && noDateCards.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
     container.innerHTML = '';
-    var activeKey = keys[0];
+
+    // Tab "Recentes" (top 5) sempre que tem >= 5 cards
+    var tabs = [];
+    if (manyCards) {
+        tabs.push({ key: '__recent__', label: 'Recentes', cards: cards.slice(0, 5) });
+    }
+    monthKeys.forEach(function(k) {
+        tabs.push({ key: k, label: groups[k].label, cards: groups[k].cards });
+    });
+    if (noDateCards.length) tabs.push({ key: '__nodate__', label: 'Sem data', cards: noDateCards });
+    tabs.push({ key: '__all__', label: 'Todos', cards: cards });
+
+    var activeKey = tabs[0].key;
     function paint() {
         cards.forEach(function(c) { c.style.display = 'none'; });
         container.querySelectorAll('.pub-tab').forEach(function(t) {
@@ -754,20 +802,18 @@ function renderPublishedTabs() {
             t.style.color = isActive ? '#4caf50' : '#94a3b8';
             t.style.borderColor = isActive ? 'rgba(76,175,80,0.5)' : '#334155';
         });
-        var list = activeKey === '__nodate__' ? noDateCards : (groups[activeKey] ? groups[activeKey].cards : []);
-        list.forEach(function(c) { c.style.display = ''; });
+        var active = tabs.find(function(t) { return t.key === activeKey; });
+        if (active) active.cards.forEach(function(c) { c.style.display = ''; });
     }
-    keys.forEach(function(k) {
-        var label = k === '__nodate__' ? 'Sem data' : groups[k].label;
-        var count = k === '__nodate__' ? noDateCards.length : groups[k].cards.length;
-        var tab = document.createElement('button');
-        tab.type = 'button';
-        tab.className = 'pub-tab';
-        tab.dataset.key = k;
-        tab.style.cssText = 'padding:4px 10px;border-radius:6px;border:1px solid #334155;background:rgba(255,255,255,0.03);color:#94a3b8;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px';
-        tab.innerHTML = label + ' <span style="font-size:9px;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:8px">' + count + '</span>';
-        tab.onclick = function() { activeKey = k; paint(); };
-        container.appendChild(tab);
+    tabs.forEach(function(t) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pub-tab';
+        btn.dataset.key = t.key;
+        btn.style.cssText = 'padding:4px 9px;border-radius:6px;border:1px solid #334155;background:rgba(255,255,255,0.03);color:#94a3b8;font-size:10.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap';
+        btn.innerHTML = t.label + ' <span style="font-size:9px;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:8px">' + t.cards.length + '</span>';
+        btn.onclick = function() { activeKey = t.key; paint(); };
+        container.appendChild(btn);
     });
     paint();
 }
