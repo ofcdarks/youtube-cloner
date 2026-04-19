@@ -471,14 +471,25 @@
             </div>
             <div class="kanban-col" ondrop="dropCard(event, 'published')" ondragover="event.preventDefault()">
                 <div class="kanban-col-header" style="background:#4caf5020;color:#4caf50">&#10003; Publicado <span class="col-count">{{ kanban.published|length }}</span></div>
+                <div id="published-tabs" style="display:flex;gap:4px;flex-wrap:wrap;margin:0 0 8px;padding:0 2px"></div>
+                <div id="published-cards">
                 {% for item in kanban.published %}
-                <div class="kanban-card" id="card-{{ item.id }}">
+                <div class="kanban-card published-card" id="card-{{ item.id }}" data-completed="{{ item.completed_at or '' }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     {% include '_ab_title_block.html' %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.video_url %}<a href="{{ item.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.75em">&#127909; Assistir</a>{% endif %}</div>
-                    {% if not item.video_url and not readonly %}<div class="kanban-card-actions" style="width:100%"><button class="btn-link" onclick="addVideoLink({{ item.id }})" style="width:100%;padding:6px">&#128279; Adicionar Link do Video Publicado</button></div>{% endif %}
+                    {% if not readonly %}
+                    <div class="kanban-card-actions" style="width:100%">
+                    {% if not item.video_url %}
+                        <button class="btn-link" onclick="addVideoLink({{ item.id }})" style="width:100%;padding:6px">&#128279; Adicionar Link do Video Publicado</button>
+                    {% else %}
+                        <button class="btn-link" onclick="editVideoLink({{ item.id }}, '{{ item.video_url|e }}')" style="width:100%;padding:6px;font-size:.75em;color:#94a3b8">&#9998; Corrigir link do video</button>
+                    {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -687,6 +698,80 @@ function showPublishDialog(progressId) {
         .catch(e => showToast('Erro: ' + e.message, 'error'));
     });
 }
+
+function editVideoLink(progressId, currentUrl) {
+    showInput('Corrigir Link do Video', [
+        {name: 'video_url', label: 'Link do YouTube', placeholder: 'https://youtube.com/watch?v=...', default: currentUrl || ''},
+    ], function(values) {
+        if (!values.video_url) { showToast('Informe o link', 'warning'); return; }
+        apiFetch('/api/student/update-progress', {
+            method: 'POST',
+            body: JSON.stringify({progress_id: progressId, status: 'published', video_url: values.video_url})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                showToast('Link atualizado!', 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(e => showToast('Erro: ' + e.message, 'error'));
+    });
+}
+
+function renderPublishedTabs() {
+    var container = document.getElementById('published-tabs');
+    var cardsWrap = document.getElementById('published-cards');
+    if (!container || !cardsWrap) return;
+    var cards = Array.from(cardsWrap.querySelectorAll('.published-card'));
+    if (cards.length === 0) { container.style.display = 'none'; return; }
+
+    var monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    var groups = {};  // key YYYY-MM → { label, cards: [] }
+    var noDateCards = [];
+    cards.forEach(function(c) {
+        var d = c.dataset.completed;
+        if (!d) { noDateCards.push(c); return; }
+        var dt = new Date(d);
+        if (isNaN(dt.getTime())) { noDateCards.push(c); return; }
+        var key = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
+        if (!groups[key]) groups[key] = { label: monthNames[dt.getMonth()] + '/' + dt.getFullYear(), cards: [] };
+        groups[key].cards.push(c);
+    });
+    var keys = Object.keys(groups).sort().reverse();
+    if (noDateCards.length) keys.push('__nodate__');
+    if (keys.length <= 1 && noDateCards.length === 0) { container.style.display = 'none'; return; }
+
+    container.innerHTML = '';
+    var activeKey = keys[0];
+    function paint() {
+        cards.forEach(function(c) { c.style.display = 'none'; });
+        container.querySelectorAll('.pub-tab').forEach(function(t) {
+            var isActive = t.dataset.key === activeKey;
+            t.style.background = isActive ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.03)';
+            t.style.color = isActive ? '#4caf50' : '#94a3b8';
+            t.style.borderColor = isActive ? 'rgba(76,175,80,0.5)' : '#334155';
+        });
+        var list = activeKey === '__nodate__' ? noDateCards : (groups[activeKey] ? groups[activeKey].cards : []);
+        list.forEach(function(c) { c.style.display = ''; });
+    }
+    keys.forEach(function(k) {
+        var label = k === '__nodate__' ? 'Sem data' : groups[k].label;
+        var count = k === '__nodate__' ? noDateCards.length : groups[k].cards.length;
+        var tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'pub-tab';
+        tab.dataset.key = k;
+        tab.style.cssText = 'padding:4px 10px;border-radius:6px;border:1px solid #334155;background:rgba(255,255,255,0.03);color:#94a3b8;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px';
+        tab.innerHTML = label + ' <span style="font-size:9px;background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:8px">' + count + '</span>';
+        tab.onclick = function() { activeKey = k; paint(); };
+        container.appendChild(tab);
+    });
+    paint();
+}
+document.addEventListener('DOMContentLoaded', renderPublishedTabs);
 
 function addVideoLink(progressId) {
     showInput('Adicionar Link do Video', [
