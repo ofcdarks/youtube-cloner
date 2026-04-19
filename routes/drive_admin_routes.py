@@ -527,7 +527,23 @@ async def api_create_student_drive(request: Request, user=Depends(require_admin)
         })
     except Exception as e:
         logger.error(f"create-student-drive error: {e}", exc_info=True)
-        return JSONResponse({"error": "Falha ao criar pasta Drive. Verifique a conexao Google Drive."}, status_code=500)
+        # Expoe a causa real — admin precisa saber se e re-autenticar OAuth ou outra coisa.
+        # Heuristica pra identificar erro de token (comum depois de reset de client secret).
+        msg = str(e)
+        low = msg.lower()
+        needs_reauth = any(k in low for k in [
+            "invalid_client", "invalid_grant", "token", "oauth", "refresh",
+            "nao conectado", "nao autorizado", "credentials",
+        ])
+        if needs_reauth:
+            return JSONResponse({
+                "error": f"Conexao Google Drive precisa ser renovada: {msg[:200]}",
+                "action": "reconnect_drive",
+                "hint": "Va em Admin Panel > Google Drive > Conectar (ou /api/admin/gdrive/auth) pra autorizar com as credenciais novas.",
+            }, status_code=500)
+        return JSONResponse({
+            "error": f"Falha ao criar pasta Drive: {msg[:200]}",
+        }, status_code=500)
 
 
 @router.post("/api/admin/sync-student-drive")
