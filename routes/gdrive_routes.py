@@ -31,23 +31,25 @@ def _get_redirect_uri(request: Request) -> str:
     return f"{scheme}://{host}/api/admin/gdrive/callback"
 
 
+def _clean_env(name: str) -> str:
+    """Lê env var aplicando strip — previne invalid_client por trailing whitespace/newline."""
+    import os as _os
+    return _os.environ.get(name, "").strip()
+
+
 def _has_credentials() -> bool:
     """Check if we have valid Google client credentials configured."""
-    # Check at runtime (not import time) in case env vars are loaded late
     from config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
     if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
         return True
-    # Also check os.environ directly as fallback
-    import os
-    return bool(os.environ.get("GOOGLE_CLIENT_ID") and os.environ.get("GOOGLE_CLIENT_SECRET"))
+    return bool(_clean_env("GOOGLE_CLIENT_ID") and _clean_env("GOOGLE_CLIENT_SECRET"))
 
 
 def _get_client_config() -> dict:
-    """Get Google OAuth client config from config.py or env vars."""
+    """Get Google OAuth client config from config.py or env vars (strip sempre aplicado)."""
     from config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-    import os
-    cid = GOOGLE_CLIENT_ID or os.environ.get("GOOGLE_CLIENT_ID", "")
-    csec = GOOGLE_CLIENT_SECRET or os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    cid = (GOOGLE_CLIENT_ID or _clean_env("GOOGLE_CLIENT_ID")).strip()
+    csec = (GOOGLE_CLIENT_SECRET or _clean_env("GOOGLE_CLIENT_SECRET")).strip()
     return {
         "web": {
             "client_id": cid,
@@ -56,6 +58,98 @@ def _get_client_config() -> dict:
             "token_uri": "https://oauth2.googleapis.com/token",
         }
     }
+
+
+@router.get("/diagnose")
+async def gdrive_diagnose(request: Request, user=Depends(require_admin)):
+    """
+    Diagnóstico detalhado das credenciais OAuth:
+    - Mostra client_id/secret mascarados (permite validar visualmente sem expor)
+    - Detecta whitespace/newline no valor (causa #1 de invalid_client silencioso)
+    - Testa o par contra o endpoint real do Google e retorna o erro específico
+    """
+    import os as _os
+    import httpx
+
+    cfg = _get_client_config()["web"]
+    cid = cfg["client_id"]
+    csec = cfg["client_secret"]
+
+    raw_cid = _os.environ.get("GOOGLE_CLIENT_ID", "")
+    raw_csec = _os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    raw_redir = _os.environ.get("GOOGLE_REDIRECT_URI", "")
+
+    def _mask(s: str) -> str:
+        if not s:
+            return "(vazio)"
+        if len(s) <= 12:
+            return s[:3] + "..." + s[-2:]
+        return s[:8] + "..." + s[-4:]
+
+    def _inspect(s: str) -> dict:
+        return {
+            "length": len(s),
+            "has_trailing_whitespace": bool(s) and s != s.strip(),
+            "has_internal_newline": "\n" in s or "\r" in s,
+            "has_quotes": s.startswith(("'", '"')) or s.endswith(("'", '"')),
+        }
+
+    # Teste contra Google: usa code inválido de propósito; se o secret for válido,
+    # Google responde 400 com "invalid_grant"; se inválido, 401 com "invalid_client".
+    probe = {"ok": False, "http_status": None, "error": None, "error_description": None}
+    if cid and csec:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "client_id": cid,
+                        "client_secret": csec,
+                        "grant_type": "authorization_code",
+                        "code": "diagnostic-probe-intentionally-invalid",
+                        "redirect_uri": cfg.get("redirect_uri") or raw_redir or "http://localhost",
+                    },
+                )
+                probe["http_status"] = r.status_code
+                body = {}
+                try:
+                    body = r.json()
+                except Exception:
+                    body = {"raw": r.text[:200]}
+                probe["error"] = body.get("error")
+                probe["error_description"] = body.get("error_description")
+                # invalid_grant = secret OK, code é que é fake (esperado)
+                probe["ok"] = body.get("error") == "invalid_grant"
+        except Exception as e:
+            probe["error"] = "network_error"
+            probe["error_description"] = str(e)
+
+    verdict = "ok" if probe["ok"] else "credentials_invalid" if probe["error"] == "invalid_client" else "unknown"
+
+    return JSONResponse({
+        "verdict": verdict,
+        "client_id": {
+            "masked": _mask(cid),
+            "raw_inspect": _inspect(raw_cid),
+            "cleaned_matches_raw": raw_cid.strip() == cid,
+        },
+        "client_secret": {
+            "masked": _mask(csec),
+            "raw_inspect": _inspect(raw_csec),
+            "cleaned_matches_raw": raw_csec.strip() == csec,
+            "starts_with_gocspx": csec.startswith("GOCSPX-"),
+        },
+        "redirect_uri": {
+            "value": cfg.get("redirect_uri") or raw_redir,
+            "raw_inspect": _inspect(raw_redir),
+        },
+        "google_probe": probe,
+        "hint": {
+            "ok": "Credenciais validas. Se OAuth ainda falha, cheque se redirect_uri bate com o Google Console.",
+            "credentials_invalid": "Google rejeitou o par CLIENT_ID + CLIENT_SECRET. Causa: secret rotacionado/deletado no Cloud Console. Va em APIs & Services -> Credentials -> Reset Secret e atualize no EasyPanel.",
+            "unknown": "Erro inesperado. Veja google_probe.error_description.",
+        }.get(verdict, ""),
+    })
 
 
 @router.get("/status")
