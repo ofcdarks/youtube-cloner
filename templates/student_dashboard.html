@@ -1355,10 +1355,10 @@ window.__AB_SUBS = {{ ab_subs|default(0) }};
 // Thresholds dinamicos por tamanho do canal (nicho tem benchmark proprio — aluno compara com "media do canal" no Studio)
 window.__AB_THRESHOLDS = (function() {
     var s = window.__AB_SUBS || 0;
-    if (s < 1000)      return { impressions: 200,  ctr: 2.0, retention: 35, tier: 'canal novo' };
-    if (s < 10000)     return { impressions: 500,  ctr: 3.0, retention: 38, tier: 'crescendo' };
-    if (s < 100000)    return { impressions: 1500, ctr: 4.0, retention: 40, tier: 'estabelecido' };
-    return                      { impressions: 5000, ctr: 5.0, retention: 42, tier: 'consolidado' };
+    if (s < 1000)      return { impressions: 200,  views: 20,  ctr: 2.0, retention: 35, tier: 'canal novo' };
+    if (s < 10000)     return { impressions: 500,  views: 50,  ctr: 3.0, retention: 38, tier: 'crescendo' };
+    if (s < 100000)    return { impressions: 1500, views: 200, ctr: 4.0, retention: 40, tier: 'estabelecido' };
+    return                      { impressions: 5000, views: 500, ctr: 5.0, retention: 42, tier: 'consolidado' };
 })();
 window.__AB_SUBS = {{ ab_subs|default(0) }};
 
@@ -1519,20 +1519,23 @@ function render6hQuestions() {
         'Compare tambem com a <strong>media do canal</strong> no Studio — e o benchmark real do seu nicho.</div>';
     q.innerHTML = tierHint +
         bool('impressions_ok', '1. Teve mais de ' + TH.impressions.toLocaleString('pt-BR') + ' impressões?', 'Studio → Analytics → Impressões') +
-        bool('ctr_ok', '2. CTR está acima de ' + TH.ctr.toFixed(1) + '% (ou acima da media do canal)?', 'Studio → Analytics → "Taxa de cliques das impressões". Canal novo costuma ter CTR baixo — YouTube ainda esta testando publico.') +
-        bool('retention_ok', '3. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo');
+        bool('views_ok', '2. Teve pelo menos ' + TH.views.toLocaleString('pt-BR') + ' views?', 'Se tem views mesmo com impressoes baixas, o algoritmo ja validou — da pra decidir normal.') +
+        bool('ctr_ok', '3. CTR está acima de ' + TH.ctr.toFixed(1) + '% (ou acima da media do canal)?', 'Studio → Analytics → "Taxa de cliques das impressões". Canal novo costuma ter CTR baixo — YouTube ainda esta testando publico.') +
+        bool('retention_ok', '4. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo');
 
     // Recomendação lógica
-    var allAnswered = ['impressions_ok', 'ctr_ok', 'retention_ok'].every(function(k) { return a[k] !== undefined; });
+    var allAnswered = ['impressions_ok', 'views_ok', 'ctr_ok', 'retention_ok'].every(function(k) { return a[k] !== undefined; });
     if (!allAnswered) { verdict.innerHTML = ''; return; }
 
     var decision, label, color, rationale;
-    if (!a.impressions_ok) {
+    // Views overrides impressions — se tem views, algoritmo ja distribuiu e da pra decidir
+    var hasEnoughData = a.impressions_ok || a.views_ok;
+    if (!hasEnoughData) {
         decision = 'wait_more_data';
         label = '⏳ Aguardar mais 2h';
         color = '#fbbf24';
         var sTier = (window.__AB_THRESHOLDS && window.__AB_THRESHOLDS.tier) || '';
-        rationale = 'Impressoes baixas demais (<' + (TH.impressions).toLocaleString('pt-BR') + ') pra decisao confiavel. ' +
+        rationale = 'Sem dados suficientes (impressoes <' + (TH.impressions).toLocaleString('pt-BR') + ' e views <' + (TH.views).toLocaleString('pt-BR') + '). ' +
             (sTier === 'canal novo' ? 'Canal novo demora pra YouTube achar publico — espere mais tempo antes de mexer. ' : '') +
             'Volte em ~2h.';
     } else if (!a.retention_ok) {
