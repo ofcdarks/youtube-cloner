@@ -26,8 +26,41 @@
     <div class="section">
         <div class="section-title" style="justify-content:space-between">
             <span><span class="sec-icon">&#128101;</span> Alunos Mentorados</span>
-            <button class="btn-primary btn-solid-primary" onclick="showCreateStudentModal()">+ Criar Aluno</button>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button type="button" onclick="backfillAllStudentsB()"
+                    style="padding:7px 14px;border-radius:6px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer" title="Gera title_b em todas as ideas dos alunos que ainda nao tem — mantem as que ja tem">
+                    &#9878; Gerar Variante B (todos)
+                </button>
+                <span id="backfill-students-b-status" style="font-size:11px;color:#a78bfa"></span>
+                <button class="btn-primary btn-solid-primary" onclick="showCreateStudentModal()">+ Criar Aluno</button>
+            </div>
         </div>
+        <script>
+        function backfillAllStudentsB() {
+            showConfirm('Gerar Variante B pra todos os alunos',
+                'Vai gerar title_b via IA para todas as ideas (de todos os alunos) que ainda NAO tem variante B. O que ja tem sera mantido. Pode consumir tokens e levar alguns minutos. Continuar?',
+                function() {
+                    var status = document.getElementById('backfill-students-b-status');
+                    if (status) status.textContent = '⏳ Gerando... aguarde';
+                    apiPost('/api/admin/backfill-titles-b', { max: 200 })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (!data.ok) {
+                                showToast('Erro: ' + (data.error || 'falha'), 'error', 6000);
+                                if (status) status.textContent = '';
+                                return;
+                            }
+                            var msg = '✓ ' + data.generated + ' gerados, ' + (data.failed || 0) + ' falhas (' + data.total_candidates + ' candidatos)';
+                            showToast(msg, 'success', 6000);
+                            if (status) status.textContent = msg;
+                        })
+                        .catch(function(e) {
+                            showToast('Erro: ' + e.message, 'error', 6000);
+                            if (status) status.textContent = '';
+                        });
+                });
+        }
+        </script>
 
         {% if students %}
         <table class="admin-table">

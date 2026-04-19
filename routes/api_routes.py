@@ -9,7 +9,7 @@ import logging
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 
-from auth import require_auth
+from auth import require_auth, require_admin
 from config import OUTPUT_DIR, MAX_TOKENS_LARGE, MAX_TOKENS_MEDIUM, MAX_IDEAS_PER_REQUEST
 from services import sanitize_niche_name
 from rate_limit import limiter
@@ -1442,3 +1442,95 @@ Retorne APENAS JSON: [{{"title":"...","hook":"...","summary":"...","pillar":"...
             {"error": f"Falha inesperada ao clonar: {str(e)[:200]}"},
             status_code=500,
         )
+
+
+def _generate_title_b_for_idea(idea: dict) -> str:
+    """Gera title_b via IA pra uma idea. Retorna string (vazia se falhar)."""
+    from protocols.ai_client import chat
+    lang = idea.get("language") or "pt-BR"
+    lang_hint = {"pt-BR": "PT-BR", "en": "English", "es": "Espanol"}.get(lang, lang)
+    prompt = f"""Voce recebe o TITULO A de um video YouTube. Gere o TITULO B — mesmo video, mas com ANGULO COMPLETAMENTE DIFERENTE pra teste A/B.
+
+TITULO A: "{idea.get('title','')}"
+HOOK: {idea.get('hook', '')}
+RESUMO: {idea.get('summary', '')}
+NICHO: {idea.get('niche_chosen') or idea.get('proj_name', '')}
+
+Regras:
+- Mesmo conteudo/tema que A — NAO inventar outro video
+- Angulo OPOSTO: se A for curiosity-gap, B numero-especifico; A pergunta, B afirmacao; A identidade, B contraste
+- 70-100 chars (mesmo range do A)
+- Idioma: {lang_hint}
+- Mesmo formato de CAPS/emoji/pontuacao que A
+
+Retorne APENAS o titulo B, sem aspas, sem prefixo, sem markdown."""
+    try:
+        result = chat(prompt, system="Especialista em CTR YouTube. Resposta curta.", max_tokens=120, temperature=0.7).strip()
+        result = result.strip('"\'`').strip()
+        if result and len(result) >= 20 and len(result) <= 120:
+            return result
+    except Exception as e:
+        logger.warning(f"_generate_title_b_for_idea failed: {e}")
+    return ""
+
+
+@router.post("/api/admin/backfill-titles-b")
+@limiter.limit("2/minute")
+async def api_backfill_titles_b(request: Request, user=Depends(require_admin)):
+    """Gera title_b em massa para ideas que nao tem.
+
+    Filtros opcionais no body:
+    - project_id: limita a um projeto especifico
+    - student_id: limita a ideas de projetos atribuidos a um aluno
+    - max: limite de quantas processar (default 100, evita estourar quota)
+
+    Respeita ideas que ja tem title_b (nao sobrescreve)."""
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    project_id = body.get("project_id")
+    student_id = body.get("student_id")
+    max_items = min(int(body.get("max", 100)), 500)
+
+    from database import get_db, update_idea_title
+
+    sql = """SELECT i.id, i.title, i.title_b, i.hook, i.summary, i.pillar,
+                    p.language, p.niche_chosen, p.name AS proj_name, p.id AS project_id
+             FROM ideas i
+             JOIN projects p ON p.id = i.project_id
+             WHERE (i.title_b IS NULL OR i.title_b = '')"""
+    params: list = []
+    if project_id:
+        sql += " AND i.project_id = ?"
+        params.append(str(project_id))
+    if student_id:
+        sql += " AND i.project_id IN (SELECT project_id FROM assignments WHERE student_id = ?)"
+        params.append(int(student_id))
+    sql += " ORDER BY i.id DESC LIMIT ?"
+    params.append(max_items)
+
+    with get_db() as conn:
+        rows = conn.execute(sql, tuple(params)).fetchall()
+
+    ideas = [dict(r) for r in rows]
+    if not ideas:
+        return JSONResponse({"ok": True, "processed": 0, "message": "Nenhuma idea precisa de title_b."})
+
+    ok_count = 0
+    fail_count = 0
+    for idea in ideas:
+        b = _generate_title_b_for_idea(idea)
+        if b:
+            # Trunca pra limite YouTube
+            if len(b) > 100:
+                b = b[:97] + "..."
+            update_idea_title(int(idea["id"]), idea["title"], title_b=b)
+            ok_count += 1
+        else:
+            fail_count += 1
+
+    return JSONResponse({
+        "ok": True,
+        "processed": ok_count + fail_count,
+        "generated": ok_count,
+        "failed": fail_count,
+        "total_candidates": len(ideas),
+    })

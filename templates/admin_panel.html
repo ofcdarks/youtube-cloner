@@ -52,6 +52,54 @@
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
 
     <!-- API Keys -->
+    <!-- A/B Backfill Tool -->
+    <div class="section" style="border:1px solid rgba(167,139,250,0.3);background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(59,130,246,0.04))">
+        <div class="section-title"><span class="sec-icon">&#9878;</span> Variante B — Backfill em Massa</div>
+        <div style="padding:14px 16px;">
+            <div style="font-size:12.5px;color:#cbd5e1;line-height:1.55;margin-bottom:12px">
+                Gera <strong>title_b</strong> via IA para todas as ideas <strong>sem variante B</strong>. Mantem as que ja tem — <strong>nao sobrescreve</strong>.
+                Use depois de pipelines antigos (pre-v10) ou quando liberar novos titulos pros alunos.
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <button type="button" onclick="backfillTitlesB(null)"
+                    style="padding:9px 16px;border-radius:7px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(124,58,237,0.3)">
+                    &#9889; Gerar B de TODAS as ideas
+                </button>
+                <span style="font-size:10.5px;color:#64748b">Processa ate 100 por vez. Pode repetir ate zerar.</span>
+                <span id="backfill-b-status" style="font-size:11.5px;color:#a78bfa;margin-left:auto"></span>
+            </div>
+        </div>
+    </div>
+    <script>
+    function backfillTitlesB(studentId) {
+        var label = studentId ? 'ideas do aluno #' + studentId : 'TODAS as ideas sem variante B';
+        showConfirm('Gerar Variante B em massa',
+            'Vai gerar title_b via IA para ' + label + ' (ate 100). Pode consumir tokens. Continuar?',
+            function() {
+                var status = document.getElementById('backfill-b-status');
+                if (status) status.textContent = '⏳ Gerando... (pode levar 2-5 min)';
+                var payload = {};
+                if (studentId) payload.student_id = studentId;
+                apiPost('/api/admin/backfill-titles-b', payload)
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (!data.ok) {
+                            showToast('Erro: ' + (data.error || 'falha'), 'error', 6000);
+                            if (status) status.textContent = '';
+                            return;
+                        }
+                        var msg = '✓ ' + data.generated + ' gerados, ' + (data.failed || 0) + ' falhas (de ' + data.total_candidates + ' candidatos)';
+                        showToast(msg, 'success', 6000);
+                        if (status) status.textContent = msg;
+                    })
+                    .catch(function(e) {
+                        showToast('Erro: ' + e.message, 'error', 6000);
+                        if (status) status.textContent = '';
+                    });
+            });
+    }
+    </script>
+
     <div class="section">
         <div class="section-title"><span class="sec-icon">&#128273;</span> Chaves de API</div>
         <div class="form-panel">
