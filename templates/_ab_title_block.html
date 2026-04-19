@@ -15,7 +15,7 @@
     {% if item.title_b %}
         <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#93c5fd;font-weight:700;margin-bottom:3px">
             <span>&#9878; VARIANTE B</span>
-            <span style="font-weight:400;color:#64748b">(regra 6h)</span>
+            <span style="font-weight:400;color:#64748b">(regra {{ ab_window_hours|default(6) }}h)</span>
         </div>
         <div style="font-size:11px;color:#cbd5e1;line-height:1.4;margin-bottom:5px">{{ item.title_b }}</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap">

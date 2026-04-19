@@ -408,21 +408,35 @@ async def _student_dashboard_inner(request: Request, view_as: int, channel: int,
     # ── Janela A/B calculada automaticamente pelo tamanho do canal ──
     # Regra de negocio (NAO configuravel pelo aluno): canais menores precisam
     # de ciclo mais rapido pra aproveitar a janela algoritmica curta.
-    ab_window_hours = 6  # default
+    ab_window_hours = 6  # default quando nao tem dados (nao assumir canal novo)
     active_subs = 0
+    has_subs_data = False
     try:
         if active_channel and active_channel.get("cached_stats"):
             import json as _json
             cs = _json.loads(active_channel["cached_stats"])
-            active_subs = int(cs.get("subscriberCount", 0) or 0)
-        if active_subs < 1000:
-            ab_window_hours = 4
-        elif active_subs < 10000:
-            ab_window_hours = 6
-        elif active_subs < 100000:
-            ab_window_hours = 8
-        else:
-            ab_window_hours = 12
+            # cached_stats salva aninhado: { channel: { subscribers: N } }
+            # mas aceita tambem formato flat (subscriberCount) pra compat.
+            raw_subs = (
+                cs.get("channel", {}).get("subscribers")
+                or cs.get("channel", {}).get("subscriberCount")
+                or cs.get("subscriberCount")
+                or cs.get("subscribers")
+                or 0
+            )
+            active_subs = int(raw_subs or 0)
+            has_subs_data = active_subs > 0
+        # So aplica faixas quando temos dados reais — senao mantem 6h default
+        # (evita falsamente classificar canal grande como "novo" por falta de cache)
+        if has_subs_data:
+            if active_subs < 1000:
+                ab_window_hours = 4
+            elif active_subs < 10000:
+                ab_window_hours = 6
+            elif active_subs < 100000:
+                ab_window_hours = 8
+            else:
+                ab_window_hours = 12
     except Exception:
         pass
 
