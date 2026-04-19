@@ -1355,11 +1355,14 @@ window.__AB_SUBS = {{ ab_subs|default(0) }};
 // Thresholds dinamicos por tamanho do canal (nicho tem benchmark proprio — aluno compara com "media do canal" no Studio)
 window.__AB_THRESHOLDS = (function() {
     var s = window.__AB_SUBS || 0;
-    // views = sinal minimo de distribuicao (nao exige volume — 10 views em 200 impressoes ja e 5% CTR saudavel)
-    if (s < 1000)      return { impressions: 200,  views: 5,   ctr: 2.0, retention: 25, tier: 'canal novo' };
-    if (s < 10000)     return { impressions: 500,  views: 15,  ctr: 3.0, retention: 32, tier: 'crescendo' };
-    if (s < 100000)    return { impressions: 1500, views: 50,  ctr: 4.0, retention: 38, tier: 'estabelecido' };
-    return                      { impressions: 5000, views: 150, ctr: 5.0, retention: 42, tier: 'consolidado' };
+    // Thresholds calibrados com benchmarks oficiais 2026 (Humble&Brag, RetentionRabbit, OutlierKit):
+    // - Canal novo tem CTR MAIOR no inicio (inscritos engajados), depois cai
+    // - Media plataforma: CTR 4-5%, retencao 23.7% (baixa); "bom" e 40-60%
+    // - Nicho educacional: retencao 42.1% avg; Gaming CTR 8.5%
+    if (s < 1000)      return { impressions: 150,  views: 5,   ctr: 3.0, retention: 25, tier: 'canal novo' };
+    if (s < 10000)     return { impressions: 400,  views: 15,  ctr: 3.5, retention: 32, tier: 'crescendo' };
+    if (s < 100000)    return { impressions: 1200, views: 40,  ctr: 4.5, retention: 40, tier: 'estabelecido' };
+    return                      { impressions: 4000, views: 120, ctr: 5.0, retention: 45, tier: 'consolidado' };
 })();
 window.__AB_SUBS = {{ ab_subs|default(0) }};
 
@@ -1515,17 +1518,19 @@ function render6hQuestions() {
     }
 
     var TH = window.__AB_THRESHOLDS || { impressions: 500, ctr: 4.0, retention: 40, tier: 'padrao' };
-    var tierHint = '<div style="font-size:10px;color:#a78bfa;margin-bottom:10px;padding:6px 10px;border-radius:5px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2)">' +
+    var tierHint = '<div style="font-size:10px;color:#a78bfa;margin-bottom:10px;padding:6px 10px;border-radius:5px;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);line-height:1.5">' +
         '&#128200; Thresholds ajustados pro seu canal (<strong>' + TH.tier + '</strong> — ' + (window.__AB_SUBS||0).toLocaleString('pt-BR') + ' subs). ' +
-        'Compare tambem com a <strong>media do canal</strong> no Studio — e o benchmark real do seu nicho.</div>';
+        'Compare tambem com a <strong>media do canal</strong> no Studio — e o benchmark real do seu nicho.<br>' +
+        '<span style="color:#64748b">&#9432; YouTube oficialmente recomenda 48-72h antes de trocar thumb/titulo. Esta metodologia (janela de ' + (window.__AB_WINDOW_HOURS||6) + 'h) e mais agressiva — so use se voce acompanha o video de perto e tem hipotese clara.</span></div>';
     q.innerHTML = tierHint +
         bool('impressions_ok', '1. Teve mais de ' + TH.impressions.toLocaleString('pt-BR') + ' impressões?', 'Studio → Analytics → Impressões') +
         bool('views_ok', '2. Teve pelo menos ' + TH.views.toLocaleString('pt-BR') + ' views?', 'Mesmo poucas views ja e sinal valido — ex: 10 views em 200 impressoes = 5% CTR saudavel.') +
-        bool('ctr_ok', '3. CTR está acima de ' + TH.ctr.toFixed(1) + '% (ou acima da media do canal)?', 'Studio → Analytics → "Taxa de cliques das impressões". Canal novo costuma ter CTR baixo — YouTube ainda esta testando publico.') +
-        bool('retention_ok', '4. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total do vídeo. Canal novo ainda esta achando voz — 25-30% e aceitavel.');
+        bool('ctr_ok', '3. CTR está acima de ' + TH.ctr.toFixed(1) + '% (ou acima da media do canal)?', 'Studio → Analytics → "Taxa de cliques das impressões". Benchmarks 2026: Search 8-15%, Suggested 5-10%, Browse 3.5-4.5%. Use a media do canal como referencia real.') +
+        bool('retention_ok', '4. Retenção média acima de ' + TH.retention + '%?', 'Studio → Analytics → "Duração média da visualização" ÷ duração total. Media plataforma: 23.7%. "Bom": 40-60%. Canal novo: 25-30% e aceitavel.') +
+        bool('first_min_ok', '5. Retencao do 1º minuto acima de 45%?', 'Sinal mais preditivo em 2026: "Quality CTR" — YouTube avalia os 30s pos-clique. Studio → Analytics → "Retencao de publico" → veja a curva no 0:00-1:00.');
 
     // Recomendação lógica
-    var allAnswered = ['impressions_ok', 'views_ok', 'ctr_ok', 'retention_ok'].every(function(k) { return a[k] !== undefined; });
+    var allAnswered = ['impressions_ok', 'views_ok', 'ctr_ok', 'retention_ok', 'first_min_ok'].every(function(k) { return a[k] !== undefined; });
     if (!allAnswered) { verdict.innerHTML = ''; return; }
 
     var decision, label, color, rationale;
@@ -1538,17 +1543,27 @@ function render6hQuestions() {
         var sTier = (window.__AB_THRESHOLDS && window.__AB_THRESHOLDS.tier) || '';
         rationale = 'Sem dados suficientes (impressoes <' + (TH.impressions).toLocaleString('pt-BR') + ' e views <' + (TH.views).toLocaleString('pt-BR') + '). ' +
             (sTier === 'canal novo' ? 'Canal novo demora pra YouTube achar publico — espere mais tempo antes de mexer. ' : '') +
-            'Volte em ~2h.';
+            'YouTube oficialmente recomenda 48-72h. Volte em ~2h.';
+    } else if (!a.first_min_ok && !a.retention_ok) {
+        decision = 'content_problem';
+        label = '⚠ Hook/inicio fraco';
+        color = '#ef4444';
+        rationale = 'Retencao do 1º minuto baixa + retencao geral baixa = hook/abertura nao prende. "Quality CTR" 2026: YouTube pune CTR alto com retencao ruim. Nao troque titulo — analise hook do proximo video.';
     } else if (!a.retention_ok) {
         decision = 'content_problem';
         label = '⚠ Não trocar título';
         color = '#ef4444';
-        rationale = 'Retenção baixa = conteúdo é o problema, não o título. Trocar título vai atrair mais gente pra vídeo ruim = pior sinal pro algoritmo. Analise hook/edição pro próximo vídeo.';
+        rationale = 'Retenção baixa = conteúdo é o problema, não o título. Trocar título atrai mais gente pra video ruim = pior sinal pro algoritmo. Analise edicao/pacing pro proximo video.';
     } else if (!a.ctr_ok) {
         decision = 'swap';
         label = '↔ Trocar pelo Título B';
         color = '#22c55e';
-        rationale = 'Impressões OK, retenção OK, mas CTR fraco = problema é título/thumb. Troca agora, você ainda está na janela.';
+        rationale = 'Impressões/views OK, retenção OK, mas CTR fraco = problema é título/thumb. Troca agora, voce ainda esta na janela. (Se trafego vier majoritariamente de Search, foca nas keywords do titulo; se Browse/Suggested, foca na thumb.)';
+    } else if (!a.first_min_ok) {
+        decision = 'keep';
+        label = '⚠ Manter mas atencao ao hook';
+        color = '#fbbf24';
+        rationale = 'CTR e retencao media OK, mas 1º minuto fraco = risco de cair na "Quality CTR" do algoritmo. Nao trocar agora, mas refaca o hook no proximo video.';
     } else {
         decision = 'keep';
         label = '✓ Manter tudo';
