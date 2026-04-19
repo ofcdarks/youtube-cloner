@@ -1,46 +1,51 @@
 {# A/B title widget — renderizado abaixo do title em cada card do kanban.
 
    Regra de negocio (Paddy Galloway / MrBeast):
-   - Se video nao tiver impressoes/CTR saudavel nas primeiras 6h, aluno troca
-     titulo/thumb/descricao
-   - Limitacao real: YouTube API tem delay 24-48h pra CTR. Entao o Cloner nao
-     mede automaticamente — ele LEMBRA na hora certa e GUIA a decisao via wizard
-     que o aluno responde olhando o YouTube Studio mobile (que atualiza ~5min)
+   - Titulos A e B sao gerados pelo ADMIN no pipeline (Passo 4 — SOP do canal)
+   - Aluno NAO pode regenerar B sob demanda (mantem qualidade/aderencia ao nicho)
+   - Limite de 1 swap por video — se falhar, aprende e aplica no proximo
 
    Context: item.id (progress_id), item.idea_id, item.title, item.title_b,
-            item.status, item.completed_at, item.video_url, item.ab_decision #}
+            item.status, item.completed_at, item.video_url, item.ab_decision,
+            item.ab_swap_count, item.ab_swapped_at #}
 
 {# ── Bloco de variante A/B (todas colunas) ── #}
 <div class="ab-title" data-idea="{{ item.idea_id }}" id="ab-{{ item.id }}" style="margin:6px 0 8px;padding:6px 8px;background:rgba(59,130,246,0.06);border:1px dashed rgba(59,130,246,0.25);border-radius:6px;">
     {% if item.title_b %}
+        {% set swap_count = item.ab_swap_count or 0 %}
         <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#93c5fd;font-weight:700;margin-bottom:3px">
             <span>&#9878; VARIANTE B</span>
             <span style="font-weight:400;color:#64748b">(regra {{ ab_window_hours|default(6) }}h)</span>
+            {% if swap_count > 0 %}
+            <span style="margin-left:auto;font-size:9px;background:rgba(34,197,94,0.15);color:#22c55e;padding:1px 6px;border-radius:8px">&#10003; Ja trocado</span>
+            {% endif %}
         </div>
         <div style="font-size:11px;color:#cbd5e1;line-height:1.4;margin-bottom:5px">{{ item.title_b }}</div>
+        {% if swap_count == 0 %}
         <div style="display:flex;gap:4px;flex-wrap:wrap">
             <button type="button" onclick="swapAbTitle({{ item.idea_id }}, {{ item.id }})"
                 style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);cursor:pointer;font-weight:600">
                 &#8644; Trocar pelo B
             </button>
-            <button type="button" onclick="regenTitleB({{ item.idea_id }}, {{ item.id }})"
-                style="font-size:10px;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;border:1px solid rgba(148,163,184,0.2);cursor:pointer">
-                &#10227; Re-gerar B
-            </button>
         </div>
+        {% else %}
+        <div style="font-size:10px;color:#64748b;padding:4px 0;line-height:1.4">
+            &#128274; Limite de 1 troca atingido. Se ainda nao performou, aprende e aplica no proximo video — nao troca de novo.
+        </div>
+        {% endif %}
     {% else %}
-        <button type="button" onclick="regenTitleB({{ item.idea_id }}, {{ item.id }})"
-            style="width:100%;font-size:10px;padding:5px 8px;border-radius:4px;background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);cursor:pointer;font-weight:600">
-            &#10024; Gerar Titulo B (A/B Test)
-        </button>
+        <div style="font-size:10.5px;color:#94a3b8;padding:4px 2px;line-height:1.45">
+            &#9432; Sem variante B pra esta idea. Peca ao admin re-gerar os titulos do projeto (Passo 4 do pipeline).
+        </div>
     {% endif %}
 </div>
 
-{# ── Wizard de 6h (so na coluna published) ── #}
+{# ── Wizard de decisao (so na coluna published) ── #}
 {% if item.status == 'published' and item.completed_at %}
 <div class="ab-6h" data-published="{{ item.completed_at }}" data-progress="{{ item.id }}"
      data-decided="{{ item.ab_decision or '' }}"
      data-video-url="{{ item.video_url or '' }}"
+     data-swap-count="{{ item.ab_swap_count or 0 }}"
      id="ab6h-{{ item.id }}"
      style="margin:4px 0 8px;padding:8px 10px;border-radius:6px;font-size:10.5px;line-height:1.45"></div>
 {% endif %}

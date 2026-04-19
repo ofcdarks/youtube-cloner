@@ -2269,8 +2269,15 @@ Valores curtos (max 35 chars).""",
 @router.post("/api/student/generate-title-b")
 @limiter.limit("10/minute")
 async def api_generate_title_b(request: Request, user=Depends(require_auth)):
-    """Gera o titulo B (variacao com angulo oposto) pra uma idea que ainda nao tem.
-    Usado na regra '4h pra trocar titulo' quando a ideia original so tem titulo A."""
+    """DEPRECATED para alunos — titulos B vem da pesquisa/geracao do admin no pipeline.
+    Aluno nao pode mais gerar B sob demanda (evita titulos de baixa qualidade fora do contexto SOP).
+    Se a idea nao tem title_b, aluno deve pedir ao admin re-gerar o projeto."""
+    return JSONResponse({
+        "error": "Titulos B sao gerados pelo admin no pipeline (Passo 4). Se a idea nao tem variante B, peca ao admin re-gerar os titulos do projeto.",
+        "code": "student_cannot_regen"
+    }, status_code=403)
+
+    # Mantido abaixo para referencia historica (nao executa):
     body = await request.json()
     idea_id = body.get("idea_id")
     if not idea_id:
@@ -2363,14 +2370,17 @@ async def api_ab_decision(request: Request, user=Depends(require_auth)):
 @router.post("/api/student/swap-title")
 @limiter.limit("30/minute")
 async def api_swap_title(request: Request, user=Depends(require_auth)):
-    """Aluno troca o titulo principal (A) pela variante (B) depois da regra de 4h.
+    """Aluno troca o titulo principal (A) pela variante (B) — LIMITE 1 swap por video.
+    Regra Paddy Galloway: uma troca permitida por video; se falhar, aprende no proximo.
     Swap: o antigo title_a vai pra title_b (pra preservar historico) e vice-versa."""
     body = await request.json()
     idea_id = body.get("idea_id")
+    progress_id = body.get("progress_id")
     if not idea_id:
         return JSONResponse({"error": "idea_id obrigatorio"}, status_code=400)
 
     from database import get_db, update_idea_title
+    from datetime import datetime, timezone
     with get_db() as conn:
         row = conn.execute(
             """SELECT i.id, i.title, i.title_b
@@ -2380,13 +2390,34 @@ async def api_swap_title(request: Request, user=Depends(require_auth)):
                LIMIT 1""",
             (int(idea_id), user["id"]),
         ).fetchone()
-    if not row:
-        return JSONResponse({"error": "Idea nao encontrada ou sem permissao"}, status_code=404)
-    idea = dict(row)
-    if not idea.get("title_b"):
-        return JSONResponse({"error": "Sem titulo B ainda. Gere primeiro."}, status_code=400)
+        if not row:
+            return JSONResponse({"error": "Idea nao encontrada ou sem permissao"}, status_code=404)
+        idea = dict(row)
+        if not idea.get("title_b"):
+            return JSONResponse({"error": "Sem titulo B ainda. Peca ao admin para gerar."}, status_code=400)
 
-    new_a = idea["title_b"]
-    new_b = idea["title"]
-    update_idea_title(int(idea_id), new_a, title_b=new_b)
-    return JSONResponse({"ok": True, "title_a": new_a, "title_b": new_b})
+        # Checa swap count no progress (se progress_id fornecido)
+        if progress_id:
+            pg = conn.execute(
+                "SELECT ab_swap_count FROM progress WHERE id=? AND student_id=?",
+                (int(progress_id), user["id"]),
+            ).fetchone()
+            if pg and (pg["ab_swap_count"] or 0) >= 1:
+                return JSONResponse({
+                    "error": "Limite atingido: voce ja trocou o titulo desse video 1 vez. Regra Paddy Galloway: uma troca por video — se nao funcionar, aprende e aplica no proximo.",
+                    "code": "swap_limit_reached"
+                }, status_code=403)
+
+        new_a = idea["title_b"]
+        new_b = idea["title"]
+        update_idea_title(int(idea_id), new_a, title_b=new_b)
+
+        # Atualiza contador
+        if progress_id:
+            now = datetime.now(timezone.utc).isoformat()
+            conn.execute(
+                "UPDATE progress SET ab_swap_count = COALESCE(ab_swap_count,0) + 1, ab_swapped_at=? WHERE id=?",
+                (now, int(progress_id)),
+            )
+
+    return JSONResponse({"ok": True, "title_a": new_a, "title_b": new_b, "swap_count": 1})
