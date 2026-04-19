@@ -1173,6 +1173,10 @@ function updateCalendar() {
 /* ── Wizard de 6h: alerta quando vídeo publicado atinge janela crítica ──────
    Limitação: YouTube API tem delay 24-48h pra CTR. Não mede, só lembra na hora
    certa e guia a decisão. Aluno responde 3 perguntas olhando YT Studio mobile. */
+/* Janela A/B calculada pelo backend baseada em subs do canal — NAO configuravel pelo aluno */
+window.__AB_WINDOW_HOURS = {{ ab_window_hours|default(6) }};
+window.__AB_SUBS = {{ ab_subs|default(0) }};
+
 function formatAgo(ms) {
     var h = Math.floor(ms / 3600000);
     var m = Math.floor((ms % 3600000) / 60000);
@@ -1191,8 +1195,36 @@ function renderAb6hBlock(el) {
     var decided = el.dataset.decided;
     var videoUrl = el.dataset.videoUrl;
 
-    var SIX_H = 6 * 3600 * 1000;
-    var TWELVE_H = 12 * 3600 * 1000;
+    // Janela calculada pelo backend baseada em subs do canal — NAO editavel pelo aluno
+    var WINDOW_H = (window.__AB_WINDOW_HOURS || 6);
+    var WINDOW_MS = WINDOW_H * 3600 * 1000;
+    var DOUBLE_WINDOW_MS = WINDOW_MS * 2;
+
+    // Badge vermelho OBRIGATORIO no card pai quando na janela critica
+    var parentCard = el.closest('.kanban-card');
+    var isOverdue = age >= WINDOW_MS && age < DOUBLE_WINDOW_MS && !decided;
+    if (parentCard) {
+        if (isOverdue) {
+            parentCard.classList.add('ab-overdue');
+            parentCard.style.borderLeft = '4px solid #ef4444';
+            parentCard.style.boxShadow = '0 0 0 1px rgba(239,68,68,0.25), 0 4px 12px rgba(239,68,68,0.15)';
+            // Badge fixo no canto
+            if (!parentCard.querySelector('.ab-urgent-badge')) {
+                var badge = document.createElement('div');
+                badge.className = 'ab-urgent-badge';
+                badge.style.cssText = 'position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:3px 7px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.4);animation:pulse-urgent 1.2s infinite;z-index:5';
+                badge.textContent = '⚠ AÇÃO NECESSÁRIA';
+                parentCard.style.position = 'relative';
+                parentCard.appendChild(badge);
+            }
+        } else {
+            parentCard.classList.remove('ab-overdue');
+            parentCard.style.borderLeft = '';
+            parentCard.style.boxShadow = '';
+            var existingBadge = parentCard.querySelector('.ab-urgent-badge');
+            if (existingBadge) existingBadge.remove();
+        }
+    }
 
     if (decided) {
         el.style.background = 'rgba(148,163,184,0.08)';
@@ -1204,20 +1236,19 @@ function renderAb6hBlock(el) {
         return;
     }
 
-    if (age < SIX_H) {
-        var remaining = SIX_H - age;
+    if (age < WINDOW_MS) {
+        var remaining = WINDOW_MS - age;
         el.style.background = 'rgba(251,191,36,0.08)';
         el.style.border = '1px solid rgba(251,191,36,0.25)';
         el.style.color = '#fbbf24';
-        el.innerHTML = '<div style="font-weight:700;margin-bottom:2px">⏰ Janela de 6h (ainda cedo)</div>' +
+        el.innerHTML = '<div style="font-weight:700;margin-bottom:2px">⏰ Janela de ' + WINDOW_H + 'h (ainda cedo)</div>' +
             '<div style="color:#cbd5e1;font-size:10px">Publicado há ' + formatAgo(age) + ' — espere ' + formatAgo(remaining) + ' antes de decidir.</div>';
-    } else if (age < TWELVE_H) {
+    } else if (age < DOUBLE_WINDOW_MS) {
         el.style.background = 'rgba(239,68,68,0.08)';
         el.style.border = '1px solid rgba(239,68,68,0.3)';
         el.style.color = '#fca5a5';
         var studioHint = '';
         try {
-            // Extrai video ID pra deep link no Studio
             var m = (videoUrl || '').match(/(?:v=|youtu\.be\/|shorts\/)([A-Za-z0-9_-]{11})/);
             if (m) studioHint = m[1];
         } catch (e) {}
@@ -1225,20 +1256,28 @@ function renderAb6hBlock(el) {
             ? 'https://studio.youtube.com/video/' + studioHint + '/analytics/tab-overview/period-default'
             : 'https://studio.youtube.com/';
         el.innerHTML =
-            '<div style="font-weight:700;margin-bottom:3px;color:#ef4444">🚨 Decisão de 6h — hora de checar!</div>' +
+            '<div style="font-weight:700;margin-bottom:3px;color:#ef4444">🚨 Decisão de ' + WINDOW_H + 'h — hora de checar!</div>' +
             '<div style="color:#cbd5e1;margin-bottom:6px;font-size:10px">Publicado há ' + formatAgo(age) + '. Abra o YT Studio (atualiza em ~5min), veja CTR e decida.</div>' +
             '<a href="' + studioUrl + '" target="_blank" rel="noopener" ' +
                 'style="display:inline-block;padding:4px 10px;border-radius:4px;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;text-decoration:none;margin-bottom:6px">📊 Abrir YT Studio</a>' +
             '<button type="button" onclick="open6hWizard(' + progressId + ')" ' +
                 'style="display:inline-block;margin-left:6px;padding:4px 10px;border-radius:4px;background:rgba(34,197,94,0.18);color:#22c55e;border:1px solid rgba(34,197,94,0.35);font-size:10px;font-weight:700;cursor:pointer">🧭 Wizard de decisão</button>';
     } else {
-        // Janela passou — marca como "keep" automaticamente (janela perdida)
         el.style.background = 'rgba(148,163,184,0.06)';
         el.style.border = '1px solid rgba(148,163,184,0.15)';
         el.style.color = '#64748b';
-        el.innerHTML = '<div>Janela de 6h passou (publicado há ' + formatAgo(age) + ')</div>';
+        el.innerHTML = '<div>Janela de ' + WINDOW_H + 'h passou (publicado há ' + formatAgo(age) + ')</div>';
     }
 }
+
+// CSS da animacao do badge
+(function() {
+    if (document.getElementById('ab-overdue-style')) return;
+    var s = document.createElement('style');
+    s.id = 'ab-overdue-style';
+    s.textContent = '@keyframes pulse-urgent { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }';
+    document.head.appendChild(s);
+})();
 
 function open6hWizard(progressId) {
     // Wizard: 3 perguntas objetivas que o aluno responde olhando o Studio
@@ -1360,13 +1399,22 @@ function submit6hDecision(decision, reason) {
         .catch(function(e) { showToast('Erro: ' + e.message, 'error'); });
 }
 
-// Inicializa todos os blocos de 6h no load + refresh a cada minuto
+// Inicializa todos os blocos no load + refresh a cada minuto + alerta ao entrar
 function initAb6hBlocks() {
     document.querySelectorAll('.ab-6h').forEach(renderAb6hBlock);
 }
+function checkUrgentDecisions() {
+    // Conta vídeos sem decisão dentro da janela crítica
+    var urgent = document.querySelectorAll('.kanban-card.ab-overdue').length;
+    if (urgent > 0 && !sessionStorage.getItem('ab_alert_shown_this_visit')) {
+        showToast('🚨 ' + urgent + ' vídeo(s) precisam de decisão AGORA (janela de ' + (window.__AB_WINDOW_HOURS||6) + 'h)', 'error', 8000);
+        sessionStorage.setItem('ab_alert_shown_this_visit', '1');
+    }
+}
 document.addEventListener('DOMContentLoaded', function() {
     initAb6hBlocks();
-    setInterval(initAb6hBlocks, 60 * 1000);  // refresh a cada 60s pra atualizar contador
+    setTimeout(checkUrgentDecisions, 1500);  // dá tempo do DOM renderizar as classes
+    setInterval(initAb6hBlocks, 60 * 1000);
 });
 
 /* ── A/B Title: gera/troca titulo B (regra de 6h) ─────────────────────────── */

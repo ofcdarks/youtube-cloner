@@ -405,6 +405,27 @@ async def _student_dashboard_inner(request: Request, view_as: int, channel: int,
     except Exception:
         pass
 
+    # ── Janela A/B calculada automaticamente pelo tamanho do canal ──
+    # Regra de negocio (NAO configuravel pelo aluno): canais menores precisam
+    # de ciclo mais rapido pra aproveitar a janela algoritmica curta.
+    ab_window_hours = 6  # default
+    active_subs = 0
+    try:
+        if active_channel and active_channel.get("cached_stats"):
+            import json as _json
+            cs = _json.loads(active_channel["cached_stats"])
+            active_subs = int(cs.get("subscriberCount", 0) or 0)
+        if active_subs < 1000:
+            ab_window_hours = 4
+        elif active_subs < 10000:
+            ab_window_hours = 6
+        elif active_subs < 100000:
+            ab_window_hours = 8
+        else:
+            ab_window_hours = 12
+    except Exception:
+        pass
+
     return _render(request, "student_dashboard.html", {
         "user": target_user,
         "real_user": user,
@@ -424,6 +445,8 @@ async def _student_dashboard_inner(request: Request, view_as: int, channel: int,
         "trend_files": trend_files,
         "has_yt_key": has_yt_key,
         "resources": _get_student_resources(target_user["id"]),
+        "ab_window_hours": ab_window_hours,
+        "ab_subs": active_subs,
     })
 
 
