@@ -18,10 +18,32 @@
     <div class="section">
         <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
             <span><span class="sec-icon">&#128100;</span> {{ student.name }}</span>
-            <a href="/student?view_as={{ student.id }}" style="background:#7c3aed;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
-                &#128065; Ver como aluno
-            </a>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button type="button" onclick="backfillDetailB({{ student.id }}, '{{ student.name }}')" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;padding:8px 16px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer" title="Gera Variante B nas ideas deste aluno que ainda nao tem">
+                    &#9878; Gerar Variante B
+                </button>
+                <a href="/student?view_as={{ student.id }}" style="background:#7c3aed;color:#fff;padding:8px 18px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                    &#128065; Ver como aluno
+                </a>
+            </div>
         </div>
+        <script>
+        function backfillDetailB(studentId, studentName) {
+            showConfirm('Gerar Variante B — ' + studentName,
+                'Vai gerar title_b via IA para as ideas deste aluno que ainda NAO tem variante B. O que ja tem sera mantido. Pode levar alguns minutos. Continuar?',
+                function() {
+                    var loading = showToast('Gerando B...', 'loading');
+                    apiPost('/api/admin/backfill-titles-b', { student_id: studentId, max: 200 })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            removeToast(loading);
+                            if (!data.ok) { showToast('Erro: ' + (data.error || 'falha'), 'error', 6000); return; }
+                            showToast('✓ ' + data.generated + ' gerados, ' + (data.failed || 0) + ' falhas (de ' + data.total_candidates + ')', 'success', 6000);
+                        })
+                        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error', 6000); });
+                });
+        }
+        </script>
         <div class="grid-3">
             <div class="stat-card">
                 <div style="font-size:.85em;color:#888;margin-bottom:4px">Email</div>

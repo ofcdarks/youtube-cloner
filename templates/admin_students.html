@@ -36,6 +36,22 @@
             </div>
         </div>
         <script>
+        function backfillStudentB(studentId, studentName) {
+            showConfirm('Gerar Variante B — ' + studentName,
+                'Vai gerar title_b via IA para as ideas deste aluno que ainda NAO tem variante B. O que ja tem sera mantido. Continuar?',
+                function() {
+                    var loading = showToast('Gerando B para ' + studentName + '...', 'loading');
+                    apiPost('/api/admin/backfill-titles-b', { student_id: studentId, max: 200 })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            removeToast(loading);
+                            if (!data.ok) { showToast('Erro: ' + (data.error || 'falha'), 'error', 6000); return; }
+                            showToast('✓ ' + studentName + ': ' + data.generated + ' gerados, ' + (data.failed || 0) + ' falhas (' + data.total_candidates + ' candidatos)', 'success', 6000);
+                        })
+                        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error', 6000); });
+                });
+        }
+
         function backfillAllStudentsB() {
             showConfirm('Gerar Variante B pra todos os alunos',
                 'Vai gerar title_b via IA para todas as ideas (de todos os alunos) que ainda NAO tem variante B. O que ja tem sera mantido. Pode consumir tokens e levar alguns minutos. Continuar?',
@@ -129,6 +145,7 @@
                             <a href="/admin/student/{{ s.id }}" class="btn-primary btn-sm" style="text-decoration:none;">Ver Detalhes</a>
                             <a href="/student?view_as={{ s.id }}" class="btn-primary btn-sm" style="text-decoration:none;" title="Ver painel como este aluno">&#128065; Como Aluno</a>
                             <button class="btn-success btn-sm" onclick="quickReleaseTitles({{ s.id }})">+5 Titulos</button>
+                            <button type="button" class="btn-sm" onclick="backfillStudentB({{ s.id }}, '{{ s.name }}')" title="Gera Variante B nas ideas deste aluno que ainda nao tem" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;border:none;padding:6px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer">&#9878; Gerar B</button>
                             {% if s.active %}
                             <button class="btn-warning btn-sm" onclick="toggleBlockStudent({{ s.id }}, '{{ s.name }}', true)">Bloquear</button>
                             {% else %}
