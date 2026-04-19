@@ -2012,51 +2012,142 @@ async def api_update_calendar(request: Request, user=Depends(require_auth)):
     avg_views = round(total_views / len(videos))
     avg_eng = round((total_likes + total_comments) / total_views * 100, 2) if total_views > 0 else 0
 
-    # Check monetization using REAL channel data from YouTube API
+    # ── Helpers pra parsing ──
+    def _parse_duration_to_minutes(d: str) -> float:
+        """Converte ISO 8601 (PT5M32S) ou 'mm:ss' / 'hh:mm:ss' pra minutos decimais."""
+        if not d:
+            return 0.0
+        s = str(d).strip()
+        # ISO 8601: PT1H23M45S
+        if s.startswith("PT"):
+            import re as _re
+            h = int((_re.search(r"(\d+)H", s) or [0, 0])[1] or 0) if _re.search(r"(\d+)H", s) else 0
+            m = int((_re.search(r"(\d+)M", s) or [0, 0])[1] or 0) if _re.search(r"(\d+)M", s) else 0
+            sec = int((_re.search(r"(\d+)S", s) or [0, 0])[1] or 0) if _re.search(r"(\d+)S", s) else 0
+            return h * 60 + m + sec / 60
+        # hh:mm:ss ou mm:ss
+        if ":" in s:
+            parts = s.split(":")
+            try:
+                if len(parts) == 3:
+                    return int(parts[0]) * 60 + int(parts[1]) + int(parts[2]) / 60
+                if len(parts) == 2:
+                    return int(parts[0]) + int(parts[1]) / 60
+            except ValueError:
+                pass
+        return 0.0
+
+    # Calcula duração REAL média dos vídeos trackeados (pra estimativa de watch hours)
+    durations_min = [_parse_duration_to_minutes(v.get("duration", "")) for v in videos]
+    durations_min = [d for d in durations_min if d > 0]
+    avg_duration_min = round(sum(durations_min) / len(durations_min), 1) if durations_min else 12.0
+
+    # ── Resolve channel ID robusto (suporta /@ /channel/ /c/ /user/ + search fallback) ──
+    async def _resolve_channel_stats(client, ch_url: str, yt_key: str):
+        """Tenta várias estratégias até pegar subs+views. Retorna dict ou None."""
+        if not ch_url or not yt_key:
+            return None
+        try:
+            async def _call(params):
+                r = await client.get("https://www.googleapis.com/youtube/v3/channels", params={**params, "key": yt_key})
+                items = r.json().get("items", [])
+                if items:
+                    stats = items[0].get("statistics", {})
+                    return {
+                        "subs": int(stats.get("subscriberCount", 0)),
+                        "total_views": int(stats.get("viewCount", 0)),
+                        "total_videos": int(stats.get("videoCount", 0)),
+                    }
+                return None
+
+            # /@handle
+            if "/@" in ch_url:
+                handle = ch_url.split("/@")[-1].split("/")[0].split("?")[0]
+                res = await _call({"part": "statistics", "forHandle": handle})
+                if res: return res
+                # Fallback: search
+                sr = await client.get("https://www.googleapis.com/youtube/v3/search",
+                    params={"part": "snippet", "type": "channel", "q": handle, "maxResults": 1, "key": yt_key})
+                items = sr.json().get("items", [])
+                if items:
+                    ch_id = items[0].get("snippet", {}).get("channelId") or items[0].get("id", {}).get("channelId")
+                    if ch_id:
+                        return await _call({"part": "statistics", "id": ch_id})
+                return None
+            # /channel/UCxxx
+            if "/channel/" in ch_url:
+                ch_id = ch_url.split("/channel/")[-1].split("/")[0].split("?")[0]
+                return await _call({"part": "statistics", "id": ch_id})
+            # /c/CustomName ou /user/Username — API deprecou forUsername pra novos canais,
+            # mas search funciona
+            if "/c/" in ch_url or "/user/" in ch_url:
+                name = ch_url.rstrip("/").split("/")[-1].split("?")[0]
+                # Tenta forUsername primeiro (canais antigos)
+                res = await _call({"part": "statistics", "forUsername": name})
+                if res: return res
+                # Search fallback
+                sr = await client.get("https://www.googleapis.com/youtube/v3/search",
+                    params={"part": "snippet", "type": "channel", "q": name, "maxResults": 1, "key": yt_key})
+                items = sr.json().get("items", [])
+                if items:
+                    ch_id = items[0].get("snippet", {}).get("channelId") or items[0].get("id", {}).get("channelId")
+                    if ch_id:
+                        return await _call({"part": "statistics", "id": ch_id})
+        except Exception as e:
+            import logging
+            logging.getLogger("ytcloner").warning(f"Channel resolve failed for {ch_url}: {e}")
+        return None
+
+    # Check monetization: API key admin → aluno fallback → cached_stats do canal
     subs = 0
     total_channel_views = 0
     total_channel_videos = 0
     try:
         yt_key = ""
+        from database import _decrypt_api_key
         with get_db() as conn:
             yt_row = conn.execute("SELECT value FROM admin_settings WHERE key='youtube_api_key'").fetchone()
-            if yt_row:
+            if yt_row and yt_row["value"]:
                 yt_key = yt_row["value"]
+            # Fallback: API key do próprio aluno
+            if not yt_key:
+                u = conn.execute("SELECT api_key_encrypted, api_provider FROM users WHERE id=?", (user["id"],)).fetchone()
+                if u and u["api_key_encrypted"] and (u["api_provider"] or "").startswith("google"):
+                    try:
+                        yt_key = _decrypt_api_key(u["api_key_encrypted"])
+                    except Exception:
+                        pass
 
         if yt_key and active_ch:
             import httpx
             async with httpx.AsyncClient(timeout=15) as client:
-                ch_url = active_ch.get("channel_url", "")
-                ch_id = ""
-                if "/@" in ch_url:
-                    handle = ch_url.split("/@")[-1].split("/")[0].split("?")[0]
-                    resp = await client.get("https://www.googleapis.com/youtube/v3/channels",
-                        params={"part": "statistics", "forHandle": handle, "key": yt_key})
-                    items = resp.json().get("items", [])
-                    if items:
-                        stats = items[0].get("statistics", {})
-                        subs = int(stats.get("subscriberCount", 0))
-                        total_channel_views = int(stats.get("viewCount", 0))
-                        total_channel_videos = int(stats.get("videoCount", 0))
-                elif "/channel/" in ch_url:
-                    ch_id = ch_url.split("/channel/")[-1].split("/")[0].split("?")[0]
-                    resp = await client.get("https://www.googleapis.com/youtube/v3/channels",
-                        params={"part": "statistics", "id": ch_id, "key": yt_key})
-                    items = resp.json().get("items", [])
-                    if items:
-                        stats = items[0].get("statistics", {})
-                        subs = int(stats.get("subscriberCount", 0))
-                        total_channel_views = int(stats.get("viewCount", 0))
-                        total_channel_videos = int(stats.get("videoCount", 0))
+                stats_res = await _resolve_channel_stats(client, active_ch.get("channel_url", ""), yt_key)
+                if stats_res:
+                    subs = stats_res["subs"]
+                    total_channel_views = stats_res["total_views"]
+                    total_channel_videos = stats_res["total_videos"]
+
+        # Fallback final: cached_stats salvo no student_channels
+        if (subs == 0 or total_channel_views == 0) and active_ch and active_ch.get("cached_stats"):
+            try:
+                import json as _json
+                cached = _json.loads(active_ch["cached_stats"])
+                if subs == 0 and cached.get("subscriberCount"):
+                    subs = int(cached.get("subscriberCount", 0))
+                if total_channel_views == 0 and cached.get("viewCount"):
+                    total_channel_views = int(cached.get("viewCount", 0))
+                if total_channel_videos == 0 and cached.get("videoCount"):
+                    total_channel_videos = int(cached.get("videoCount", 0))
+            except Exception:
+                pass
     except Exception as e:
         import logging
         logging.getLogger("ytcloner").warning(f"Monetization check failed: {e}")
 
-    # Estimate watch hours from TOTAL CHANNEL VIEWS (not just tracked videos)
-    avg_duration_min = 12
-    # Use total channel views for estimation (more accurate)
+    # Watch hours: prefere cálculo com total_channel_views + duração real média.
+    # Retenção YouTube: ~40% é média histórica (YT internal, docs públicas).
     view_base = total_channel_views if total_channel_views > 0 else total_views
-    estimated_watch_hours = round(view_base * avg_duration_min * 0.4 / 60)  # 40% avg retention
+    estimated_watch_hours = round(view_base * avg_duration_min * 0.4 / 60)
 
     monetized = subs >= 1000 and estimated_watch_hours >= 4000
     subs_pct = min(100, round(subs / 1000 * 100)) if subs < 1000 else 100
