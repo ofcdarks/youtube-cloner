@@ -1165,45 +1165,93 @@ function updateCalendar() {
     });
 }
 
-/* ── Auto-fill silencioso: dispara update-calendar no carregamento quando há canal + dados ──
-   Roda só 1x por sessão (flag sessionStorage) pra não gastar AI a cada refresh. */
+/* ── Auto-fill silencioso com MÉTRICAS REAIS do canal ────────────────────────
+   Pipeline:
+   1. /update-calendar (usa AI + video_performance + YouTube API pra monetização)
+   2. Se falhar (<3 vídeos tracked): dispara /fetch-channel-stats pra BUSCAR os
+      vídeos reais do canal via YouTube Data API, popula video_performance,
+      e re-tenta update-calendar
+   3. Atualiza os 5 cards com valores derivados dos dados REAIS do canal
+   Flag sessionStorage evita repetir a cada refresh (economiza tokens AI + quota YT) */
+function applyScheduleToUI(data) {
+    if (!data || !data.schedule) return false;
+    var s = data.schedule;
+    if (s.frequency) document.querySelector('#cal-freq div:last-child').textContent = s.frequency;
+    if (s.best_days) document.querySelector('#cal-days div:last-child').textContent = s.best_days;
+    if (s.best_times) document.querySelector('#cal-time div:last-child').textContent = s.best_times;
+    if (s.video_duration) document.querySelector('#cal-dur div:last-child').textContent = s.video_duration;
+    var m = data.monetization;
+    if (m && document.getElementById('monetization-bar')) {
+        document.getElementById('monetization-bar').style.display = 'grid';
+        var mLabel = document.getElementById('monet-label');
+        var mIcon = document.getElementById('monet-icon');
+        var monet = document.getElementById('monet-details');
+        if (m.monetized) {
+            mIcon.textContent = '\u2705';
+            mLabel.innerHTML = '<span style="color:#22c55e;">MONETIZADO</span>';
+            monet.innerHTML = '<div style="color:#22c55e;">Canal elegivel!</div>' +
+                '<div>Inscritos: ' + formatNum(m.subscribers) + '/1K</div>' +
+                '<div>Watch Hours: ~' + formatNum(m.watch_hours) + '/4K</div>';
+        } else {
+            mIcon.textContent = '\u23F3';
+            mLabel.innerHTML = '<span style="color:#f59e0b;">Em progresso</span>';
+            var html = '<div style="margin-bottom:6px;">Faltam para monetizar:</div>';
+            html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span style="min-width:80px;">Inscritos:</span>';
+            html += '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="width:' + m.subs_pct + '%;height:100%;background:' + (m.subs_pct >= 100 ? '#22c55e' : '#f59e0b') + ';border-radius:4px;"></div></div>';
+            html += '<span style="min-width:60px;text-align:right;">' + formatNum(m.subscribers) + '/1K</span></div>';
+            html += '<div style="display:flex;align-items:center;gap:6px;"><span style="min-width:80px;">Watch Hours:</span>';
+            html += '<div style="flex:1;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden"><div style="width:' + m.hours_pct + '%;height:100%;background:' + (m.hours_pct >= 100 ? '#22c55e' : '#f59e0b') + ';border-radius:4px;"></div></div>';
+            html += '<span style="min-width:60px;text-align:right;">~' + formatNum(m.watch_hours) + '/4K</span></div>';
+            monet.innerHTML = html;
+        }
+        var dvInfo = document.getElementById('daily-views-info');
+        if (dvInfo && m.total_views !== undefined) {
+            dvInfo.innerHTML = '<div style="display:flex;gap:16px;">' +
+                '<div><span style="color:var(--fg-dim);">Views totais:</span> <strong style="color:#fff;">' + formatNum(m.total_views) + '</strong></div>' +
+                '<div><span style="color:var(--fg-dim);">Views diarias (est.):</span> <strong style="color:#22c55e;">' + (m.daily_views || 'N/A') + '</strong></div>' +
+                '</div>';
+        }
+    }
+    return true;
+}
+function tryUpdateCalendar(channelId) {
+    return apiPost('/api/student/update-calendar', { channel_id: channelId })
+        .then(function(r) { return r.json(); });
+}
 function autoFillCalendarSilent() {
     var channelId = {{ active_channel.id if active_channel else 0 }};
-    if (!channelId) return;  // sem canal: deixa defaults
+    var channelUrl = {% if active_channel %}{{ active_channel.channel_url | tojson | safe }}{% else %}""{% endif %};
+    if (!channelId) return;
     var flagKey = 'calAutoFilled_' + channelId;
-    if (sessionStorage.getItem(flagKey)) return;  // já rodou nesta sessão
+    if (sessionStorage.getItem(flagKey)) return;
 
-    apiPost('/api/student/update-calendar', { channel_id: channelId })
-        .then(function(r) { return r.json(); })
+    tryUpdateCalendar(channelId)
         .then(function(data) {
-            if (!data.ok || !data.schedule) return;  // sem dados (ex: <3 videos) — mantém defaults
-            var s = data.schedule;
-            if (s.frequency) document.querySelector('#cal-freq div:last-child').textContent = s.frequency;
-            if (s.best_days) document.querySelector('#cal-days div:last-child').textContent = s.best_days;
-            if (s.best_times) document.querySelector('#cal-time div:last-child').textContent = s.best_times;
-            if (s.video_duration) document.querySelector('#cal-dur div:last-child').textContent = s.video_duration;
-
-            // Também popula bar de monetização se vier
-            var m = data.monetization;
-            if (m && document.getElementById('monetization-bar')) {
-                document.getElementById('monetization-bar').style.display = 'grid';
-                var mLabel = document.getElementById('monet-label');
-                var mIcon = document.getElementById('monet-icon');
-                var monet = document.getElementById('monet-details');
-                if (m.monetized) {
-                    mIcon.textContent = '\u2705';
-                    mLabel.innerHTML = '<span style="color:#22c55e;">MONETIZADO</span>';
-                    monet.innerHTML = '<div style="color:#22c55e;">Canal elegivel!</div>' +
-                        '<div>Inscritos: ' + formatNum(m.subscribers) + '/1K</div>' +
-                        '<div>Watch Hours: ~' + formatNum(m.watch_hours) + '/4K</div>';
-                }
+            if (data && data.ok) {
+                applyScheduleToUI(data);
+                sessionStorage.setItem(flagKey, '1');
+                return;
             }
-            sessionStorage.setItem(flagKey, '1');
+            // Sem video_performance ainda — busca do YouTube primeiro
+            if (!channelUrl) return;
+            return apiPost('/api/student/fetch-channel-stats', { channel_url: channelUrl, channel_id: channelId })
+                .then(function(r) { return r.json(); })
+                .then(function(fetchData) {
+                    if (!fetchData || !fetchData.ok) return;
+                    // Aguarda ~500ms pro DB persistir e re-tenta
+                    return new Promise(function(res) { setTimeout(res, 500); })
+                        .then(function() { return tryUpdateCalendar(channelId); })
+                        .then(function(data2) {
+                            if (data2 && data2.ok) {
+                                applyScheduleToUI(data2);
+                                sessionStorage.setItem(flagKey, '1');
+                            }
+                        });
+                });
         })
         .catch(function() { /* silencioso — defaults do SSR ficam */ });
 }
 document.addEventListener('DOMContentLoaded', function() {
-    // Atraso pequeno pra não atrapalhar outros loads do dashboard
     setTimeout(autoFillCalendarSilent, 800);
 });
 
