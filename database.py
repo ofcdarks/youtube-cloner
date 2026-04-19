@@ -265,6 +265,10 @@ def _run_migrations():
         ("assignments_schedule", "ALTER TABLE assignments ADD COLUMN schedule TEXT DEFAULT '{}'"),
         # v8.7: Channel ID on progress (which channel this title is for)
         ("progress_channel_id", "ALTER TABLE progress ADD COLUMN channel_id INTEGER DEFAULT 0"),
+        # v10.0: A/B title decision log (regra 6h)
+        ("progress_ab_decision", "ALTER TABLE progress ADD COLUMN ab_decision TEXT DEFAULT ''"),
+        ("progress_ab_decided_at", "ALTER TABLE progress ADD COLUMN ab_decided_at TEXT DEFAULT ''"),
+        ("progress_ab_reason", "ALTER TABLE progress ADD COLUMN ab_reason TEXT DEFAULT ''"),
         # v8.9: Notifications
         ("create_notifications", """CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1072,7 +1076,8 @@ def get_assignments(student_id: int | None = None) -> list[dict]:
 def get_student_ideas(assignment_id: int) -> list[dict]:
     with get_db() as conn:
         rows = conn.execute(
-            """SELECT p.*, i.title, i.title_b, i.hook, i.summary, i.pillar, i.priority, i.score, i.rating, i.num
+            """SELECT p.*, p.completed_at, p.ab_decision, p.ab_decided_at, p.video_url,
+                      i.title, i.title_b, i.hook, i.summary, i.pillar, i.priority, i.score, i.rating, i.num
                FROM progress p
                JOIN ideas i ON p.idea_id = i.id
                WHERE p.assignment_id=?

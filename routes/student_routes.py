@@ -2288,6 +2288,41 @@ Retorne APENAS o titulo B, sem aspas, sem prefixo, sem markdown."""
         return JSONResponse({"error": f"Falha ao gerar titulo B: {str(e)[:120]}"}, status_code=500)
 
 
+@router.post("/api/student/ab-decision")
+@limiter.limit("30/minute")
+async def api_ab_decision(request: Request, user=Depends(require_auth)):
+    """Log da decisao do wizard de 6h: manter, trocar, ou esperar (mais dados/retencao baixa).
+
+    Grava em progress.ab_decision pra depois cruzar com analytics (quais decisoes levaram
+    a mais views) e alimentar o SOP Vivo."""
+    body = await request.json()
+    progress_id = body.get("progress_id")
+    decision = (body.get("decision") or "").strip().lower()
+    reason = (body.get("reason") or "").strip()[:300]
+
+    VALID = {"keep", "swap", "wait_more_data", "content_problem"}
+    if not progress_id or decision not in VALID:
+        return JSONResponse({
+            "error": f"progress_id e decision obrigatorios. decision deve ser: {', '.join(sorted(VALID))}"
+        }, status_code=400)
+
+    from database import get_db
+    from datetime import datetime
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM progress WHERE id=? AND student_id=?",
+            (int(progress_id), user["id"]),
+        ).fetchone()
+        if not row:
+            return JSONResponse({"error": "progress_id invalido"}, status_code=404)
+        conn.execute(
+            "UPDATE progress SET ab_decision=?, ab_decided_at=?, ab_reason=? WHERE id=?",
+            (decision, now, reason, int(progress_id)),
+        )
+    return JSONResponse({"ok": True, "decision": decision, "decided_at": now})
+
+
 @router.post("/api/student/swap-title")
 @limiter.limit("30/minute")
 async def api_swap_title(request: Request, user=Depends(require_auth)):
