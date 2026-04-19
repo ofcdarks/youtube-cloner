@@ -338,6 +338,53 @@
     {% endif %}
     {% endif %}
 
+    <!-- A/B RULE INFO CARD -->
+    {% if current_project %}
+    <div class="section" style="margin-top:16px;position:relative;border:1px solid rgba(124,58,237,0.35);border-radius:12px;padding:18px 20px;background:linear-gradient(135deg,rgba(124,58,237,0.10) 0%,rgba(59,130,246,0.08) 55%,rgba(239,68,68,0.08) 100%);box-shadow:0 0 0 1px rgba(124,58,237,0.15) inset;">
+        <div style="position:absolute;top:-10px;left:16px;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 10px;border-radius:10px;text-transform:uppercase;">&#9889; Regra A/B — Leia antes de publicar</div>
+        <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:260px;">
+                <div style="font-size:15px;font-weight:700;color:#e0e7ff;margin-bottom:6px;">
+                    &#127919; Sua janela de decisao:
+                    <span style="color:#a78bfa;font-family:'JetBrains Mono',monospace;">{{ ab_window_hours|default(6) }}h</span>
+                    <span style="font-size:11px;color:#64748b;font-weight:400;margin-left:6px;">({{ ab_subs|default(0) }} inscritos)</span>
+                </div>
+                <div style="font-size:12.5px;color:#cbd5e1;line-height:1.55;">
+                    Apos publicar, voce tem <strong style="color:#fbbf24">{{ ab_window_hours|default(6) }} horas</strong> para decidir:
+                    se as impressoes/CTR nao estao saudaveis, <strong style="color:#fca5a5">troque titulo, thumb ou descricao</strong>.
+                    O Cloner monitora o prazo e te avisa na hora certa.
+                </div>
+            </div>
+            <div style="flex:1;min-width:260px;background:rgba(2,6,23,0.5);border:1px dashed rgba(148,163,184,0.25);border-radius:8px;padding:10px 12px;">
+                <div style="font-size:11px;color:#94a3b8;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;">Janela automatica por tamanho do canal</div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-size:10.5px;text-align:center;">
+                    <div style="padding:6px 4px;border-radius:5px;background:{% if (ab_subs or 0) < 1000 %}rgba(239,68,68,0.25);color:#fca5a5;font-weight:700{% else %}rgba(148,163,184,0.08);color:#64748b{% endif %}"><div style="font-size:9px">&lt; 1k</div><div>4h</div></div>
+                    <div style="padding:6px 4px;border-radius:5px;background:{% if (ab_subs or 0) >= 1000 and (ab_subs or 0) < 10000 %}rgba(124,58,237,0.3);color:#c4b5fd;font-weight:700{% else %}rgba(148,163,184,0.08);color:#64748b{% endif %}"><div style="font-size:9px">1k-10k</div><div>6h</div></div>
+                    <div style="padding:6px 4px;border-radius:5px;background:{% if (ab_subs or 0) >= 10000 and (ab_subs or 0) < 100000 %}rgba(59,130,246,0.3);color:#93c5fd;font-weight:700{% else %}rgba(148,163,184,0.08);color:#64748b{% endif %}"><div style="font-size:9px">10k-100k</div><div>8h</div></div>
+                    <div style="padding:6px 4px;border-radius:5px;background:{% if (ab_subs or 0) >= 100000 %}rgba(34,197,94,0.3);color:#86efac;font-weight:700{% else %}rgba(148,163,184,0.08);color:#64748b{% endif %}"><div style="font-size:9px">100k+</div><div>12h</div></div>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+            <div style="background:rgba(2,6,23,0.55);border-left:3px solid #22c55e;border-radius:6px;padding:10px 12px;">
+                <div style="font-size:11px;color:#22c55e;font-weight:700;margin-bottom:3px;">1 &bull; ANTES DE PUBLICAR</div>
+                <div style="font-size:11.5px;color:#cbd5e1;line-height:1.45;">Gere a <strong>Variante B</strong> de cada titulo no card do kanban. Use o botao <em style="color:#93c5fd">&#10024; Gerar Titulo B</em>.</div>
+            </div>
+            <div style="background:rgba(2,6,23,0.55);border-left:3px solid #fbbf24;border-radius:6px;padding:10px 12px;">
+                <div style="font-size:11px;color:#fbbf24;font-weight:700;margin-bottom:3px;">2 &bull; DURANTE A JANELA</div>
+                <div style="font-size:11.5px;color:#cbd5e1;line-height:1.45;">Quando aparecer o badge <strong style="color:#fca5a5">&#9888; ACAO NECESSARIA</strong>, abra o <strong>YouTube Studio mobile</strong> e confira impressoes/CTR.</div>
+            </div>
+            <div style="background:rgba(2,6,23,0.55);border-left:3px solid #a78bfa;border-radius:6px;padding:10px 12px;">
+                <div style="font-size:11px;color:#a78bfa;font-weight:700;margin-bottom:3px;">3 &bull; DECIDA COM O WIZARD</div>
+                <div style="font-size:11.5px;color:#cbd5e1;line-height:1.45;">Clique no card publicado, responda <strong>3 perguntas</strong> e o Cloner te diz: <em style="color:#86efac">manter</em>, <em style="color:#fbbf24">trocar titulo</em> ou <em style="color:#fca5a5">trocar thumb/desc</em>.</div>
+            </div>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:#64748b;line-height:1.5;border-top:1px solid rgba(148,163,184,0.12);padding-top:10px;">
+            &#128161; <strong style="color:#94a3b8">Por que essa regra?</strong> Metodologia Paddy Galloway / MrBeast: se o video nao performa nas primeiras horas, o algoritmo desiste. Agir rapido recupera impressoes — funciona ate em canal criado no dia.
+        </div>
+    </div>
+    {% endif %}
+
     <!-- KANBAN BOARD -->
     {% if current_project %}
     <div class="section">
