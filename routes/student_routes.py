@@ -308,11 +308,23 @@ async def _student_dashboard_inner(request: Request, view_as: int, channel: int,
                 "language": proj.get("language", "pt-BR"),
             }
 
-    # ── Schedule from SOP ──
+    # ── Schedule defaults inteligentes por idioma (sobrescritos pelo cache do update-calendar) ──
+    # Horários de pico reais por mercado (prime-time YouTube)
+    PRIME_TIME_BY_LANG = {
+        "pt-BR": "19:00-21:00",
+        "en": "18:00-20:00 EST",
+        "es": "20:00-22:00",
+        "fr": "19:00-21:00 CET",
+        "de": "19:00-21:00 CET",
+        "it": "20:00-22:00 CET",
+        "ja": "20:00-22:00 JST",
+        "ko": "20:00-22:00 KST",
+    }
+    BEST_DAYS_GENERIC = "Ter, Qui, Sab"  # padrão YouTube: meio e fim de semana
     schedule_info = {
-        "frequency": "Diaria (1a semana)",
-        "best_days": "Aguardando dados do Analytics",
-        "best_times": "nao definido",
+        "frequency": "3-4 videos/semana",
+        "best_days": BEST_DAYS_GENERIC,
+        "best_times": "19:00-21:00",
         "video_duration": "12-19 minutos",
         "language": "pt-BR",
     }
@@ -322,23 +334,40 @@ async def _student_dashboard_inner(request: Request, view_as: int, channel: int,
             with get_db() as conn:
                 proj_row = conn.execute("SELECT language, niche_chosen, name FROM projects WHERE id=?", (pid,)).fetchone()
                 if proj_row:
-                    schedule_info["language"] = proj_row["language"] or "pt-BR"
+                    lang = proj_row["language"] or "pt-BR"
+                    schedule_info["language"] = lang
+                    schedule_info["best_times"] = PRIME_TIME_BY_LANG.get(lang, "19:00-21:00")
                     proj_niche = proj_row["niche_chosen"] or proj_row["name"] or ""
 
-                # Check cache first
+                # Ajusta frequência baseada em quantos vídeos o aluno tem publicados
+                try:
+                    video_count = conn.execute(
+                        "SELECT COUNT(*) as c FROM video_performance WHERE student_id=?",
+                        (user["id"],)
+                    ).fetchone()
+                    vc = video_count["c"] if video_count else 0
+                    if vc == 0:
+                        schedule_info["frequency"] = "Diaria (1a semana de lancamento)"
+                    elif vc < 10:
+                        schedule_info["frequency"] = "3-4 videos/semana"
+                    else:
+                        schedule_info["frequency"] = "4-5 videos/semana"
+                except Exception:
+                    pass
+
+                # Check cache (update-calendar gravou dados reais de analytics aqui)
                 cache_key = f"schedule_{pid}"
                 cached = conn.execute("SELECT value FROM admin_settings WHERE key=?", (cache_key,)).fetchone()
                 if cached and cached["value"]:
                     try:
                         import json as _json
                         cached_data = _json.loads(cached["value"])
-                        for k in ["best_times", "video_duration"]:
-                            if k in cached_data and cached_data[k] and cached_data[k] != "nao definido":
-                                schedule_info[k] = cached_data[k]
+                        for k in ["frequency", "best_days", "best_times", "video_duration"]:
+                            v = cached_data.get(k)
+                            if v and v not in ("nao definido", "Aguardando mais dados", "Aguardando dados do Analytics"):
+                                schedule_info[k] = v
                     except Exception:
                         pass
-                # PERFORMANCE: Don't call AI on GET — use defaults.
-                # Schedule info is populated lazily via /api/student/update-calendar endpoint.
         except Exception:
             pass
 

@@ -1165,6 +1165,48 @@ function updateCalendar() {
     });
 }
 
+/* ── Auto-fill silencioso: dispara update-calendar no carregamento quando há canal + dados ──
+   Roda só 1x por sessão (flag sessionStorage) pra não gastar AI a cada refresh. */
+function autoFillCalendarSilent() {
+    var channelId = {{ active_channel.id if active_channel else 0 }};
+    if (!channelId) return;  // sem canal: deixa defaults
+    var flagKey = 'calAutoFilled_' + channelId;
+    if (sessionStorage.getItem(flagKey)) return;  // já rodou nesta sessão
+
+    apiPost('/api/student/update-calendar', { channel_id: channelId })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok || !data.schedule) return;  // sem dados (ex: <3 videos) — mantém defaults
+            var s = data.schedule;
+            if (s.frequency) document.querySelector('#cal-freq div:last-child').textContent = s.frequency;
+            if (s.best_days) document.querySelector('#cal-days div:last-child').textContent = s.best_days;
+            if (s.best_times) document.querySelector('#cal-time div:last-child').textContent = s.best_times;
+            if (s.video_duration) document.querySelector('#cal-dur div:last-child').textContent = s.video_duration;
+
+            // Também popula bar de monetização se vier
+            var m = data.monetization;
+            if (m && document.getElementById('monetization-bar')) {
+                document.getElementById('monetization-bar').style.display = 'grid';
+                var mLabel = document.getElementById('monet-label');
+                var mIcon = document.getElementById('monet-icon');
+                var monet = document.getElementById('monet-details');
+                if (m.monetized) {
+                    mIcon.textContent = '\u2705';
+                    mLabel.innerHTML = '<span style="color:#22c55e;">MONETIZADO</span>';
+                    monet.innerHTML = '<div style="color:#22c55e;">Canal elegivel!</div>' +
+                        '<div>Inscritos: ' + formatNum(m.subscribers) + '/1K</div>' +
+                        '<div>Watch Hours: ~' + formatNum(m.watch_hours) + '/4K</div>';
+                }
+            }
+            sessionStorage.setItem(flagKey, '1');
+        })
+        .catch(function() { /* silencioso — defaults do SSR ficam */ });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    // Atraso pequeno pra não atrapalhar outros loads do dashboard
+    setTimeout(autoFillCalendarSilent, 800);
+});
+
 /* ── Copy Narration for ElevenLabs ────────── */
 function copyNarration(fileId) {
     apiFetch('/file?id=' + fileId).then(function(r) { return r.text(); })
