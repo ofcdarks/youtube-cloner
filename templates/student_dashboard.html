@@ -402,6 +402,7 @@
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'pending')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     {% include '_ab_title_block.html' %}
+                    {% if not readonly %}{% include '_card_extras.html' %}{% endif %}
                     {% if item.hook %}<div class="kanban-card-hook" style="font-size:.75em;color:#94a3b8;margin:4px 0 6px;line-height:1.4;border-left:2px solid #334155;padding-left:8px;">{{ item.hook[:120] }}{% if item.hook|length > 120 %}...{% endif %}</div>{% endif %}
                     <div class="kanban-card-meta">
                         <span style="color:#b388ff">{{ item.pillar }}</span>
@@ -421,6 +422,7 @@
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'writing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     {% include '_ab_title_block.html' %}
+                    {% if not readonly %}{% include '_card_extras.html' %}{% endif %}
                     <div class="kanban-card-meta">
                         <span style="color:#b388ff">{{ item.pillar }}</span>
                         {% if item.score %}<span style="color:{% if item.score >= 80 %}#4caf50{% elif item.score >= 60 %}#448aff{% else %}#ffd740{% endif %}">Score: {{ item.score }}</span>{% endif %}
@@ -447,6 +449,7 @@
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'recording')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     {% include '_ab_title_block.html' %}
+                    {% if not readonly %}{% include '_card_extras.html' %}{% endif %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
                     {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
                         <button onclick="moveCard({{ item.id }}, 'writing')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
@@ -461,6 +464,7 @@
                 <div class="kanban-card" {% if not readonly %}draggable="true" ondragstart="dragCard(event, {{ item.id }}, 'editing')"{% endif %} id="card-{{ item.id }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     {% include '_ab_title_block.html' %}
+                    {% if not readonly %}{% include '_card_extras.html' %}{% endif %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span></div>
                     {% if not readonly %}<div class="kanban-card-actions" style="justify-content:space-between;width:100%">
                         <button onclick="moveCard({{ item.id }}, 'recording')" style="background:transparent;color:#94a3b8;border:1px solid #334155;padding:6px 10px;">&#9664; Voltar</button>
@@ -477,6 +481,7 @@
                 <div class="kanban-card published-card" id="card-{{ item.id }}" data-completed="{{ item.completed_at or '' }}">
                     <div class="kanban-card-title">{{ item.title }}</div>
                     {% include '_ab_title_block.html' %}
+                    {% if not readonly %}{% include '_card_extras.html' %}{% endif %}
                     <div class="kanban-card-meta"><span style="color:#b388ff">{{ item.pillar }}</span>{% if item.video_url %}<a href="{{ item.video_url }}" target="_blank" style="color:#00d4ff;text-decoration:none;font-size:.75em">&#127909; Assistir</a>{% endif %}</div>
                     {% if not readonly %}
                     <div class="kanban-card-actions" style="width:100%">
@@ -1637,6 +1642,73 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /* ── A/B Title: gera/troca titulo B (regra de 6h) ─────────────────────────── */
+function toggleCardExtras(progressId) {
+    var body = document.getElementById('xtra-body-' + progressId);
+    var chev = document.getElementById('xtra-chev-' + progressId);
+    if (!body) return;
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if (chev) chev.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+function _collectChecklist(progressId) {
+    var body = document.getElementById('xtra-body-' + progressId);
+    if (!body) return {};
+    var checklist = {};
+    body.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+        var onchange = cb.getAttribute('onchange') || '';
+        var m = onchange.match(/saveChecklist\(\d+,\s*'([^']+)'/);
+        if (m) checklist[m[1]] = cb.checked;
+    });
+    return checklist;
+}
+
+function saveChecklist(progressId, key, checked) {
+    var checklist = _collectChecklist(progressId);
+    checklist[key] = checked;
+    apiPost('/api/student/update-card-extras', { progress_id: progressId, checklist: checklist })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) { showToast('Erro ao salvar: ' + (data.error || ''), 'error', 3000); return; }
+            // Atualiza contador e progresso sem reload
+            var extras = document.getElementById('xtra-' + progressId);
+            if (extras) {
+                var done = Object.values(checklist).filter(Boolean).length;
+                var pct = Math.round(done * 100 / 7);
+                var header = extras.querySelector('button span');
+                if (header) {
+                    var color = pct === 100 ? '#22c55e' : (pct >= 50 ? '#fbbf24' : '#64748b');
+                    header.innerHTML = '&#9776; Producao <span style="color:' + color + '">(' + done + '/7 — ' + pct + '%)</span>';
+                }
+                var bar = extras.querySelector('div[style*="linear-gradient"]');
+                if (bar) bar.style.width = pct + '%';
+                // Atualiza estilo do label clicado
+                var label = extras.querySelectorAll('label')[
+                    ['roteiro','narracao','cenas_agente','cenas_flow','edicao','thumb','seo'].indexOf(key)
+                ];
+                if (label) {
+                    var span = label.querySelector('span');
+                    if (span) {
+                        span.style.color = checked ? '#22c55e' : '#cbd5e1';
+                        span.style.textDecoration = checked ? 'line-through' : '';
+                        span.style.opacity = checked ? '.7' : '';
+                    }
+                }
+            }
+        })
+        .catch(function(e) { showToast('Erro: ' + e.message, 'error', 3000); });
+}
+
+function saveNotes(progressId, notes) {
+    apiPost('/api/student/update-card-extras', { progress_id: progressId, notes: notes })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) { showToast('Erro ao salvar notas', 'error', 3000); return; }
+            showToast('Anotacoes salvas', 'success', 1500);
+        })
+        .catch(function(e) { showToast('Erro: ' + e.message, 'error', 3000); });
+}
+
 function regenTitleB(ideaId, cardId) {
     // Aluno nao pode mais gerar B sob demanda — vem do pipeline do admin
     showToast('Titulos B sao gerados pelo admin no pipeline. Peca re-geracao do projeto.', 'warning', 5000);

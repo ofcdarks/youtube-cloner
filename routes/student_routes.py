@@ -2421,3 +2421,45 @@ async def api_swap_title(request: Request, user=Depends(require_auth)):
             )
 
     return JSONResponse({"ok": True, "title_a": new_a, "title_b": new_b, "swap_count": 1})
+
+
+@router.post("/api/student/update-card-extras")
+@limiter.limit("60/minute")
+async def api_update_card_extras(request: Request, user=Depends(require_auth)):
+    """Atualiza notes e/ou production_checklist de um card (progress).
+    Body: { progress_id, notes?, checklist?: {roteiro, narracao, cenas_agente, cenas_flow, edicao, thumb, seo} }"""
+    import json as _json
+    body = await request.json()
+    progress_id = body.get("progress_id")
+    if not progress_id:
+        return JSONResponse({"error": "progress_id obrigatorio"}, status_code=400)
+
+    notes = body.get("notes")
+    checklist = body.get("checklist")
+
+    from database import get_db
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM progress WHERE id=? AND student_id=?",
+            (int(progress_id), user["id"]),
+        ).fetchone()
+        if not row:
+            return JSONResponse({"error": "card nao encontrado ou sem permissao"}, status_code=404)
+
+        updates: list[str] = []
+        params: list = []
+        if notes is not None:
+            updates.append("notes=?")
+            params.append(str(notes)[:5000])
+        if checklist is not None and isinstance(checklist, dict):
+            # So aceita chaves conhecidas, valores bool
+            valid_keys = {"roteiro", "narracao", "cenas_agente", "cenas_flow", "edicao", "thumb", "seo"}
+            clean = {k: bool(v) for k, v in checklist.items() if k in valid_keys}
+            updates.append("production_checklist=?")
+            params.append(_json.dumps(clean))
+        if not updates:
+            return JSONResponse({"error": "Nada pra atualizar (envie notes ou checklist)"}, status_code=400)
+        params.append(int(progress_id))
+        conn.execute(f"UPDATE progress SET {','.join(updates)} WHERE id=?", params)
+
+    return JSONResponse({"ok": True})

@@ -76,6 +76,19 @@ app.add_middleware(
 # ── Templates & Static ──────────────────────────────────
 templates = Jinja2Templates(directory=str(PROJECT_DIR / "templates"))
 
+# Jinja filter: fromjson — parse JSON string to dict/list (used in card checklist)
+def _fromjson_filter(value):
+    import json as _json
+    if not value:
+        return {}
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return _json.loads(value)
+    except Exception:
+        return {}
+templates.env.filters["fromjson"] = _fromjson_filter
+
 # Mount static files — but NOT the output directory root (contains DB)
 app.mount("/static", StaticFiles(directory=str(PROJECT_DIR / "static")), name="static")
 
