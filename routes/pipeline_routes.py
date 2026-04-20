@@ -901,6 +901,58 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                 "Se um titulo candidato usar qualquer tema proibido, SUBSTITUA imediatamente "
                 "por um tema valido do novo conceito antes de retornar."
             )
+            _reposicionamento_lines.append("")
+            _reposicionamento_lines.append(
+                "REGRAS DE DIVERSIDADE (OBRIGATORIAS — aplicar a TODOS os titulos gerados):"
+            )
+            _reposicionamento_lines.append(
+                "1. VARIE os sujeitos dos titulos — NUNCA use o mesmo prefixo em mais de 3 "
+                "titulos de cada 10. Alterne entre: 'A Tiny Chibi Girl', 'A Cozy Mushroom "
+                "Baker', 'Tiny Village Folk', 'Mushroom Villagers', 'A Little Forest Elf', "
+                "'Chibi Villagers', 'A Miniature Tailor', 'The Tiny Beekeeper', 'A Cottage "
+                "Witch', 'Tiny Woodland Friends', 'A Sleepy Chibi Boy', 'Forest Spirits', "
+                "'A Mushroom Farmer', 'The Acorn Baker', 'Tiny Elven Sisters', 'A Chibi "
+                "Tea Master', 'The Miniature Potter', 'Woodland Chibi Kids', 'A Tiny "
+                "Herbalist', etc."
+            )
+            _reposicionamento_lines.append(
+                "2. VARIE a estrutura frasal:"
+            )
+            _reposicionamento_lines.append(
+                "   - 30% comecando com o personagem (ex: 'A Tiny Chibi Girl Brewing...')"
+            )
+            _reposicionamento_lines.append(
+                "   - 25% comecando com a ACAO (ex: 'Baking Acorn Bread in a Tiny Cottage...')"
+            )
+            _reposicionamento_lines.append(
+                "   - 20% comecando com LOCAL ou CLIMA (ex: 'Rainy Afternoon in the Mushroom "
+                "Village...', 'Golden Hour at the Tiny Forest Market...')"
+            )
+            _reposicionamento_lines.append(
+                "   - 15% comecando com TEMPO/ESTACAO (ex: 'First Snow Falls on the Cottage "
+                "Village...', 'Spring Morning with the Tiny Beekeeper...')"
+            )
+            _reposicionamento_lines.append(
+                "   - 10% perguntas ou open loops (ex: 'What Does a Chibi Baker Make at Dawn? ...')"
+            )
+            _reposicionamento_lines.append(
+                "3. VARIE os verbos/acoes — NAO use o mesmo verbo em mais de 2 titulos:"
+            )
+            _reposicionamento_lines.append(
+                "   Bake, Brew, Craft, Harvest, Gather, Paint, Sew, Weave, Carve, Knead, "
+                "Pour, Stir, Mix, Plant, Water, Pick, Light, Hang, Build, Decorate, "
+                "Prepare, Cook, Roast, Ferment, Preserve, Pickle, Smoke, Wrap, Tie, Fold."
+            )
+            _reposicionamento_lines.append(
+                "4. VARIE os cenarios — distribua entre: mushroom village, cottage kitchen, "
+                "forest workshop, tiny bakery, cottage garden, enchanted meadow, moss-covered "
+                "ruins, fireside corner, rainy afternoon window, snowy village square, "
+                "underground library, river bridge, market stall, herb garden, beekeeping hut."
+            )
+            _reposicionamento_lines.append(
+                "5. NUNCA repita a mesma atividade (ex: nao geres 3 titulos de 'baking bread' — "
+                "cada titulo deve ser uma atividade UNICA)."
+            )
             _reposicionamento_lines.append("═══════════════════════════════════════════════")
             system_prompt = "\n".join(_reposicionamento_lines) + "\n\n" + system_prompt
 
@@ -950,6 +1002,35 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             ]
             if before != len(new_ideas):
                 logger.info(f"Forbidden-theme gate: {before} -> {len(new_ideas)} (removidos {before - len(new_ideas)})")
+
+        # DIVERSITY GATE — se muitos titulos comecam com o mesmo prefixo (ex:
+        # 'Tiny chibi folk ...'), mantem apenas os 3 primeiros e rejeita o resto.
+        # Melhor ter 15 titulos variados do que 30 clones.
+        def _title_prefix(t: str, n: int = 3) -> str:
+            words = (t or "").strip().split()
+            return " ".join(words[:n]).lower()
+
+        if len(new_ideas) > 3:
+            from collections import Counter
+            prefix_counts = Counter(_title_prefix(i.get("title", "")) for i in new_ideas)
+            overused = {pfx for pfx, cnt in prefix_counts.items() if cnt > 3}
+            if overused:
+                kept = []
+                prefix_seen: dict[str, int] = {}
+                for idea in new_ideas:
+                    pfx = _title_prefix(idea.get("title", ""))
+                    if pfx in overused:
+                        count = prefix_seen.get(pfx, 0)
+                        if count >= 3:
+                            continue  # rejeita o 4o+ com mesmo prefixo
+                        prefix_seen[pfx] = count + 1
+                    kept.append(idea)
+                if len(kept) != len(new_ideas):
+                    logger.info(
+                        f"Diversity gate: removidos {len(new_ideas) - len(kept)} titulos "
+                        f"com prefixos repetidos ({sorted(overused)})"
+                    )
+                    new_ideas = kept
 
         # QUALITY GATE — score each title for viral potential and map volume
         from protocols.viral_engine import filter_best_titles, score_viral_title
