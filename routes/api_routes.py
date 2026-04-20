@@ -410,6 +410,30 @@ async def seed_robos_encantados(request: Request, force: int = 0):
         niche_chosen="Enchanted Miniature Chibi Village",
         language="en",
     )
+    # Override de conceito: projeto foi repositionado — IA NUNCA deve gerar robos.
+    # /api/admin/regenerate-titles le esses campos pra sobrescrever channel_name,
+    # pular channel_best_videos e injetar FORBIDDEN_THEMES no prompt.
+    try:
+        from database import update_project
+        import json as _json
+        meta = {
+            "concept_override_name": "Enchanted Miniature Chibi Village",
+            "concept_override_summary": (
+                "Canal repositionado: personagens chibi artesanais (clay figurine stop-motion 3D) "
+                "vivendo em vila medieval em miniatura + floresta encantada. Cottagecore cozy ASMR. "
+                "NAO ha robos, engrenagens, cobre, bronze ou qualquer elemento mecanico."
+            ),
+            "forbidden_themes": [
+                "robots", "robot", "robô", "robôs", "mechanical", "mecânico", "mecanica",
+                "gears", "engrenagem", "copper body", "bronze body", "LED eyes",
+                "steampunk", "steam puffs", "exhaust vents", "antenna",
+                "android", "cyborg", "automaton", "clockwork",
+            ],
+            "skip_channel_fetch": True,  # nao puxa videos antigos (robos) do YouTube
+        }
+        update_project(pid, meta=_json.dumps(meta))
+    except Exception as e:
+        logger.warning(f"concept_override meta set skipped: {e}")
     sop = ""
     for sop_path in [
         "/app/seed_output/sop_robos_encantados_floresta.md",

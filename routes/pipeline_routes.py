@@ -813,16 +813,46 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         except Exception as e:
             logger.warning(f"YouTube autocomplete failed (non-blocking): {e}")
 
-        # Analyze channel's OWN best videos (what already works)
-        channel_best_videos = []
+        # Concept override — projeto reposicionado (ex: ROBOS ENCANTADOS -> chibi village)
+        # pode ter meta.concept_override_name, forbidden_themes, skip_channel_fetch
+        concept_override_name = ""
+        concept_override_summary = ""
+        forbidden_themes: list[str] = []
+        skip_channel_fetch = False
         try:
-            from protocols.viral_engine import analyze_channel_best_videos
-            channel_url = project.get("channel_original", "")
-            if channel_url:
-                channel_best_videos = analyze_channel_best_videos(channel_url)
-                logger.info(f"Channel analysis: {len(channel_best_videos)} top videos found")
+            import json as _json
+            _raw_meta = project.get("meta") or "{}"
+            _meta = _json.loads(_raw_meta) if isinstance(_raw_meta, str) else (_raw_meta or {})
+            concept_override_name = (_meta.get("concept_override_name") or "").strip()
+            concept_override_summary = (_meta.get("concept_override_summary") or "").strip()
+            forbidden_themes = list(_meta.get("forbidden_themes") or [])
+            skip_channel_fetch = bool(_meta.get("skip_channel_fetch"))
         except Exception as e:
-            logger.warning(f"Channel best videos analysis failed (non-blocking): {e}")
+            logger.warning(f"concept_override parse failed: {e}")
+
+        # Analyze channel's OWN best videos (what already works) — skip when project
+        # has been repositioned (old videos would poison the new concept)
+        channel_best_videos = []
+        if skip_channel_fetch:
+            logger.info("skip_channel_fetch=True; pulando analise do canal original (reposicionado)")
+        else:
+            try:
+                from protocols.viral_engine import analyze_channel_best_videos
+                channel_url = project.get("channel_original", "")
+                if channel_url:
+                    channel_best_videos = analyze_channel_best_videos(channel_url)
+                    logger.info(f"Channel analysis: {len(channel_best_videos)} top videos found")
+                    # Filter out any videos matching forbidden themes
+                    if forbidden_themes and channel_best_videos:
+                        low_themes = [t.lower() for t in forbidden_themes]
+                        filtered = [
+                            v for v in channel_best_videos
+                            if not any(t in (v.get("title", "") or "").lower() for t in low_themes)
+                        ]
+                        logger.info(f"Forbidden-theme filter: {len(channel_best_videos)} -> {len(filtered)}")
+                        channel_best_videos = filtered
+            except Exception as e:
+                logger.warning(f"Channel best videos analysis failed (non-blocking): {e}")
 
         # Delete existing ideas (not assigned to students)
         with get_db() as conn:
@@ -833,10 +863,13 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             """, (project_id,))
             deleted = conn.total_changes
 
-        # Build viral prompt using the Viral Engine
+        # Build viral prompt using the Viral Engine — quando ha concept_override,
+        # usa o nome/descricao novos no lugar do project.name legado (senao a IA
+        # se assume o canal velho e gera temas antigos)
         from protocols.viral_engine import build_viral_prompt
+        effective_channel_name = concept_override_name or project.get('name', '')
         system_prompt, user_prompt = build_viral_prompt(
-            channel_name=project.get('name', ''),
+            channel_name=effective_channel_name,
             niches=chosen,
             sop_text=sop,
             keywords_with_volume=niche_keywords,
@@ -847,6 +880,29 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             existing_titles=existing_titles,
             channel_best_videos=channel_best_videos,
         )
+
+        # Injeta bloco de reposicionamento no topo do system prompt (antes de tudo)
+        # quando ha concept_override. Isso sobrescreve qualquer hint residual de
+        # temas antigos que a IA possa ter assumido.
+        if concept_override_name or concept_override_summary or forbidden_themes:
+            _reposicionamento_lines = ["═══ REPOSICIONAMENTO DO CANAL (REGRA DURA) ═══"]
+            if concept_override_summary:
+                _reposicionamento_lines.append(concept_override_summary)
+            if concept_override_name:
+                _reposicionamento_lines.append(
+                    f"Nome atual do conceito: {concept_override_name}"
+                )
+            if forbidden_themes:
+                _reposicionamento_lines.append(
+                    "TEMAS PROIBIDOS (NUNCA use em titulos — rejeitar se aparecer): "
+                    + ", ".join(forbidden_themes)
+                )
+            _reposicionamento_lines.append(
+                "Se um titulo candidato usar qualquer tema proibido, SUBSTITUA imediatamente "
+                "por um tema valido do novo conceito antes de retornar."
+            )
+            _reposicionamento_lines.append("═══════════════════════════════════════════════")
+            system_prompt = "\n".join(_reposicionamento_lines) + "\n\n" + system_prompt
 
         # Use admin_ai_model from DB settings (set in admin panel), fallback to env AI_MODEL
         from database import get_setting, set_setting
@@ -867,6 +923,17 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
 
         new_ideas = json.loads(json_match.group())
+
+        # FORBIDDEN-THEME GATE — remove titulos que vazaram temas antigos
+        if forbidden_themes:
+            low_themes = [t.lower() for t in forbidden_themes]
+            before = len(new_ideas)
+            new_ideas = [
+                idea for idea in new_ideas
+                if not any(t in (idea.get("title", "") or "").lower() for t in low_themes)
+            ]
+            if before != len(new_ideas):
+                logger.info(f"Forbidden-theme gate: {before} -> {len(new_ideas)} (removidos {before - len(new_ideas)})")
 
         # QUALITY GATE — score each title for viral potential and map volume
         from protocols.viral_engine import filter_best_titles, score_viral_title
