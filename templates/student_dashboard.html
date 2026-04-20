@@ -1658,7 +1658,7 @@ function _collectChecklist(progressId) {
     if (!body) return { checklist: {}, order: [] };
     var checklist = {};
     var order = [];
-    body.querySelectorAll('.ck-list label[data-key]').forEach(function(lbl) {
+    body.querySelectorAll('.ck-list [data-key]').forEach(function(lbl) {
         var key = lbl.dataset.key;
         var cb = lbl.querySelector('input[type=checkbox]');
         checklist[key] = cb ? cb.checked : false;
@@ -1693,9 +1693,9 @@ function saveChecklist(progressId, key, checked) {
             // Estiliza item marcado
             var extras = document.getElementById('xtra-' + progressId);
             if (extras) {
-                var lbl = extras.querySelector('.ck-list label[data-key="' + key + '"]');
+                var lbl = extras.querySelector('.ck-list [data-key="' + key + '"]');
                 if (lbl) {
-                    var span = lbl.querySelectorAll('span')[1];
+                    var span = lbl.querySelector('label span');
                     if (span) {
                         span.style.color = checked ? '#22c55e' : '#cbd5e1';
                         span.style.textDecoration = checked ? 'line-through' : '';
@@ -1713,7 +1713,7 @@ function ckMove(progressId, key, direction) {
     if (!body) return;
     var list = body.querySelector('.ck-list');
     if (!list) return;
-    var target = list.querySelector('label[data-key="' + key + '"]');
+    var target = list.querySelector('[data-key="' + key + '"]');
     if (!target) return;
     if (direction < 0 && target.previousElementSibling) {
         list.insertBefore(target, target.previousElementSibling);
@@ -1774,7 +1774,7 @@ function ckDragEnd(e) {
     e.currentTarget.style.opacity = '';
     _ckDragSrc = null;
     // Limpa highlights residuais
-    document.querySelectorAll('.ck-list label').forEach(function(l) { l.style.background = ''; });
+    document.querySelectorAll('.ck-list [data-key]').forEach(function(l) { l.style.background = ''; });
 }
 
 function saveNotes(progressId, notes) {
