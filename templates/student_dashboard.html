@@ -1707,6 +1707,32 @@ function saveChecklist(progressId, key, checked) {
         .catch(function(e) { showToast('Erro: ' + e.message, 'error', 3000); });
 }
 
+/* ── Reordenar via seta (↑/↓) ────────────────────────────── */
+function ckMove(progressId, key, direction) {
+    var body = document.getElementById('xtra-body-' + progressId);
+    if (!body) return;
+    var list = body.querySelector('.ck-list');
+    if (!list) return;
+    var target = list.querySelector('label[data-key="' + key + '"]');
+    if (!target) return;
+    if (direction < 0 && target.previousElementSibling) {
+        list.insertBefore(target, target.previousElementSibling);
+    } else if (direction > 0 && target.nextElementSibling) {
+        list.insertBefore(target.nextElementSibling, target);
+    } else {
+        return; // ja no topo/fim
+    }
+    // Persiste ordem
+    var state = _collectChecklist(progressId);
+    var payload = Object.assign({}, state.checklist, { _order: state.order });
+    apiPost('/api/student/update-card-extras', { progress_id: progressId, checklist: payload })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) showToast('Ordem salva', 'success', 1000);
+        })
+        .catch(function(err) { showToast('Erro: ' + err.message, 'error', 2500); });
+}
+
 /* ── Drag-to-reorder dos itens do checklist ────────────────── */
 var _ckDragSrc = null;
 function ckDragStart(e) {

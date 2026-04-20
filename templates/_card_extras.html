@@ -38,8 +38,14 @@
         <div class="ck-list" data-progress="{{ item.id }}" style="display:flex;flex-direction:column;gap:4px;font-size:10.5px">
             {% for key, label in ordered_items %}
             <label draggable="true" data-key="{{ key }}" ondragstart="ckDragStart(event)" ondragover="ckDragOver(event)" ondragleave="ckDragLeave(event)" ondrop="ckDragDrop(event, {{ item.id }})" ondragend="ckDragEnd(event)"
-                style="display:flex;align-items:center;gap:6px;cursor:grab;padding:3px 4px;user-select:none;border-radius:4px">
+                style="display:flex;align-items:center;gap:4px;cursor:grab;padding:3px 4px;user-select:none;border-radius:4px">
                 <span style="color:#475569;font-size:12px;cursor:grab" title="Arraste para reordenar">&#8801;</span>
+                <div style="display:flex;flex-direction:column;gap:0;line-height:.8">
+                    <button type="button" onclick="ckMove({{ item.id }}, '{{ key }}', -1); event.stopPropagation()" title="Mover pra cima"
+                        style="background:transparent;border:none;color:#64748b;cursor:pointer;padding:0 2px;font-size:9px;line-height:1">&#9650;</button>
+                    <button type="button" onclick="ckMove({{ item.id }}, '{{ key }}', 1); event.stopPropagation()" title="Mover pra baixo"
+                        style="background:transparent;border:none;color:#64748b;cursor:pointer;padding:0 2px;font-size:9px;line-height:1">&#9660;</button>
+                </div>
                 <input type="checkbox" {% if cl.get(key) %}checked{% endif %}
                     onchange="saveChecklist({{ item.id }}, '{{ key }}', this.checked)"
                     style="cursor:pointer;accent-color:#7c3aed">
