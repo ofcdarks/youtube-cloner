@@ -953,6 +953,19 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                 "5. NUNCA repita a mesma atividade (ex: nao geres 3 titulos de 'baking bread' — "
                 "cada titulo deve ser uma atividade UNICA)."
             )
+            _reposicionamento_lines.append(
+                "6. TITULO CONTA UMA HISTORIA — NUNCA use apenas labels genericos tipo "
+                "'Fantasy Music', 'Relaxing Music', 'Sleep Music' como titulo principal. O "
+                "titulo deve EVOCAR uma cena especifica. Labels de ambiente/genero vao "
+                "SEMPRE em colchetes/pipes no fim (ex: '[Ambient Fantasy]', '| Celtic Harp "
+                "ASMR', '[Cottagecore Lofi]'). Use entre 20-50% dos titulos no formato "
+                "narrativo tipo serie: 'Tales of Leafkins: The Hidden Village [Ambient "
+                "Fantasy]', 'Chronicles of Mossmoor: The Beekeepers Secret | Celtic ASMR', "
+                "'Diary of a Tiny Baker: First Winter Loaf [Cottagecore Lofi]', 'Legends of "
+                "the Enchanted Grove: The Crystal Lake | Peaceful Music'. Inventa nomes "
+                "proprios de vilas/personagens fantasy (Leafkins, Mossmoor, Thistledown, "
+                "Willowbend, Acornhill, Brackenvale) para criar mundo consistente."
+            )
             _reposicionamento_lines.append("═══════════════════════════════════════════════")
             system_prompt = "\n".join(_reposicionamento_lines) + "\n\n" + system_prompt
 
