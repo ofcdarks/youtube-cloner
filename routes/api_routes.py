@@ -319,27 +319,97 @@ async def reseed_all_sops(request: Request):
     return JSONResponse({"ok": True, "results": results})
 
 
+_ROBOS_SEED_NICHES = [
+    ("Miniature Village Cooking", "Tiny chibi folk making berry jam, baking acorn bread in stone ovens, brewing herbal tea in nutshell cups, preserving honey in glass jars, cooking mushroom soup by the fireplace", "$4-6", "Baja", "#8FB285", True),
+    ("Cottagecore Crafts & Artisanry", "Chibi villagers weaving on miniature looms, painting with petal pigments, sewing linen aprons, shaping pottery from river clay, candle-making from beeswax, wood carving on tiny benches", "$4-6", "Baja", "#C9A961", True),
+    ("Enchanted Harvest & Foraging", "Tiny folk collecting morning dew drops, picking wild strawberries and blackberries, gathering mushrooms at dawn, fishing in crystal streams, foraging edible flowers", "$3-5", "Baja", "#DAA520", False),
+    ("Tiny Village Building & Gardening", "Chibi characters constructing new tree-stump houses, assembling stone bridges over streams, installing waterwheels, hanging firefly lanterns along cobblestone paths, tending flower gardens and herb plots", "$3-6", "Baja", "#B5651D", False),
+    ("Magical Forest Discovery", "Tiny villagers discovering crystal caves, finding hidden waterfalls, meeting gentle giant animals (cats, butterflies, ladybugs, deer), exploring moss-covered ruins, following fairy rings at dusk", "$4-7", "Baja", "#6B8E4A", False),
+]
+
+_ROBOS_SEED_TITLES = [
+    ("A Tiny Chibi Girl Making Wild Berry Jam in a Cottage Kitchen | Relaxing Celtic Music & Forest ASMR", "Miniature Village Cooking", "ALTA", 40500),
+    ("A Cozy Day in the Tiny Chibi Village Workshop | Calming Celtic Harp & Nature Sounds", "Cottagecore Crafts & Artisanry", "ALTA", 33100),
+    ("Tiny Folk Baking Acorn Bread by the Fireplace | Peaceful Celtic Music & Cottagecore ASMR", "Miniature Village Cooking", "ALTA", 49500),
+    ("Little Chibi Villagers Harvesting Morning Dew Drops | Enchanted Forest Ambience & Gentle Music", "Enchanted Harvest & Foraging", "ALTA", 27100),
+    ("Tiny Village Market Day in the Enchanted Miniature World | Relaxing Celtic Music & Cozy Fantasy Ambience", "Cottagecore Crafts & Artisanry", "ALTA", 40500),
+    ("A Chibi Explorer Finds a Secret Crystal Cave | Calming Celtic Music & Forest Ambience", "Magical Forest Discovery", "ALTA", 33100),
+    ("Tiny Folk Meet a Gentle Giant Butterfly in a Meadow | Relaxing Harp Music & Nature Sounds", "Magical Forest Discovery", "ALTA", 74000),
+    ("Chibi Villagers Build a Wooden Bridge Over the Stream | Cozy Celtic Music & Rain Ambience", "Tiny Village Building & Gardening", "ALTA", 22200),
+    ("A Tiny Chibi Girl Opens a Flower Paint Studio | Enchanted Village Music & Forest Sounds", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
+    ("Tiny Villagers Discover a Hidden Waterfall | Peaceful Celtic Music & Water Sounds", "Magical Forest Discovery", "ALTA", 27100),
+    ("Tiny Folk Brewing Herbal Tea in Nutshell Cups | ASMR Forest Ambience & Celtic Harp", "Miniature Village Cooking", "ALTA", 33100),
+    ("A Chibi Weaver Working on a Miniature Loom | Calming Celtic Music & Rain Sounds", "Cottagecore Crafts & Artisanry", "MEDIA", 14800),
+    ("A Rainy Day in the Enchanted Miniature Village | Relaxing Rain & Celtic Music", "Cottagecore Crafts & Artisanry", "ALTA", 49500),
+    ("Chibi Villagers Picking Wild Strawberries at Dawn | Peaceful Forest Ambience & Gentle Music", "Enchanted Harvest & Foraging", "ALTA", 40500),
+    ("Tiny Folk Harvesting Honey from a Giant Beehive | Relaxing Celtic Harp & Cottagecore ASMR", "Miniature Village Cooking", "MEDIA", 22200),
+    ("Chibi Villagers Building a New Mushroom House | Cozy Celtic Music & Forest Ambience", "Tiny Village Building & Gardening", "ALTA", 33100),
+    ("A Tiny Chibi Painter and Magic Flowers | Enchanted Village Ambience & Celtic Music", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
+    ("Tiny Folk Fishing in a Crystal Stream | Relaxing Water Sounds & Celtic Harp", "Enchanted Harvest & Foraging", "MEDIA", 14800),
+    ("A Chibi Girl Meets a Gentle Giant Cat in a Cottage | Calming Celtic Music & Cottagecore Ambience", "Magical Forest Discovery", "ALTA", 74000),
+    ("Chibi Villagers Installing Firefly Lanterns Along Cobblestones | Peaceful Evening Ambience & Celtic Music", "Tiny Village Building & Gardening", "ALTA", 27100),
+    ("Tiny Folk Making Pottery from River Clay | ASMR Forest Sounds & Gentle Music", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
+    ("First Snow in the Tiny Chibi Village | Relaxing Celtic Music & Winter Ambience", "Tiny Village Building & Gardening", "ALTA", 49500),
+    ("Tiny Villagers Cooking Mushroom Soup by the Fire | Cozy ASMR & Celtic Harp Music", "Miniature Village Cooking", "ALTA", 33100),
+    ("Chibi Villagers Explore Ancient Moss-Covered Ruins | Enchanted Forest Ambience & Music", "Magical Forest Discovery", "MEDIA", 22200),
+    ("Tiny Folk Gathering Wild Mushrooms at Dawn | Peaceful Celtic Music & Nature Sounds", "Enchanted Harvest & Foraging", "MEDIA", 14800),
+    ("A Chibi Tailor Sewing Linen Dresses for Winter | Calming Celtic Music & Rain Ambience", "Cottagecore Crafts & Artisanry", "MEDIA", 12100),
+    ("Tiny Villagers Building a Wooden Waterwheel by the Stream | Relaxing Water Sounds & Celtic Harp", "Tiny Village Building & Gardening", "MEDIA", 18100),
+    ("Spring Flower Festival in the Tiny Chibi Village | Enchanted Music & Flower Ambience", "Cottagecore Crafts & Artisanry", "ALTA", 40500),
+    ("Tiny Folk Making Candles from Beeswax in a Cottage Workshop | ASMR Forest Sounds & Celtic Music", "Miniature Village Cooking", "MEDIA", 14800),
+    ("Chibi Explorers Discover a Glowing Mushroom Garden at Dusk | Magical Celtic Music & Ambience", "Magical Forest Discovery", "ALTA", 33100),
+]
+
+
 @router.get("/api/seed-robos-encantados")
-async def seed_robos_encantados(request: Request):
-    """One-time seed: ROBOS ENCANTADOS DA FLORESTA project."""
-    from database import get_projects, create_project, save_niche, save_idea, save_file, log_activity, get_db
-    from database import delete_project
+async def seed_robos_encantados(request: Request, force: int = 0):
+    """Seed/reseed the miniature enchanted village project.
+
+    Keeps the legacy endpoint name and project key "ROBOS ENCANTADOS" for
+    back-compat but the content is now chibi characters (no robots).
+    Pass ?force=1 to wipe and reseed (useful after SOP updates).
+    """
+    from database import (
+        get_projects,
+        create_project,
+        save_niche,
+        save_idea,
+        save_file,
+        log_activity,
+        get_db,
+        delete_project,
+    )
     existing = [p for p in get_projects() if "ROBOS ENCANTADOS" == p.get("name", "")]
     with get_db() as conn:
-        for sql in ["ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
-                     "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
-                     "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0"]:
-            try: conn.execute(sql)
-            except: pass
+        for sql in [
+            "ALTER TABLE ideas ADD COLUMN search_competition REAL DEFAULT -1",
+            "ALTER TABLE ideas ADD COLUMN title_b TEXT DEFAULT ''",
+            "ALTER TABLE ideas ADD COLUMN trending INTEGER DEFAULT 0",
+        ]:
+            try:
+                conn.execute(sql)
+            except Exception:
+                pass
     if existing:
         pid = existing[0]["id"]
         with get_db() as conn:
             nc = conn.execute("SELECT COUNT(*) FROM niches WHERE project_id=?", (pid,)).fetchone()[0]
             ic = conn.execute("SELECT COUNT(*) FROM ideas WHERE project_id=?", (pid,)).fetchone()[0]
-        if nc > 0 and ic > 0:
-            return JSONResponse({"ok": True, "msg": "already seeded", "id": pid, "niches": nc, "ideas": ic})
+        if nc > 0 and ic > 0 and not force:
+            return JSONResponse({
+                "ok": True,
+                "msg": "already seeded — pass ?force=1 to wipe and reseed with new chibi niches/titles",
+                "id": pid,
+                "niches": nc,
+                "ideas": ic,
+            })
         delete_project(pid)
-    pid = create_project(name="ROBOS ENCANTADOS", channel_original="https://www.youtube.com/@ForestSpirits25", niche_chosen="Enchanted Miniature Robot Village", language="en")
+    pid = create_project(
+        name="ROBOS ENCANTADOS",  # chave legada — mantida pro SOP_FILE_MAP e paineis existentes
+        channel_original="https://www.youtube.com/@ForestSpirits25",
+        niche_chosen="Enchanted Miniature Chibi Village",
+        language="en",
+    )
     sop = ""
     for sop_path in [
         "/app/seed_output/sop_robos_encantados_floresta.md",
@@ -349,69 +419,40 @@ async def seed_robos_encantados(request: Request):
         try:
             with open(sop_path, "r", encoding="utf-8") as f:
                 sop = f.read()
-            logger.info(f"Loaded ROBOS SOP from {sop_path} ({len(sop)} chars)")
+            logger.info(f"Loaded chibi-village SOP from {sop_path} ({len(sop)} chars)")
             break
         except FileNotFoundError:
             continue
     if not sop:
-        sop = "# ROBOS ENCANTADOS SOP\nFallback - SOP file not found in seed_output."
+        sop = "# VILA ENCANTADA EM MINIATURA SOP\nFallback - SOP file not found in seed_output."
     try:
-        save_file(pid, "analise", "SOP - ROBOS ENCANTADOS (NotebookLM + Forest Spirits)", f"sop_{pid}.md", sop)
+        save_file(pid, "analise", "SOP - VILA ENCANTADA EM MINIATURA (chibi cottagecore)", f"sop_{pid}.md", sop)
     except Exception as e:
         logger.warning(f"SOP save skipped: {e}")
-    niches = [
-        ("Miniature Robot Cooking", "Tiny robots making jam, baking bread in acorn ovens, brewing herbal tea, making honey with mechanical bees", "$3-6", "Baja", "#B87333", True),
-        ("Robot Village Crafts", "Weaving on miniature looms, painting with petal pigments, pottery from river clay, sewing leaf clothes", "$3-5", "Baja", "#4A7C59", True),
-        ("Forest Harvest & Foraging", "Collecting morning dew, picking wild berries, gathering mushrooms, fishing in tiny streams", "$3-5", "Baja", "#DAA520", False),
-        ("Tiny Robot Engineering", "Building bridges, constructing new mushroom houses, installing waterwheels, crafting lanterns", "$3-6", "Baja", "#CD7F32", False),
-        ("Enchanted Forest Exploration", "Discovering secret lakes, crystal caves, meeting gentle giant animals (cats, butterflies, ladybugs)", "$4-7", "Baja", "#CC3333", False),
-    ]
-    for name, desc, rpm, comp, color, chosen in niches:
+    for name, desc, rpm, comp, color, chosen in _ROBOS_SEED_NICHES:
         try:
             save_niche(pid, name, desc, rpm, comp, color, chosen)
         except Exception as e:
             logger.warning(f"Niche save skipped ({name}): {e}")
-    titles = [
-        ("Tiny Robots Making Wild Berry Jam in Acorn Pots | Relaxing Forest Ambience & Celtic Music", "Miniature Robot Cooking", "ALTA", 40500),
-        ("A Cozy Day in the Tiny Robot Workshop | Calming Celtic Harp & Nature Sounds", "Tiny Robot Engineering", "ALTA", 33100),
-        ("Tiny Robots Baking Acorn Bread by the Fireplace | Peaceful Celtic Music & ASMR", "Miniature Robot Cooking", "ALTA", 49500),
-        ("Little Robots Harvesting Morning Dew Drops | Enchanted Forest Ambience & Gentle Music", "Forest Harvest & Foraging", "ALTA", 27100),
-        ("Tiny Robot Village Market Day | Relaxing Celtic Music & Cozy Fantasy Ambience", "Robot Village Crafts", "ALTA", 40500),
-        ("Tiny Robots Find a Secret Crystal Cave | Calming Celtic Music & Forest Ambience", "Enchanted Forest Exploration", "ALTA", 33100),
-        ("Tiny Robots Meet a Gentle Giant Butterfly | Relaxing Harp Music & Nature Sounds", "Enchanted Forest Exploration", "ALTA", 74000),
-        ("Tiny Robots Build a Bridge Over the Stream | Cozy Celtic Music & Rain Ambience", "Tiny Robot Engineering", "ALTA", 22200),
-        ("Tiny Robots Open a Flower Paint Studio | Enchanted Village Music & Forest Sounds", "Robot Village Crafts", "MEDIA", 18100),
-        ("Tiny Robots Discover a Hidden Waterfall | Peaceful Celtic Music & Water Sounds", "Enchanted Forest Exploration", "ALTA", 27100),
-        ("Tiny Robots Brewing Herbal Tea in Nutshell Cups | ASMR Forest Ambience & Celtic Harp", "Miniature Robot Cooking", "ALTA", 33100),
-        ("Tiny Robots Weaving on a Miniature Loom | Calming Celtic Music & Rain Sounds", "Robot Village Crafts", "MEDIA", 14800),
-        ("A Rainy Day in the Enchanted Robot Village | Relaxing Rain & Celtic Music", "Robot Village Crafts", "ALTA", 49500),
-        ("Tiny Robots Picking Wild Strawberries | Peaceful Forest Ambience & Gentle Music", "Forest Harvest & Foraging", "ALTA", 40500),
-        ("Tiny Robots Making Honey with Mechanical Bees | Relaxing Celtic Harp & ASMR", "Miniature Robot Cooking", "MEDIA", 22200),
-        ("Tiny Robots Building a New Mushroom House | Cozy Celtic Music & Forest Ambience", "Tiny Robot Engineering", "ALTA", 33100),
-        ("Tiny Robots Painting Magic Flowers | Enchanted Village Ambience & Celtic Music", "Robot Village Crafts", "MEDIA", 18100),
-        ("Tiny Robots Fishing in a Crystal Stream | Relaxing Water Sounds & Celtic Harp", "Forest Harvest & Foraging", "MEDIA", 14800),
-        ("Tiny Robots Meet a Gentle Giant Cat | Calming Celtic Music & Cottagecore Ambience", "Enchanted Forest Exploration", "ALTA", 74000),
-        ("Tiny Robots Installing Firefly Lanterns | Peaceful Evening Ambience & Celtic Music", "Tiny Robot Engineering", "ALTA", 27100),
-        ("Tiny Robots Making Pottery from River Clay | ASMR Forest Sounds & Gentle Music", "Robot Village Crafts", "MEDIA", 18100),
-        ("First Snow in the Tiny Robot Village | Relaxing Celtic Music & Winter Ambience", "Robot Village Crafts", "ALTA", 49500),
-        ("Tiny Robots Cooking Mushroom Soup by the Fire | Cozy ASMR & Celtic Harp Music", "Miniature Robot Cooking", "ALTA", 33100),
-        ("Tiny Robots Explore Ancient Moss-Covered Ruins | Enchanted Forest Ambience & Music", "Enchanted Forest Exploration", "MEDIA", 22200),
-        ("Tiny Robots Gathering Mushrooms at Dawn | Peaceful Celtic Music & Nature Sounds", "Forest Harvest & Foraging", "MEDIA", 14800),
-        ("Tiny Robots Sewing Leaf Clothes for Winter | Calming Celtic Music & Rain Ambience", "Robot Village Crafts", "MEDIA", 12100),
-        ("Tiny Robots Building a Waterwheel | Relaxing Water Sounds & Celtic Harp", "Tiny Robot Engineering", "MEDIA", 18100),
-        ("Spring Festival in the Tiny Robot Village | Enchanted Music & Flower Ambience", "Robot Village Crafts", "ALTA", 40500),
-        ("Tiny Robots Making Candles from Beeswax | ASMR Forest Sounds & Celtic Music", "Miniature Robot Cooking", "MEDIA", 14800),
-        ("Tiny Robots Discover a Glowing Mushroom Garden | Magical Celtic Music & Ambience", "Enchanted Forest Exploration", "ALTA", 33100),
-    ]
     saved_titles = 0
-    for i, (title, pillar, pri, vol) in enumerate(titles):
+    for i, (title, pillar, pri, vol) in enumerate(_ROBOS_SEED_TITLES):
         try:
-            save_idea(pid, i+1, title, "", "", pillar, pri, search_volume=vol, trending=1)
+            save_idea(pid, i + 1, title, "", "", pillar, pri, search_volume=vol, trending=1)
             saved_titles += 1
         except Exception as e:
-            logger.warning(f"Idea save skipped ({i+1}): {e}")
-    log_activity(pid, "project_seeded", f"ROBOS ENCANTADOS seeded: 5 niches, {saved_titles} titles")
-    return JSONResponse({"ok": True, "project_id": pid, "niches": 5, "titles": saved_titles})
+            logger.warning(f"Idea save skipped ({i + 1}): {e}")
+    log_activity(
+        pid,
+        "project_seeded",
+        f"VILA ENCANTADA (chibi) seeded: {len(_ROBOS_SEED_NICHES)} niches, {saved_titles} titles",
+    )
+    return JSONResponse({
+        "ok": True,
+        "project_id": pid,
+        "niches": len(_ROBOS_SEED_NICHES),
+        "titles": saved_titles,
+        "forced": bool(force),
+    })
 
 
 
