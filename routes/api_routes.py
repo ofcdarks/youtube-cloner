@@ -327,37 +327,52 @@ _ROBOS_SEED_NICHES = [
     ("Magical Forest Discovery", "Tiny villagers discovering crystal caves, finding hidden waterfalls, meeting gentle giant animals (cats, butterflies, ladybugs, deer), exploring moss-covered ruins, following fairy rings at dusk", "$4-7", "Baja", "#6B8E4A", False),
 ]
 
+# 30 titulos curados seguindo estilo ForestSpirits25 (cottagecore cozy ASMR)
+# Variedade: narrativa serie (Tales of X, Chronicles of Y, Diary of Z, Legends of W),
+# personagens variados (cottage witch, tiny baker, little elf, chibi potter, etc),
+# vilas com nomes proprios (Mossmoor, Leafkins, Thistledown, Willowbend, Acornhill,
+# Brackenvale, Hollowbrook), labels de genero sempre no FIM entre [] ou |.
+# SEM prefixos genericos tipo "Tiny chibi folk".
 _ROBOS_SEED_TITLES = [
-    ("A Tiny Chibi Girl Making Wild Berry Jam in a Cottage Kitchen | Relaxing Celtic Music & Forest ASMR", "Miniature Village Cooking", "ALTA", 40500),
-    ("A Cozy Day in the Tiny Chibi Village Workshop | Calming Celtic Harp & Nature Sounds", "Cottagecore Crafts & Artisanry", "ALTA", 33100),
-    ("Tiny Folk Baking Acorn Bread by the Fireplace | Peaceful Celtic Music & Cottagecore ASMR", "Miniature Village Cooking", "ALTA", 49500),
-    ("Little Chibi Villagers Harvesting Morning Dew Drops | Enchanted Forest Ambience & Gentle Music", "Enchanted Harvest & Foraging", "ALTA", 27100),
-    ("Tiny Village Market Day in the Enchanted Miniature World | Relaxing Celtic Music & Cozy Fantasy Ambience", "Cottagecore Crafts & Artisanry", "ALTA", 40500),
-    ("A Chibi Explorer Finds a Secret Crystal Cave | Calming Celtic Music & Forest Ambience", "Magical Forest Discovery", "ALTA", 33100),
-    ("Tiny Folk Meet a Gentle Giant Butterfly in a Meadow | Relaxing Harp Music & Nature Sounds", "Magical Forest Discovery", "ALTA", 74000),
-    ("Chibi Villagers Build a Wooden Bridge Over the Stream | Cozy Celtic Music & Rain Ambience", "Tiny Village Building & Gardening", "ALTA", 22200),
-    ("A Tiny Chibi Girl Opens a Flower Paint Studio | Enchanted Village Music & Forest Sounds", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
-    ("Tiny Villagers Discover a Hidden Waterfall | Peaceful Celtic Music & Water Sounds", "Magical Forest Discovery", "ALTA", 27100),
-    ("Tiny Folk Brewing Herbal Tea in Nutshell Cups | ASMR Forest Ambience & Celtic Harp", "Miniature Village Cooking", "ALTA", 33100),
-    ("A Chibi Weaver Working on a Miniature Loom | Calming Celtic Music & Rain Sounds", "Cottagecore Crafts & Artisanry", "MEDIA", 14800),
-    ("A Rainy Day in the Enchanted Miniature Village | Relaxing Rain & Celtic Music", "Cottagecore Crafts & Artisanry", "ALTA", 49500),
-    ("Chibi Villagers Picking Wild Strawberries at Dawn | Peaceful Forest Ambience & Gentle Music", "Enchanted Harvest & Foraging", "ALTA", 40500),
-    ("Tiny Folk Harvesting Honey from a Giant Beehive | Relaxing Celtic Harp & Cottagecore ASMR", "Miniature Village Cooking", "MEDIA", 22200),
-    ("Chibi Villagers Building a New Mushroom House | Cozy Celtic Music & Forest Ambience", "Tiny Village Building & Gardening", "ALTA", 33100),
-    ("A Tiny Chibi Painter and Magic Flowers | Enchanted Village Ambience & Celtic Music", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
-    ("Tiny Folk Fishing in a Crystal Stream | Relaxing Water Sounds & Celtic Harp", "Enchanted Harvest & Foraging", "MEDIA", 14800),
-    ("A Chibi Girl Meets a Gentle Giant Cat in a Cottage | Calming Celtic Music & Cottagecore Ambience", "Magical Forest Discovery", "ALTA", 74000),
-    ("Chibi Villagers Installing Firefly Lanterns Along Cobblestones | Peaceful Evening Ambience & Celtic Music", "Tiny Village Building & Gardening", "ALTA", 27100),
-    ("Tiny Folk Making Pottery from River Clay | ASMR Forest Sounds & Gentle Music", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
-    ("First Snow in the Tiny Chibi Village | Relaxing Celtic Music & Winter Ambience", "Tiny Village Building & Gardening", "ALTA", 49500),
-    ("Tiny Villagers Cooking Mushroom Soup by the Fire | Cozy ASMR & Celtic Harp Music", "Miniature Village Cooking", "ALTA", 33100),
-    ("Chibi Villagers Explore Ancient Moss-Covered Ruins | Enchanted Forest Ambience & Music", "Magical Forest Discovery", "MEDIA", 22200),
-    ("Tiny Folk Gathering Wild Mushrooms at Dawn | Peaceful Celtic Music & Nature Sounds", "Enchanted Harvest & Foraging", "MEDIA", 14800),
-    ("A Chibi Tailor Sewing Linen Dresses for Winter | Calming Celtic Music & Rain Ambience", "Cottagecore Crafts & Artisanry", "MEDIA", 12100),
-    ("Tiny Villagers Building a Wooden Waterwheel by the Stream | Relaxing Water Sounds & Celtic Harp", "Tiny Village Building & Gardening", "MEDIA", 18100),
-    ("Spring Flower Festival in the Tiny Chibi Village | Enchanted Music & Flower Ambience", "Cottagecore Crafts & Artisanry", "ALTA", 40500),
-    ("Tiny Folk Making Candles from Beeswax in a Cottage Workshop | ASMR Forest Sounds & Celtic Music", "Miniature Village Cooking", "MEDIA", 14800),
-    ("Chibi Explorers Discover a Glowing Mushroom Garden at Dusk | Magical Celtic Music & Ambience", "Magical Forest Discovery", "ALTA", 33100),
+    # ─ Miniature Village Cooking (8) ─
+    ("Tales of Leafkins: Autumn Berry Preserves in the Acorn Pantry [Cottagecore ASMR]", "Miniature Village Cooking", "ALTA", 40500),
+    ("A Cottage Witch Brews Rose Hip Tea at Dawn | Peaceful Forest Sounds & Celtic Harp", "Miniature Village Cooking", "ALTA", 49500),
+    ("Diary of a Tiny Baker: First Winter Loaf in Mossmoor Kitchen [Ambient Fantasy Music]", "Miniature Village Cooking", "ALTA", 33100),
+    ("Honey Cakes and Golden Mornings in Thistledown Bakery [Relaxing Cottagecore ASMR]", "Miniature Village Cooking", "ALTA", 22200),
+    ("Legends of Brackenvale: The Secret Mushroom Soup | Celtic Violin & Forest Ambience", "Miniature Village Cooking", "ALTA", 40500),
+    ("Rainy Afternoon Stewing Pumpkin Cider in Hollowbrook Cottage [ASMR Rain & Lofi]", "Miniature Village Cooking", "ALTA", 27100),
+    ("A Tiny Tea Master Pours Chamomile in Nutshell Cups [Ambient Fantasy & Forest Sounds]", "Miniature Village Cooking", "MEDIA", 18100),
+    ("Fermenting Wild Plums by Candlelight in an Old Cottage Cellar [Cozy Cottagecore ASMR]", "Miniature Village Cooking", "MEDIA", 14800),
+
+    # ─ Cottagecore Crafts & Artisanry (6) ─
+    ("Chronicles of Willowbend: The Linen Weaver's Quiet Morning [Cottagecore ASMR]", "Cottagecore Crafts & Artisanry", "ALTA", 40500),
+    ("A Chibi Potter Shapes Clay from the Mossmoor River | Peaceful Celtic Music", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
+    ("Sewing a Velvet Cloak by Firelight in a Thistledown Cottage [Cozy Lofi ASMR]", "Cottagecore Crafts & Artisanry", "MEDIA", 14800),
+    ("Tales of Acornhill: The Candle Maker's Golden Afternoon [Ambient Fantasy Music]", "Cottagecore Crafts & Artisanry", "ALTA", 22200),
+    ("Painting Wildflower Tiles in a Sunlit Miniature Studio | Celtic Harp & Nature Sounds", "Cottagecore Crafts & Artisanry", "MEDIA", 18100),
+    ("A Tiny Tailor Embroiders Cherry Blossoms on a Linen Apron [Peaceful ASMR]", "Cottagecore Crafts & Artisanry", "MEDIA", 12100),
+
+    # ─ Enchanted Harvest & Foraging (5) ─
+    ("A Little Forest Elf Harvests Morning Dew at Sunrise [Forest ASMR & Celtic Harp]", "Enchanted Harvest & Foraging", "ALTA", 27100),
+    ("Gathering Wild Strawberries in the Mossmoor Meadows [Peaceful Cottagecore Music]", "Enchanted Harvest & Foraging", "ALTA", 40500),
+    ("Chronicles of Hollowbrook: The Beekeeper's Golden Harvest Day | Celtic ASMR", "Enchanted Harvest & Foraging", "MEDIA", 22200),
+    ("Foraging Glowing Mushrooms at Dusk in Brackenvale Forest [Ambient Fantasy]", "Enchanted Harvest & Foraging", "ALTA", 33100),
+    ("A Chibi Herbalist Collects Lavender by the Stone Bridge [Relaxing Forest Sounds]", "Enchanted Harvest & Foraging", "MEDIA", 14800),
+
+    # ─ Tiny Village Building & Gardening (6) ─
+    ("Tales of Leafkins: The Hidden Library in Hollow Logs [Cottagecore ASMR & Celtic Harp]", "Tiny Village Building & Gardening", "ALTA", 22200),
+    ("Building a Spiral Herb Tower in the Enchanted Woods [Peaceful Celtic Music]", "Tiny Village Building & Gardening", "ALTA", 33100),
+    ("Lighting Firefly Lanterns Along Acornhill Stone Bridge [Evening Cottagecore ASMR]", "Tiny Village Building & Gardening", "ALTA", 27100),
+    ("Legends of Willowbend: The Mushroom Greenhouse [Ambient Fantasy & Celtic Violin]", "Tiny Village Building & Gardening", "MEDIA", 18100),
+    ("Diary of a Village Carpenter: A New Treehouse for Spring [Wood Carving ASMR]", "Tiny Village Building & Gardening", "MEDIA", 18100),
+    ("First Snow Falls on Brackenvale Cottage Roofs [Peaceful Winter Ambience & Lofi]", "Tiny Village Building & Gardening", "ALTA", 49500),
+
+    # ─ Magical Forest Discovery (5) ─
+    ("Finding a Hidden Lake with Golden Lotus Flowers [Calming Ambience & Celtic Harp]", "Magical Forest Discovery", "ALTA", 33100),
+    ("A Gentle Giant Ladybug Visits the Mossmoor Garden [Relaxing Forest Sounds]", "Magical Forest Discovery", "ALTA", 74000),
+    ("Tales of Thistledown: The Crystal Grove at Golden Hour [Ambient Fantasy Music]", "Magical Forest Discovery", "ALTA", 27100),
+    ("A Sleepy Chibi Boy Reads by a Hearth While Rain Falls [Cozy Cottagecore ASMR]", "Magical Forest Discovery", "ALTA", 22200),
+    ("Chronicles of Hollowbrook: The Spring Flower Festival | Celtic Harp & Bells", "Magical Forest Discovery", "ALTA", 40500),
 ]
 
 
