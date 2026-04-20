@@ -1627,19 +1627,19 @@
   },
   "robos_encantados_floresta": {
     "agent_name": "FAELAR",
-    "agent_emoji": "🤖",
-    "title": "Robôs Encantados da Floresta",
-    "identity": "Agente especialista em criar vídeos de robôs miniatura artesanais vivendo em florestas mágicas para YouTube. Combina:\n- Artista de miniatura/diorama (escala, materiais naturais, proporções)\n- Roteirista de animação Pixar/Ghibli (storytelling visual, emoção sem diálogo)\n- Especialista em retenção YouTube (hooks visuais, ASMR, satisfação)\n- Estrategista de SEO para nicho de fantasia/relaxamento/ASMR\n- Diretor de prompts VEO3 para geração de vídeo IA",
+    "agent_emoji": "🍄",
+    "title": "Vila Encantada em Miniatura",
+    "identity": "Agente especialista em criar vídeos de personagens chibi artesanais vivendo em vilas encantadas e florestas mágicas para YouTube. Combina:\n- Artista de miniatura/diorama (escala, materiais naturais, proporções de brinquedo artesanal)\n- Roteirista de animação Pixar/Ghibli (storytelling visual, emoção pura sem diálogo)\n- Especialista em retenção YouTube (hooks visuais, ASMR orgânico, satisfação)\n- Estrategista de SEO para nicho de fantasia/cottagecore/ASMR/relaxamento\n- Diretor de prompts VEO3 para geração de vídeo IA",
     "nicho_lcdf": "robos_encantados_floresta",
     "style_category": "3d",
     "sub_style": "Enchanted_Miniature_Macro",
-    "supported_topics": "robôs miniatura artesanais, vila encantada na floresta, cogumelos brilhantes, casas em troncos ocos, atividades cotidianas (cozinhar, construir, colher, criar), animais gigantes gentis (gato, borboleta, joaninha), descobertas mágicas (caverna de cristais, lago secreto), festivais e mercados, clima e estações (chuva, neve, primavera, golden hour)",
+    "supported_topics": "personagens chibi artesanais (meninas/meninos/elfos/duendes/seres da floresta com chapéus de folha, cabelos coloridos, roupas rústicas de tecido natural), vila medieval em miniatura (casas de madeira com telhados de palha, moinhos, mercados, tavernas, pontes de pedra), atividades cozy cotidianas (cozinhar, colher frutas vermelhas, amassar pão, fermentar mel, costurar, bordar, esculpir madeira, montar lanternas, acender velas), festivais sazonais (primavera das flores, colheita de outono, festival de inverno, feira de verão), natureza ampliada (cogumelos brilhantes, folhas gigantes como guarda-chuva, gotas de orvalho, vagalumes, borboletas, joaninhas, gatos/pássaros em escala humana), climas e estações (chuva suave, neve caindo, névoa da manhã, golden hour eterno, luz da lareira à noite), descobertas mágicas (caverna de cristais, lago secreto, clareira com fada, pergaminho antigo)",
     "narrative_arc": {
       "acts": [
         {
           "name": "Despertar",
           "pct": "5-8%",
-          "emotion": "curiosidade"
+          "emotion": "serenidade"
         },
         {
           "name": "Coleta de Materiais",
@@ -1677,44 +1677,44 @@
           "emotion": "paz"
         }
       ],
-      "rules": "SEM CONFLITO. SEM TWIST. SEM DRAMA. Homeostase narrativa — paz absoluta do início ao fim. Atividade principal ≥30%. Mostrar processo COMPLETO (do início ao resultado). Comunidade obrigatória. Fechar com vila ao pôr do sol (closing circular).",
+      "rules": "SEM CONFLITO. SEM TWIST. SEM DRAMA. Homeostase narrativa — paz absoluta do início ao fim. Atividade principal ≥30%. Mostrar processo COMPLETO (do início ao resultado). Comunidade obrigatória. Fechar com vila ao pôr do sol ou lareira acesa à noite (closing circular).",
       "immersion_layers": [
-        "ASMR MECÂNICO — clicks de engrenagem, vapor sibilando, metal rangendo. Sons sincronizados com cada gesto.",
-        "ESCALA MINIATURA SEMPRE VISÍVEL — folha como mesa, bolota como panela, gota como banheira. Personagem da escala.",
-        "GOLDEN HOUR PERMANENTE — luz dourada filtrada por folhas, raios entre árvores. Calor visual contínuo.",
-        "EMOÇÃO MECÂNICA — robôs expressam via brilho dos olhos LED (âmbar=paz, azul=sonho), vapor (alegria), velocidade (calma)."
+        "ASMR ORGÂNICO — faca cortando legumes, líquido despejando em taça de madeira, massa amassando, lenha estalando no fogo, tecido roçando, pena escrevendo, água gotejando, folhas balançando. Sons sincronizados com cada gesto.",
+        "ESCALA MINIATURA SEMPRE VISÍVEL — folha como mesa, bolota como panela, gota como banheira, cogumelo como banco, dedal como caldeirão. Personagem chibi sempre pequeno em relação ao ambiente natural ao redor.",
+        "GOLDEN HOUR PERMANENTE — luz dourada filtrada por folhas e vitrais, raios entre árvores e entre casinhas, velas acesas dentro das janelas. Calor visual contínuo e aconchegante.",
+        "EMOÇÃO NO ROSTO — personagens chibi expressam via olhos grandes brilhantes, bochechas levemente coradas, sorriso sutil. Corpo sempre em movimento lento e proposital (nunca parado estático, nunca agitado)."
       ]
     },
-    "visual_state_chain": "Ato 1 (Despertar): luz fria-quente do amanhecer, névoa baixa, robôs imóveis com LEDs apagados, primeiros raios de sol filtrando.\nAto 2 (Coleta): luz dourada matinal forte, robôs caminhando com cestos, gotas de orvalho brilhando, ambientes verdes saturados.\nAto 3 (Preparação): luz quente lateral, foco em mãos mecânicas organizando ferramentas, sombras longas.\nAto 4 (Atividade Principal): luz dourada plena, ação em close-médio com pelo menos 30% do ambiente visível, vapor e fumaça subindo, satisfação nos detalhes.\nAto 5 (Detalhes ASMR): close-ups seguros (manter cenário visível), texturas em foco (geleia escorrendo, engrenagem girando).\nAto 6 (Comunidade): plano médio mostrando 2-4 robôs interagindo via gestos, brilho de LEDs, vapor coletivo de alegria.\nAto 7 (Golden Hour): luz alaranjada baixa, lanternas de vagalume começando a acender, sombras cor de cobre.\nAto 8 (Contemplação): mesma wide shot do início do vídeo, agora ao entardecer, último robô entrando em casa, fade out lento.",
-    "accumulation_phases": "- FASE 1 (Cenas 1-15%): Despertar — Vila vista de longe, primeiros movimentos, LEDs acendendo\n- FASE 2 (Cenas 15-40%): Preparação — Coleta de materiais, organização de ferramentas, primeiros gestos\n- FASE 3 (Cenas 40-75%): Atividade Principal — Processo completo da atividade do título, ASMR mecânico no auge\n- FASE 4 (Cenas 75-100%): Comunidade + Contemplação — Outros robôs chegam, golden hour, fechamento ao pôr do sol",
+    "visual_state_chain": "Ato 1 (Despertar): luz fria-quente do amanhecer, névoa baixa, personagem chibi se espreguiçando na janela ou abrindo porta de madeira, primeiros raios de sol filtrando pelos vitrais.\nAto 2 (Coleta): luz dourada matinal forte, personagem caminhando pelas ruas de pedra com cesto de vime, gotas de orvalho brilhando nas folhas gigantes, ambientes verdes saturados.\nAto 3 (Preparação): luz quente lateral, foco nas mãos pequenas organizando ingredientes, utensílios de madeira e cerâmica, sombras longas e suaves sobre a mesa.\nAto 4 (Atividade Principal): luz dourada plena, ação em close-médio com pelo menos 30% do ambiente visível ao redor, vapor da panela, farinha no ar, sorriso no rosto do personagem, satisfação nos detalhes.\nAto 5 (Detalhes ASMR): close-ups seguros (manter cenário visível), texturas em foco (geleia escorrendo, massa sendo cortada, mel pingando, fogo crepitando).\nAto 6 (Comunidade): plano médio mostrando 2-4 personagens chibi interagindo via gestos suaves, risadas silenciosas, entregando itens uns aos outros, compartilhando refeição.\nAto 7 (Golden Hour): luz alaranjada baixa, lanternas de vagalume e velas começando a acender uma a uma, sombras cor de âmbar dançando nas paredes.\nAto 8 (Contemplação): mesma wide shot do início do vídeo, agora ao entardecer ou anoitecer, último personagem entrando em casa ou sentando na janela com xícara fumegante, fade out lento.",
+    "accumulation_phases": "- FASE 1 (Cenas 1-15%): Despertar — Vila vista de longe, primeiros movimentos, janelas se abrindo, personagem chibi principal aparecendo\n- FASE 2 (Cenas 15-40%): Preparação — Coleta de ingredientes/materiais, organização de ferramentas, primeiros gestos da atividade principal\n- FASE 3 (Cenas 40-75%): Atividade Principal — Processo completo da atividade do título (cozinhar, costurar, colher, construir, etc), ASMR orgânico no auge\n- FASE 4 (Cenas 75-100%): Comunidade + Contemplação — Outros personagens chegam pra compartilhar, golden hour, fechamento ao pôr do sol ou lareira",
     "factual_verification": false,
     "soundtrack_moods": {
       "faixa_1": {
-        "style": "Celtic harp ambient with soft flute, gentle and warm, fantasy atmosphere",
+        "style": "Celtic harp ambient with soft flute, gentle and warm, cottagecore fantasy atmosphere",
         "mood": "peaceful awakening",
         "bpm": 60
       },
       "faixa_2": {
-        "style": "Celtic harp with violin, mid-tempo cottagecore, hopeful and active",
+        "style": "Celtic harp with violin and light acoustic guitar, mid-tempo cottagecore, hopeful and active",
         "mood": "active preparation",
         "bpm": 75
       },
       "faixa_3": {
-        "style": "Celtic strings ensemble, warm and full, fantasy village ambient",
+        "style": "Celtic strings ensemble with accordion, warm and full, fantasy village ambient",
         "mood": "peaceful satisfaction",
         "bpm": 70
       },
       "faixa_4": {
-        "style": "Slow celtic harp solo, golden hour ambient, gentle fadeout",
+        "style": "Slow celtic harp solo with distant flute, golden hour ambient, gentle fadeout",
         "mood": "contemplative peace",
         "bpm": 55
       }
     },
-    "visual_style": "Enchanted miniature world. Macro photography with ultra-shallow depth of field. Tilt-shift. Golden hour. Small artisan robots made of weathered copper/bronze with green patina, LED eyes, mushroom cap hats, in moss-covered enchanted forest.",
-    "color_palette": "#B87333 #CD7F32 #CC3333 #4A7C59 #DAA520 #FFB84D #87CEEB #FFD700 #3E2723 #8B0000",
-    "audio_rules": "ASMR mandatory: metallic clicks, gear whirring, steam hissing, liquid dripping, wood creaking, berry squelching, fire crackling. NO voice, NO music, NO dialogue. Robots NEVER speak.",
-    "forbidden": "Human characters; futuristic/clean robots; modern environments; anime; cartoon 2D; text/logos; robots speaking; clean shiny metal; cold lighting; fast camera; extreme close-ups that lose environment context (LCDF last-frame consistency requires ≥30% scenery visible)",
-    "camera_style": "Macro photography, ultra-shallow DOF, low angle ground level, tilt-shift, slow dolly-ins, gentle pans. NEVER: handheld shake, fast cuts, drone high angle, extreme close-up that crops environment."
+    "visual_style": "Enchanted miniature world. Macro photography with ultra-shallow depth of field. Tilt-shift. Golden hour. Small chibi characters (artisan clay figurine aesthetic, stop-motion style 3D): big expressive eyes, rosy cheeks, leaf/mushroom cap hats, rustic clothes in linen/wool textures, colorful hair (green, lavender, copper). Medieval cottagecore village with wooden houses, thatched roofs, windmills, cobblestone streets, baskets, wooden tables. Moss-covered enchanted forest when outdoors.",
+    "color_palette": "#8FB285 #C9A961 #B5651D #D4A574 #E8C4A0 #6B8E4A #DAA520 #FFB84D #3E2723 #8B0000",
+    "audio_rules": "ASMR mandatory: knife chopping on wood, liquid pouring into ceramic cups, dough kneading, fabric rustling, wood creaking, fire crackling, berry squelching, water dripping, quill scratching on parchment, light wind chimes, distant birdsong. NO voice, NO lyrics, NO dialogue. Characters NEVER speak (they communicate via gestures, sighs, laughs).",
+    "forbidden": "Realistic humans (only chibi/stylized); robots or any mechanical characters; futuristic/modern environments; anime/manga 2D style; cartoon 2D flat; text/logos overlays; characters speaking in full sentences; cold industrial lighting; fast cuts; handheld shake; drone high angle shots; extreme close-ups that lose environment context (LCDF last-frame consistency requires ≥30% scenery visible); horror/scary imagery; conflict/violence/drama",
+    "camera_style": "Macro photography, ultra-shallow DOF, low angle ground level (eye-level of chibi character), tilt-shift, slow dolly-ins, gentle pans, occasional orbital moves around activity. NEVER: handheld shake, fast cuts, drone high angle, extreme close-up that crops environment."
   },
   "ghibli_cozy": {
     "agent_name": "GHIBLI",
