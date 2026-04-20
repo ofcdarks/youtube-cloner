@@ -429,6 +429,12 @@ async def seed_robos_encantados(request: Request, force: int = 0):
                 "steampunk", "steam puffs", "exhaust vents", "antenna",
                 "android", "cyborg", "automaton", "clockwork",
             ],
+            # Prefixos proibidos de INICIO de titulo — IA tende a repetir frases
+            # marca que monotonizam os titulos
+            "forbidden_prefixes": [
+                "tiny chibi folk", "tiny chibi", "chibi folk", "tiny folk",
+                "little robots", "tiny robots",
+            ],
             "skip_channel_fetch": True,  # nao puxa videos antigos (robos) do YouTube
         }
         update_project(pid, meta=_json.dumps(meta))

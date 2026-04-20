@@ -42,16 +42,21 @@ O tom e transmitido inteiramente pela escolha de musica, ambiente, ritmo e ativi
 - Trilha celtic harp + ambiencia da floresta
 
 **10 Expressoes/Palavras tipicas do canal (no titulo e no espirito visual):**
-1. **Tiny chibi folk / miniature villagers**
-2. **Cozy** (Aconchegante)
-3. **Enchanted Forest** (Floresta Encantada)
-4. **Mushroom Village** (Vila dos Cogumelos)
-5. **Relaxing Celtic Music**
-6. **Forest Ambience / Nature Sounds**
-7. **Peaceful** (Pacifico)
-8. **Magical** (Magico)
-9. **ASMR**
-10. **Hidden / Secret** (Escondido / Secreto)
+1. **Cozy** (Aconchegante) — cottage, fireside, handmade
+2. **Enchanted** (Encantada) — Enchanted Forest, Enchanted Grove, Enchanted Meadow
+3. **Mushroom / Cottage / Acorn** — Mushroom Village, Cottage Bakery, Acorn Pantry
+4. **Relaxing Celtic / Cottagecore Lofi / Ambient Fantasy** (generos sempre ao FIM do titulo, entre [] ou |)
+5. **Hidden / Secret** (Escondido / Secreto) — Hidden Lake, Secret Garden
+6. **Golden Hour / Firelight / Candlelight**
+7. **Tales of / Chronicles of / Diary of / Legends of** (formato narrativo serie)
+8. **Village world names (inventar e reutilizar):** Leafkins, Mossmoor, Thistledown, Willowbend, Acornhill, Brackenvale, Hollowbrook
+9. **Character archetypes (variar entre titulos):** tiny baker, cottage witch, herbalist, potter, beekeeper, tailor, tea master, little elf, forest spirit, chibi girl, chibi boy, mushroom farmer, candlemaker
+10. **Nature sounds / ASMR / Forest Ambience** (no tail do titulo)
+
+**PROIBIDO COMO PREFIXO/ABERTURA DE TITULO (NUNCA comecar titulo com isto):**
+- "Tiny chibi folk ..." (muito usado — cria monotonia)
+- "Little robots ..." (conceito antigo, ver secao PROIBIDO)
+- Qualquer label generico tipo "Fantasy Music", "Relaxing Music", "Sleep Music"
 
 ---
 

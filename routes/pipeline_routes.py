@@ -818,6 +818,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         concept_override_name = ""
         concept_override_summary = ""
         forbidden_themes: list[str] = []
+        forbidden_prefixes: list[str] = []
         skip_channel_fetch = False
         try:
             import json as _json
@@ -826,6 +827,7 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             concept_override_name = (_meta.get("concept_override_name") or "").strip()
             concept_override_summary = (_meta.get("concept_override_summary") or "").strip()
             forbidden_themes = list(_meta.get("forbidden_themes") or [])
+            forbidden_prefixes = [p.lower().strip() for p in (_meta.get("forbidden_prefixes") or []) if p]
             skip_channel_fetch = bool(_meta.get("skip_channel_fetch"))
         except Exception as e:
             logger.warning(f"concept_override parse failed: {e}")
@@ -896,6 +898,16 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                 _reposicionamento_lines.append(
                     "TEMAS PROIBIDOS (NUNCA use em titulos — rejeitar se aparecer): "
                     + ", ".join(forbidden_themes)
+                )
+            if forbidden_prefixes:
+                _reposicionamento_lines.append(
+                    "PREFIXOS PROIBIDOS (NENHUM titulo pode COMECAR com estas frases — causam "
+                    "monotonia): "
+                    + ", ".join(f'"{p}"' for p in forbidden_prefixes)
+                )
+                _reposicionamento_lines.append(
+                    "Se tentar abrir um titulo com prefixo proibido, REESCREVA abrindo com um "
+                    "personagem/acao/local/clima diferente do item anterior."
                 )
             _reposicionamento_lines.append(
                 "Se um titulo candidato usar qualquer tema proibido, SUBSTITUA imediatamente "
@@ -1016,17 +1028,32 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
             if before != len(new_ideas):
                 logger.info(f"Forbidden-theme gate: {before} -> {len(new_ideas)} (removidos {before - len(new_ideas)})")
 
-        # DIVERSITY GATE — se muitos titulos comecam com o mesmo prefixo (ex:
-        # 'Tiny chibi folk ...'), mantem apenas os 3 primeiros e rejeita o resto.
-        # Melhor ter 15 titulos variados do que 30 clones.
+        # FORBIDDEN-PREFIX GATE — remove titulos que abrem com prefixos banidos
+        if forbidden_prefixes:
+            before = len(new_ideas)
+            new_ideas = [
+                idea for idea in new_ideas
+                if not any((idea.get("title", "") or "").lower().lstrip().startswith(p)
+                           for p in forbidden_prefixes)
+            ]
+            if before != len(new_ideas):
+                logger.info(
+                    f"Forbidden-prefix gate: {before} -> {len(new_ideas)} "
+                    f"(removidos {before - len(new_ideas)} com prefixos {forbidden_prefixes})"
+                )
+
+        # DIVERSITY GATE — se muitos titulos comecam com o mesmo prefixo, mantem
+        # apenas os 2 primeiros e rejeita o resto. Melhor ter 15 titulos variados
+        # do que 30 clones.
         def _title_prefix(t: str, n: int = 3) -> str:
             words = (t or "").strip().split()
             return " ".join(words[:n]).lower()
 
-        if len(new_ideas) > 3:
+        MAX_SAME_PREFIX = 2
+        if len(new_ideas) > MAX_SAME_PREFIX:
             from collections import Counter
             prefix_counts = Counter(_title_prefix(i.get("title", "")) for i in new_ideas)
-            overused = {pfx for pfx, cnt in prefix_counts.items() if cnt > 3}
+            overused = {pfx for pfx, cnt in prefix_counts.items() if cnt > MAX_SAME_PREFIX}
             if overused:
                 kept = []
                 prefix_seen: dict[str, int] = {}
@@ -1034,14 +1061,14 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                     pfx = _title_prefix(idea.get("title", ""))
                     if pfx in overused:
                         count = prefix_seen.get(pfx, 0)
-                        if count >= 3:
-                            continue  # rejeita o 4o+ com mesmo prefixo
+                        if count >= MAX_SAME_PREFIX:
+                            continue  # rejeita o 3o+ com mesmo prefixo
                         prefix_seen[pfx] = count + 1
                     kept.append(idea)
                 if len(kept) != len(new_ideas):
                     logger.info(
                         f"Diversity gate: removidos {len(new_ideas) - len(kept)} titulos "
-                        f"com prefixos repetidos ({sorted(overused)})"
+                        f"com prefixos repetidos ({sorted(overused)}; max {MAX_SAME_PREFIX})"
                     )
                     new_ideas = kept
 
@@ -1122,6 +1149,13 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
                             regen_ideas = [
                                 idea for idea in regen_ideas
                                 if not any(t in (idea.get("title", "") or "").lower() for t in low_themes)
+                            ]
+                        # Re-aplica forbidden-prefix gate
+                        if forbidden_prefixes:
+                            regen_ideas = [
+                                idea for idea in regen_ideas
+                                if not any((idea.get("title", "") or "").lower().lstrip().startswith(p)
+                                           for p in forbidden_prefixes)
                             ]
                         _map_volumes(regen_ideas)
                         regen_min = 20 if has_volume_data else 15
