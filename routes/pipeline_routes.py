@@ -922,7 +922,23 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         if not json_match:
             return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
 
-        new_ideas = json.loads(json_match.group())
+        try:
+            new_ideas = json.loads(json_match.group())
+        except (json.JSONDecodeError, ValueError) as je:
+            # Tenta recuperar: cortar no ultimo } valido antes do fim
+            raw = json_match.group()
+            last_brace = raw.rfind("}")
+            if last_brace > 0:
+                candidate = raw[: last_brace + 1] + "]"
+                try:
+                    new_ideas = json.loads(candidate)
+                    logger.warning(f"JSON truncado recuperado: {len(new_ideas)} items apos cortar")
+                except Exception:
+                    logger.error(f"JSON parse falhou: {je}")
+                    return JSONResponse({"error": f"IA retornou JSON invalido: {str(je)[:200]}"}, status_code=500)
+            else:
+                logger.error(f"JSON parse falhou: {je}")
+                return JSONResponse({"error": f"IA retornou JSON invalido: {str(je)[:200]}"}, status_code=500)
 
         # FORBIDDEN-THEME GATE — remove titulos que vazaram temas antigos
         if forbidden_themes:
@@ -958,9 +974,19 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
 
         _map_volumes(new_ideas)
 
-        # Score and filter — only keep titles with viral potential
-        accepted, rejected = filter_best_titles(new_ideas, niche_keywords, lang[:2])
-        logger.info(f"Quality gate R1: {len(accepted)} accepted, {len(rejected)} rejected")
+        # Score and filter — only keep titles with viral potential.
+        # Quando DataForSEO nao retornou volumes (ou skip_channel_fetch), o
+        # score 'keyword match' fica em 0 pra todos, derrubando avg_score.
+        # Relaxa o min_score nesse caso pra nao rejeitar tudo.
+        has_volume_data = any((kw.get("vol", 0) or 0) > 0 for kw in (niche_keywords or []))
+        effective_min_score = 35 if has_volume_data else 20
+        if skip_channel_fetch and not has_volume_data:
+            effective_min_score = 15  # projeto reposicionado sem ranking ainda
+        accepted, rejected = filter_best_titles(new_ideas, niche_keywords, lang[:2], min_score=effective_min_score)
+        logger.info(
+            f"Quality gate R1: {len(accepted)} accepted, {len(rejected)} rejected "
+            f"(min_score={effective_min_score}, has_volume_data={has_volume_data})"
+        )
 
         # REGENERATION LOOP — if not enough titles (rejected OR AI returned too few)
         if len(accepted) < 28:
@@ -986,17 +1012,42 @@ Retorne APENAS JSON: [{{"title":"...","title_b":"","hook":"...","summary":"...",
 
             try:
                 regen_response = await asyncio.to_thread(
-                    chat, regen_prompt, system_prompt, None, MAX_TOKENS_MEDIUM, 0.9,
+                    chat, regen_prompt, system_prompt, admin_model, MAX_TOKENS_MEDIUM, 0.9,
                 )
                 regen_match = re.search(r'\[.*\]', regen_response, re.DOTALL)
                 if regen_match:
-                    regen_ideas = json.loads(regen_match.group())
-                    _map_volumes(regen_ideas)
-                    regen_accepted, _ = filter_best_titles(regen_ideas, niche_keywords, lang[:2], min_score=30)
-                    accepted.extend(regen_accepted)
-                    logger.info(f"Quality gate R2: +{len(regen_accepted)} from regeneration")
+                    try:
+                        regen_ideas = json.loads(regen_match.group())
+                    except (json.JSONDecodeError, ValueError) as je:
+                        logger.warning(f"Regen JSON parse falhou: {je}")
+                        regen_ideas = []
+                    if regen_ideas:
+                        # Re-aplica forbidden-theme gate na regen tambem
+                        if forbidden_themes:
+                            low_themes = [t.lower() for t in forbidden_themes]
+                            regen_ideas = [
+                                idea for idea in regen_ideas
+                                if not any(t in (idea.get("title", "") or "").lower() for t in low_themes)
+                            ]
+                        _map_volumes(regen_ideas)
+                        regen_min = 20 if has_volume_data else 15
+                        regen_accepted, _ = filter_best_titles(regen_ideas, niche_keywords, lang[:2], min_score=regen_min)
+                        accepted.extend(regen_accepted)
+                        logger.info(f"Quality gate R2: +{len(regen_accepted)} from regeneration (min_score={regen_min})")
             except Exception as e:
                 logger.warning(f"Regeneration loop failed (non-blocking): {e}")
+
+        # Fallback: se quality gate rejeitou tudo e regen falhou, usa os
+        # titulos originais da IA (ja filtrados por forbidden-themes). Melhor
+        # salvar titulos medianos do que retornar vazio pro user.
+        if not accepted and new_ideas:
+            logger.warning(
+                f"Quality gate rejeitou tudo e regen falhou — usando {len(new_ideas)} "
+                f"titulos originais como fallback (sem score minimo)"
+            )
+            # Aplica _map_volumes antes de salvar (pra search_volume ficar certo)
+            _map_volumes(new_ideas)
+            accepted = new_ideas
 
         # Use accepted titles (sorted by viral score, cap at 30)
         new_ideas = accepted[:30]
