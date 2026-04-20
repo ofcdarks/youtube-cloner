@@ -1,24 +1,45 @@
 {# Checklist de producao + anotacoes no card kanban do aluno.
-   Context: item.id (progress_id), item.notes, item.production_checklist (JSON string) #}
+   Context: item.id (progress_id), item.notes, item.production_checklist (JSON string)
+   Auto-preenchido quando aluno gera roteiro/narracao (generate-script) ou companion (seo/thumb/musica/teaser). #}
 
 {% set cl_raw = item.production_checklist or '{}' %}
 {% set cl = cl_raw | fromjson if cl_raw else {} %}
-{% set done = (1 if cl.get('roteiro') else 0) + (1 if cl.get('narracao') else 0) + (1 if cl.get('cenas_agente') else 0) + (1 if cl.get('cenas_flow') else 0) + (1 if cl.get('edicao') else 0) + (1 if cl.get('thumb') else 0) + (1 if cl.get('seo') else 0) %}
-{% set pct = (done * 100 // 7) %}
+{% set all_items = [('roteiro','Roteiro'),('narracao','Narracao'),('cenas_agente','Cenas (Agente)'),('cenas_flow','Cenas (Flow)'),('edicao','Edicao'),('thumb','Thumb'),('seo','SEO'),('musica','Musica'),('teaser','Teaser')] %}
+{% set custom_order = cl.get('_order') if cl.get('_order') else None %}
+{% set ordered_items = [] %}
+{% if custom_order %}
+    {% for k in custom_order %}
+        {% for pair in all_items %}
+            {% if pair[0] == k %}{% set _ = ordered_items.append(pair) %}{% endif %}
+        {% endfor %}
+    {% endfor %}
+    {# Append any items not in custom order (novos) #}
+    {% for pair in all_items %}
+        {% if pair[0] not in custom_order %}{% set _ = ordered_items.append(pair) %}{% endif %}
+    {% endfor %}
+{% else %}
+    {% for pair in all_items %}{% set _ = ordered_items.append(pair) %}{% endfor %}
+{% endif %}
+{% set total = ordered_items | length %}
+{% set done = 0 %}
+{% for key, _lbl in ordered_items %}{% if cl.get(key) %}{% set done = done + 1 %}{% endif %}{% endfor %}
+{% set pct = (done * 100 // total) if total else 0 %}
 
-<div class="card-extras" id="xtra-{{ item.id }}" style="margin-top:6px;border-top:1px dashed rgba(148,163,184,0.18);padding-top:6px">
+<div class="card-extras" id="xtra-{{ item.id }}" data-progress="{{ item.id }}" style="margin-top:6px;border-top:1px dashed rgba(148,163,184,0.18);padding-top:6px">
     <button type="button" onclick="toggleCardExtras({{ item.id }})"
         style="width:100%;background:transparent;border:none;color:#94a3b8;cursor:pointer;font-size:10.5px;display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-weight:600">
-        <span>&#9776; Producao <span style="color:{% if pct==100 %}#22c55e{% elif pct>=50 %}#fbbf24{% else %}#64748b{% endif %}">({{ done }}/7 — {{ pct }}%)</span></span>
+        <span>&#9776; Producao <span style="color:{% if pct==100 %}#22c55e{% elif pct>=50 %}#fbbf24{% else %}#64748b{% endif %}">({{ done }}/{{ total }} — {{ pct }}%)</span></span>
         <span id="xtra-chev-{{ item.id }}" style="transition:transform .2s">&#9656;</span>
     </button>
     <div style="height:3px;border-radius:2px;background:rgba(148,163,184,0.1);overflow:hidden;margin:3px 0">
         <div style="height:100%;width:{{ pct }}%;background:linear-gradient(90deg,#7c3aed,#22c55e);transition:width .3s"></div>
     </div>
     <div id="xtra-body-{{ item.id }}" style="display:none;margin-top:6px">
-        <div style="display:flex;flex-direction:column;gap:4px;font-size:10.5px">
-            {% for key, label in [('roteiro','Roteiro'),('narracao','Narracao'),('cenas_agente','Cenas (Agente)'),('cenas_flow','Cenas (Flow)'),('edicao','Edicao'),('thumb','Thumb'),('seo','SEO')] %}
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:2px 0;user-select:none">
+        <div class="ck-list" data-progress="{{ item.id }}" style="display:flex;flex-direction:column;gap:4px;font-size:10.5px">
+            {% for key, label in ordered_items %}
+            <label draggable="true" data-key="{{ key }}" ondragstart="ckDragStart(event)" ondragover="ckDragOver(event)" ondragleave="ckDragLeave(event)" ondrop="ckDragDrop(event, {{ item.id }})" ondragend="ckDragEnd(event)"
+                style="display:flex;align-items:center;gap:6px;cursor:grab;padding:3px 4px;user-select:none;border-radius:4px">
+                <span style="color:#475569;font-size:12px;cursor:grab" title="Arraste para reordenar">&#8801;</span>
                 <input type="checkbox" {% if cl.get(key) %}checked{% endif %}
                     onchange="saveChecklist({{ item.id }}, '{{ key }}', this.checked)"
                     style="cursor:pointer;accent-color:#7c3aed">

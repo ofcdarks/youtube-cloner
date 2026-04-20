@@ -1651,43 +1651,51 @@ function toggleCardExtras(progressId) {
     if (chev) chev.style.transform = open ? '' : 'rotate(90deg)';
 }
 
+var CK_TOTAL = 9; // 7 iniciais + musica + teaser
+
 function _collectChecklist(progressId) {
     var body = document.getElementById('xtra-body-' + progressId);
-    if (!body) return {};
+    if (!body) return { checklist: {}, order: [] };
     var checklist = {};
-    body.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
-        var onchange = cb.getAttribute('onchange') || '';
-        var m = onchange.match(/saveChecklist\(\d+,\s*'([^']+)'/);
-        if (m) checklist[m[1]] = cb.checked;
+    var order = [];
+    body.querySelectorAll('.ck-list label[data-key]').forEach(function(lbl) {
+        var key = lbl.dataset.key;
+        var cb = lbl.querySelector('input[type=checkbox]');
+        checklist[key] = cb ? cb.checked : false;
+        order.push(key);
     });
-    return checklist;
+    return { checklist: checklist, order: order };
+}
+
+function _repaintCkStatus(progressId, checklist) {
+    var extras = document.getElementById('xtra-' + progressId);
+    if (!extras) return;
+    var done = Object.values(checklist).filter(Boolean).length;
+    var pct = Math.round(done * 100 / CK_TOTAL);
+    var header = extras.querySelector('button span');
+    if (header) {
+        var color = pct === 100 ? '#22c55e' : (pct >= 50 ? '#fbbf24' : '#64748b');
+        header.innerHTML = '&#9776; Producao <span style="color:' + color + '">(' + done + '/' + CK_TOTAL + ' — ' + pct + '%)</span>';
+    }
+    var bar = extras.querySelector('div[style*="linear-gradient"]');
+    if (bar) bar.style.width = pct + '%';
 }
 
 function saveChecklist(progressId, key, checked) {
-    var checklist = _collectChecklist(progressId);
-    checklist[key] = checked;
-    apiPost('/api/student/update-card-extras', { progress_id: progressId, checklist: checklist })
+    var state = _collectChecklist(progressId);
+    state.checklist[key] = checked;
+    var payload = Object.assign({}, state.checklist, { _order: state.order });
+    apiPost('/api/student/update-card-extras', { progress_id: progressId, checklist: payload })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.ok) { showToast('Erro ao salvar: ' + (data.error || ''), 'error', 3000); return; }
-            // Atualiza contador e progresso sem reload
+            _repaintCkStatus(progressId, state.checklist);
+            // Estiliza item marcado
             var extras = document.getElementById('xtra-' + progressId);
             if (extras) {
-                var done = Object.values(checklist).filter(Boolean).length;
-                var pct = Math.round(done * 100 / 7);
-                var header = extras.querySelector('button span');
-                if (header) {
-                    var color = pct === 100 ? '#22c55e' : (pct >= 50 ? '#fbbf24' : '#64748b');
-                    header.innerHTML = '&#9776; Producao <span style="color:' + color + '">(' + done + '/7 — ' + pct + '%)</span>';
-                }
-                var bar = extras.querySelector('div[style*="linear-gradient"]');
-                if (bar) bar.style.width = pct + '%';
-                // Atualiza estilo do label clicado
-                var label = extras.querySelectorAll('label')[
-                    ['roteiro','narracao','cenas_agente','cenas_flow','edicao','thumb','seo'].indexOf(key)
-                ];
-                if (label) {
-                    var span = label.querySelector('span');
+                var lbl = extras.querySelector('.ck-list label[data-key="' + key + '"]');
+                if (lbl) {
+                    var span = lbl.querySelectorAll('span')[1];
                     if (span) {
                         span.style.color = checked ? '#22c55e' : '#cbd5e1';
                         span.style.textDecoration = checked ? 'line-through' : '';
@@ -1697,6 +1705,50 @@ function saveChecklist(progressId, key, checked) {
             }
         })
         .catch(function(e) { showToast('Erro: ' + e.message, 'error', 3000); });
+}
+
+/* ── Drag-to-reorder dos itens do checklist ────────────────── */
+var _ckDragSrc = null;
+function ckDragStart(e) {
+    _ckDragSrc = e.currentTarget;
+    e.currentTarget.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', e.currentTarget.dataset.key); } catch (_) {}
+}
+function ckDragOver(e) {
+    if (!_ckDragSrc) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.style.background = 'rgba(124,58,237,0.1)';
+}
+function ckDragLeave(e) {
+    e.currentTarget.style.background = '';
+}
+function ckDragDrop(e, progressId) {
+    e.preventDefault();
+    e.currentTarget.style.background = '';
+    if (!_ckDragSrc || _ckDragSrc === e.currentTarget) return;
+    var list = e.currentTarget.parentNode;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var after = (e.clientY - rect.top) > rect.height / 2;
+    if (after) list.insertBefore(_ckDragSrc, e.currentTarget.nextSibling);
+    else list.insertBefore(_ckDragSrc, e.currentTarget);
+    // Persiste nova ordem
+    var state = _collectChecklist(progressId);
+    var payload = Object.assign({}, state.checklist, { _order: state.order });
+    apiPost('/api/student/update-card-extras', { progress_id: progressId, checklist: payload })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) showToast('Ordem salva', 'success', 1200);
+            else showToast('Erro ao reordenar', 'error', 2500);
+        })
+        .catch(function(err) { showToast('Erro: ' + err.message, 'error', 2500); });
+}
+function ckDragEnd(e) {
+    e.currentTarget.style.opacity = '';
+    _ckDragSrc = null;
+    // Limpa highlights residuais
+    document.querySelectorAll('.ck-list label').forEach(function(l) { l.style.background = ''; });
 }
 
 function saveNotes(progressId, notes) {

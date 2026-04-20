@@ -702,6 +702,12 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
         save_script(project_id, title, script, progress["idea_real_id"], "15-20 min")
         mark_progress_script_generated(int(progress_id))
 
+        # Auto-marca roteiro + narracao no checklist de producao
+        auto_keys = ["roteiro"]
+        if narracao and len(narracao) > 200:
+            auto_keys.append("narracao")
+        _auto_mark_checklist(int(progress_id), int(user["id"]), *auto_keys)
+
         # Auto-sync to Google Drive
         try:
             from database import get_student_drive_folder, save_student_drive_file
@@ -1946,6 +1952,18 @@ Idioma: {lang}""",
         save_file(f["project_id"], TYPE_CATS[comp_type],
                  comp_label, comp_filename, result, visible_to_students=True)
 
+        # Auto-marca item correspondente no checklist — extrai progress_id do filename (roteiro_student_{id}.md)
+        try:
+            import re as _re_ck
+            fname = f.get("filename") or ""
+            m = _re_ck.search(r"roteiro_student_(\d+)\.md", fname)
+            if m:
+                ck_key = {"seo": "seo", "thumbnail": "thumb", "music": "musica", "teaser": "teaser"}.get(comp_type)
+                if ck_key:
+                    _auto_mark_checklist(int(m.group(1)), int(user["id"]), ck_key)
+        except Exception:
+            pass
+
         # Auto-sync companion to Google Drive
         try:
             from database import get_student_drive_folder, save_student_drive_file
@@ -2423,6 +2441,42 @@ async def api_swap_title(request: Request, user=Depends(require_auth)):
     return JSONResponse({"ok": True, "title_a": new_a, "title_b": new_b, "swap_count": 1})
 
 
+def _auto_mark_checklist(progress_id: int, student_id: int, *keys: str) -> None:
+    """Marca chaves do checklist automaticamente quando aluno completa acao (roteiro, narracao, seo, etc).
+    Preserva valores existentes (nao sobrescreve False → True nao volta)."""
+    import json as _json
+    if not progress_id or not keys:
+        return
+    try:
+        from database import get_db
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT production_checklist FROM progress WHERE id=? AND student_id=?",
+                (int(progress_id), int(student_id)),
+            ).fetchone()
+            if not row:
+                return
+            current = {}
+            try:
+                current = _json.loads(row["production_checklist"] or "{}")
+            except Exception:
+                current = {}
+            if not isinstance(current, dict):
+                current = {}
+            changed = False
+            for k in keys:
+                if not current.get(k):
+                    current[k] = True
+                    changed = True
+            if changed:
+                conn.execute(
+                    "UPDATE progress SET production_checklist=? WHERE id=?",
+                    (_json.dumps(current), int(progress_id)),
+                )
+    except Exception as e:
+        logger.warning(f"_auto_mark_checklist({progress_id}, {keys}) failed: {e}")
+
+
 @router.post("/api/student/update-card-extras")
 @limiter.limit("60/minute")
 async def api_update_card_extras(request: Request, user=Depends(require_auth)):
@@ -2452,9 +2506,12 @@ async def api_update_card_extras(request: Request, user=Depends(require_auth)):
             updates.append("notes=?")
             params.append(str(notes)[:5000])
         if checklist is not None and isinstance(checklist, dict):
-            # So aceita chaves conhecidas, valores bool
-            valid_keys = {"roteiro", "narracao", "cenas_agente", "cenas_flow", "edicao", "thumb", "seo"}
+            # So aceita chaves conhecidas (+ _order pra customizacao)
+            valid_keys = {"roteiro", "narracao", "cenas_agente", "cenas_flow", "edicao", "thumb", "seo", "musica", "teaser"}
             clean = {k: bool(v) for k, v in checklist.items() if k in valid_keys}
+            # Aceita ordem customizada (array de keys)
+            if isinstance(checklist.get("_order"), list):
+                clean["_order"] = [k for k in checklist["_order"] if k in valid_keys]
             updates.append("production_checklist=?")
             params.append(_json.dumps(clean))
         if not updates:
