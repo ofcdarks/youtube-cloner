@@ -832,6 +832,36 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
         except Exception as e:
             logger.warning(f"concept_override parse failed: {e}")
 
+        # AUTO-HEAL: projetos legados (ROBOS ENCANTADOS pre-meta) nao tem os campos
+        # novos. Injeta defaults quando detectar pelo nome do projeto.
+        _pname = (project.get("name") or "").upper()
+        if "ROBOS ENCANTADOS" in _pname or "vila encantada" in (project.get("niche_chosen") or "").lower() or "chibi" in (concept_override_name or "").lower():
+            if not concept_override_name:
+                concept_override_name = "Enchanted Miniature Chibi Village"
+            if not concept_override_summary:
+                concept_override_summary = (
+                    "Canal repositionado: personagens chibi artesanais (clay figurine stop-motion 3D) "
+                    "vivendo em vila medieval em miniatura + floresta encantada. Cottagecore cozy ASMR. "
+                    "NAO ha robos, engrenagens, cobre, bronze ou qualquer elemento mecanico."
+                )
+            if not forbidden_themes:
+                forbidden_themes = [
+                    "robots", "robot", "robô", "robôs", "mechanical", "mecânico", "mecanica",
+                    "gears", "engrenagem", "copper body", "bronze body", "LED eyes",
+                    "steampunk", "steam puffs", "exhaust vents", "antenna",
+                    "android", "cyborg", "automaton", "clockwork",
+                ]
+            if not forbidden_prefixes:
+                forbidden_prefixes = [
+                    "tiny chibi folk", "tiny chibi", "chibi folk", "tiny folk",
+                    "little robots", "tiny robots",
+                ]
+            skip_channel_fetch = True
+            logger.info(
+                "auto-heal concept_override aplicado (projeto legado sem meta): "
+                f"forbidden_prefixes={forbidden_prefixes}"
+            )
+
         # Analyze channel's OWN best videos (what already works) — skip when project
         # has been repositioned (old videos would poison the new concept)
         channel_best_videos = []

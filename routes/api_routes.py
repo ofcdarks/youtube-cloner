@@ -513,6 +513,50 @@ async def api_ideas(request: Request, project: str = "", user=Depends(require_au
     return JSONResponse(ideas)
 
 
+@router.get("/api/apply-chibi-override")
+async def apply_chibi_override(request: Request):
+    """Atualiza meta do projeto ROBOS ENCANTADOS com concept_override + forbidden_prefixes
+    SEM apagar nichos/ideias/roteiros. Use quando ja houver conteudo que voce quer
+    manter e so precisa injetar as guards pra proximas geracoes."""
+    from database import get_projects, get_project, update_project
+    import json as _json
+    candidates = [p for p in get_projects() if "ROBOS ENCANTADOS" == (p.get("name") or "")]
+    if not candidates:
+        return JSONResponse({"error": "Projeto ROBOS ENCANTADOS nao encontrado"}, status_code=404)
+    pid = candidates[0]["id"]
+    project = get_project(pid) or {}
+    try:
+        existing_meta = _json.loads(project.get("meta") or "{}")
+    except Exception:
+        existing_meta = {}
+    existing_meta.update({
+        "concept_override_name": "Enchanted Miniature Chibi Village",
+        "concept_override_summary": (
+            "Canal repositionado: personagens chibi artesanais (clay figurine stop-motion 3D) "
+            "vivendo em vila medieval em miniatura + floresta encantada. Cottagecore cozy ASMR. "
+            "NAO ha robos, engrenagens, cobre, bronze ou qualquer elemento mecanico."
+        ),
+        "forbidden_themes": [
+            "robots", "robot", "robô", "robôs", "mechanical", "mecânico", "mecanica",
+            "gears", "engrenagem", "copper body", "bronze body", "LED eyes",
+            "steampunk", "steam puffs", "exhaust vents", "antenna",
+            "android", "cyborg", "automaton", "clockwork",
+        ],
+        "forbidden_prefixes": [
+            "tiny chibi folk", "tiny chibi", "chibi folk", "tiny folk",
+            "little robots", "tiny robots",
+        ],
+        "skip_channel_fetch": True,
+    })
+    update_project(pid, meta=_json.dumps(existing_meta))
+    return JSONResponse({
+        "ok": True,
+        "project_id": pid,
+        "msg": "Concept override aplicado. Agora pode clicar 'Refazer pelos Nichos' que os prefixos proibidos sao filtrados.",
+        "meta": existing_meta,
+    })
+
+
 @router.get("/api/idea-details")
 async def api_idea_details(request: Request, id: str = "", user=Depends(require_auth)):
     if not id:
