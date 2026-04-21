@@ -566,7 +566,7 @@ Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 2. Pelo menos 1 POWER WORD em CAPS (emocao)
 3. CURIOSITY GAP — prometa sem revelar
 
-Idioma: {lang_label}. MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo. Titulos curtos NAO performam."""
+Idioma: {lang_label}. MINIMO 50 caracteres, MAXIMO 80 caracteres por titulo."""
 
     # ═══════════════════════════════════════════════════
     # USER PROMPT — structured data, SOP as foundation
@@ -664,7 +664,7 @@ QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Con
 6. Para os 10 primeiros (ALTA prioridade), inclua variante B (title_b)
 7. O campo "pillar" = nome do sub-nicho
 8. Mix: ~10 ALTA, ~12 MEDIA, ~{count - 22} BAIXA = {count} TOTAL
-9. MINIMO 70 caracteres, MAXIMO 100 caracteres por titulo — titulos curtos NAO performam, use frases completas com numeros, emocao e open loops
+9. MINIMO 50 caracteres, MAXIMO 80 caracteres por titulo — titulos curtos NAO performam, use frases completas com numeros, emocao e open loops
 {f'10. PROIBIDO: NUNCA comecar titulo com "POV:" ou "POV " — este canal NAO e um canal POV. Use o estilo do SOP.' if not _is_pov_channel else ''}
 
 Retorne APENAS JSON válido:

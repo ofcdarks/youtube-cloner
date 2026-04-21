@@ -166,7 +166,7 @@ Escreva SEMPRE em {lang_label}."""
 TITULO: {title}
 HOOK: {hook}
 
-O roteiro deve ter estas secoes:
+O roteiro deve seguir este fluxo CORRIDO (NAO divida em cenas numeradas):
 1. **HOOK** (0:00-0:30) - Primeiros 30 segundos, capturar atencao imediata
 2. **CONTEXTO** (0:30-2:30) - Setup da historia, epoca, personagens
 3. **ATO 1 - A DESCOBERTA** (2:30-4:30) - Como tudo comecou

@@ -578,15 +578,15 @@ HOOK SUGERIDO: {hook}
 INSTRUCAO CRITICA: Leia o SOP acima com ATENCAO TOTAL. O SOP define:
 - O NICHO do canal (Secao 1 — identidade profunda)
 - O TOM e VOCABULARIO (Secao 15 — system prompt)
-- A ESTRUTURA exata do roteiro (Secao 16 — template)
+- A ESTRUTURA e REGRAS do roteiro
 - As REGRAS inegociaveis (Secao 6 — regras de ouro)
 
 Seu roteiro DEVE estar 100% alinhado com o nicho e estilo do SOP. Se o SOP e sobre poker, o roteiro e sobre poker. Se e sobre crime, e sobre crime. Se e sobre ciencia, e sobre ciencia. NAO invente outro nicho.
 
 FILOSOFIA: Voce NAO esta copiando — voce esta ELEVANDO. Pega o que funciona no SOP e executa MELHOR.
 
-FORMATO DO ROTEIRO (OBRIGATORIO):
-Escreva APENAS a narracao — o texto que sera lido em voz alta (voice-over).
+FORMATO DO ROTEIRO (OBRIGATORIO) — ROTEIRO CORRIDO:
+Escreva como TEXTO CONTINUO de narracao (voice-over). NAO divida em cenas (Escena 1, Escena 2).
 NAO inclua:
 - Analise tecnica, scores, ou meta-comentarios
 - Listas de tags, keywords, SEO
@@ -600,12 +600,12 @@ INCLUA:
 - Transicoes naturais entre atos (sem headers markdown)
 
 REGRAS DO SOP:
-1. SIGA a estrutura da Secao 16 (template com timestamps)
+1. Escreva como TEXTO CORRIDO (NAO divida em cenas numeradas)
 2. APLIQUE as Regras de Ouro da Secao 6 — todas sem excecao
 3. USE o vocabulario da Secao 15 — tom, ritmo, formalidade
 4. APLIQUE hooks da Secao 4 — escolha um dos frameworks
 5. USE open loops da Secao 5 — setup explicito + resolucao tardia
-6. TAMANHO: 1500-2100 palavras de voice-over (10-14 minutos)
+6. TAMANHO: 1500-1800 palavras de narracao
 
 LIMITES DO YOUTUBE:
 - Titulo: MAXIMO 100 caracteres
