@@ -276,6 +276,37 @@ app.include_router(mockup_router)
 from routes.import_routes import router as import_router
 app.include_router(import_router)
 
+# ── M17: Health Check ────────────────────────────────────
+import time as _time
+_cloner_start_time = _time.time()
+
+@app.get("/api/health")
+async def api_health():
+    """Health check endpoint para monitoramento externo (EasyPanel, uptime robot, etc.)."""
+    try:
+        from database import get_db
+        with get_db() as conn:
+            count = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
+        db_ok = True
+        db_projects_count = count
+    except Exception as e:
+        db_ok = False
+        db_projects_count = 0
+
+    # Disk space check
+    import shutil
+    disk = shutil.disk_usage(str(OUTPUT_DIR))
+    disk_free_gb = round(disk.free / (1024**3), 1)
+
+    return JSONResponse({
+        "status": "ok" if db_ok else "degraded",
+        "version": "1.0.0",
+        "db_ok": db_ok,
+        "db_projects": db_projects_count,
+        "uptime_s": int(_time.time() - _cloner_start_time),
+        "disk_free_gb": disk_free_gb,
+    })
+
 
 # ── SSE Progress Endpoint ────────────────────────────────
 
