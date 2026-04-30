@@ -268,6 +268,7 @@ SOP_FILE_MAP = {
     "HISTORICOS 3D": "sop_anacron_complete.md",
     "GHIBLI": "sop_ghibli_cozy_life.md",
     "GLIBLI": "sop_ghibli_cozy_life.md",
+    "RELATOS FAMILIARES": "SOP_RELATOS_FAMILIARES.md",
 }
 
 

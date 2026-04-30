@@ -442,29 +442,59 @@ function regenerateFromNiches() {
         'Isso vai <strong>APAGAR todos os titulos atuais</strong> e gerar 30 novos baseados nos nichos escolhidos (marcados como ESCOLHIDO).<br><br>O SOP original sera usado como referencia de tom e estilo.<br><br>Continuar?',
         function() {
             showProgressModal('Refazendo Titulos');
-            updateProgress(10, 'Apagando titulos antigos...');
+            updateProgress(5, 'Iniciando regeneracao...');
+
+            // Real elapsed timer — gives user feedback during long AI calls
+            var startTime = Date.now();
+            var regenInterval = setInterval(function() {
+                var elapsed = Math.round((Date.now() - startTime) / 1000);
+                var pct = Math.min(90, 5 + Math.floor(elapsed * 0.6));
+                var msg = elapsed < 10 ? 'Apagando titulos antigos...'
+                        : elapsed < 25 ? 'Pesquisando keywords de volume... (' + elapsed + 's)'
+                        : elapsed < 50 ? 'Analisando tendencias e autocomplete... (' + elapsed + 's)'
+                        : elapsed < 90 ? 'IA gerando 35 titulos virais... (' + elapsed + 's)'
+                        : elapsed < 130 ? 'Aplicando quality gate e filtros... (' + elapsed + 's)'
+                        : 'Finalizando... (' + elapsed + 's)';
+                updateProgress(pct, msg);
+            }, 1000);
+
+            // 5 minute timeout for the full regeneration pipeline
+            var controller = new AbortController();
+            var regenTimeout = setTimeout(function() { controller.abort(); }, 300000);
 
             apiPost('/api/admin/regenerate-titles', {
                 project_id: window.__CURRENT_PROJECT_ID || '',
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                if (!r.ok) {
+                    return r.json().then(function(d) { throw new Error(d.error || 'HTTP ' + r.status); });
+                }
+                return r.json();
+            })
             .then(function(data) {
+                clearInterval(regenInterval);
+                clearTimeout(regenTimeout);
                 if (data.ok) {
-                    updateProgress(100, data.generated + ' titulos gerados baseados em ' + data.niches_used + ' nicho(s)!');
-                    showToast(data.generated + ' titulos gerados!', 'success');
+                    updateProgress(100, data.generated + ' titulos gerados baseados em ' + data.niches_used + ' nicho(s)! (Keywords: ' + (data.keyword_coverage || '0%') + ')');
+                    showToast(data.generated + ' titulos gerados com sucesso!', 'success');
                     setTimeout(function() { closeProgressModal(); reloadWithProject(); }, 2000);
                 } else {
                     closeProgressModal();
-                    showToast('Erro: ' + (data.error || ''), 'error');
+                    showToast('Erro: ' + (data.error || 'resposta invalida'), 'error', 8000);
                 }
             })
             .catch(function(e) {
+                clearInterval(regenInterval);
+                clearTimeout(regenTimeout);
                 closeProgressModal();
-                showToast('Erro: ' + e.message, 'error');
+                var msg = e.name === 'AbortError' ? 'Timeout (5min). Tente novamente.' : (e.message || 'Erro desconhecido');
+                showToast('Erro: ' + msg, 'error', 8000);
+                console.error('[regenerateFromNiches] error:', e);
             });
         }
     );
 }
+
 
 function changeProjectLanguage(lang) {
     if (!lang) return;
