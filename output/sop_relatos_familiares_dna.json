@@ -1,0 +1,86 @@
+{
+  "brand_dna": {
+    "palette": {
+      "primary_accent": "#D4AF37",
+      "danger_action": "#8B0000",
+      "alert_text": "#FFFF00",
+      "deep_background": "#0A0A0A",
+      "melancholy_shadow": "#2C3E50",
+      "text_fill": "#FFFFFF"
+    },
+    "typography": {
+      "titles_and_captions": {
+        "font_family": "Montserrat",
+        "weight": "Black",
+        "style": "Uppercase, Condensed"
+      },
+      "subtitles_and_ui": {
+        "font_family": "Roboto",
+        "weight": "Bold",
+        "style": "Standard"
+      }
+    },
+    "thumbnail": {
+      "composition": "Hero Subject (70-90% frame), Split Screen (Rich vs Poor)",
+      "color_grading": "High contrast, dark background, neon/gold highlights",
+      "typography": "1-3 power words, large, high stroke/outline",
+      "emotions": "Shock, terror, cold smirk, crying"
+    },
+    "logo": {
+      "shape": "Circle",
+      "style": "Cinematic 3D emblem or hyper-realistic persona portrait",
+      "mood": "Resilient, wealthy, secretive",
+      "prompt": "square YouTube channel logo icon, cinematic hyper-realistic emblem of a glowing golden broken heart mended with gold kintsugi lines OR a dignified elderly woman face in shadows. Deep crimson red #8B0000 and gold #D4AF37 accents, moody lighting, elegant minimalist design. NO text, NO white background, NO padding, fills 95% of frame, 4k resolution, masterpiece."
+    },
+    "banner": {
+      "theme": "Juxtaposition of luxury and solitude",
+      "elements": "Mansion interiors, night cityscapes, rain on windows",
+      "prompt": "ultra-wide cinematic YouTube channel banner 16:9, luxurious dark mahogany living room in deep shadows, glowing golden fireplace light reflecting on polished marble floor. Heavy rain on a panoramic window overlooking a blurred glowing city skyline at night. Melancholic moody atmosphere, high contrast, dark blue #2C3E50 and gold #E5C158 color grading. Photorealistic, 8k."
+    },
+    "video_look": {
+      "dominant_type": "Misto (B-roll + IA Generated Art)",
+      "color_grading": "Desaturated/Teal for trauma, Warm/Gold for triumph",
+      "textures": ["Film grain 15%", "Letterbox 2.35:1 aspect ratio"],
+      "movement": "Slow Ken Burns (zoom in/out), Parallax depth",
+      "transitions": ["Slow Crossfade (passage of time)", "Hard Cut (shock reveals)"],
+      "shots_per_minute": 4
+    },
+    "text_overlay": {
+      "frequency": "100%",
+      "style": "Kinetic karaoke highlighting",
+      "font_specs": "Montserrat Black, White #FFFFFF fill, Yellow #FFFF00 highlights",
+      "outline": "Heavy black #000000 drop shadow (80% opacity)",
+      "position": "Center-lower third",
+      "animation": "Pop-in scaling (90% to 100%) per phrase"
+    },
+    "intro_outro": {
+      "intro": {
+        "exists": true,
+        "duration": "0-5 seconds",
+        "description": "Cold open directly into the traumatic hook over dark B-roll. No logo animation."
+      },
+      "outro": {
+        "layout": "End screen with 2 video boxes and center subscribe circle over a blurred dark background",
+        "audio_cue": "Verbal CTA matching visuals ('clica no vídeo que tá aparecendo na tela')"
+      },
+      "music": {
+        "setup": "Dark ambient, ticking clocks, low drone",
+        "climax": "Epic orchestral strings, tense cello",
+        "resolution": "Hopeful cinematic piano, slow tempo"
+      }
+    },
+    "brand_signature": "A assinatura visual do canal é pautada pelo contraste entre a escuridão do sofrimento e o brilho do triunfo. Há uma dependência de imagens estáticas ou com movimento Ken Burns lento que transmitem melancolia, solidão e luxo frio. As cores predominantes orbitam o preto, o vermelho-sangue e o dourado, refletindo temas de traição e riqueza. A ausência de rostos falantes direciona toda a tensão emocional para a voz narrativa e as legendas cinéticas garrafais no centro da tela. É um estilo 'audiobook cinematográfico' que hipnotiza pela lentidão visual enquanto o áudio acelera a tensão.",
+    "templates": [
+      "The Document Drop: Close up of hands placing a glowing legal paper on marble",
+      "The Window Watcher: Silhouette of the protagonist looking at rain/city lights",
+      "The Hidden Observer: POV from inside a dark closet looking out to a bright room"
+    ],
+    "anti_patterns": [
+      "NO fast-paced vlogger jump cuts",
+      "NO cheerful pastel color palettes (pink, baby blue)",
+      "NO complex logo animations lasting more than 2 seconds",
+      "NO smiling talking heads",
+      "NO illegible thin/cursive fonts on screen"
+    ]
+  }
+}
