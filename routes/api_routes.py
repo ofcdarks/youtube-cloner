@@ -501,6 +501,108 @@ async def seed_robos_encantados(request: Request, force: int = 0):
     })
 
 
+# ── Relatos Familiares seed data ─────────────────────────────────────
+_RELATOS_SEED_NICHES = [
+    ("O Milionário Oculto", "Protagonistas que escondem fortunas bilionárias enquanto são humilhados por parentes gananciosos. Contratos de fachada, heranças secretas, testamentos surpresa.", "$8-14", "Baja", "#FFD700", True),
+    ("Guerra Fria Sogra/Cunhada", "Conflitos tóxicos com sogras e cunhadas que tentam destruir casamentos, roubar patrimônio ou expulsar noras/genros da família.", "$6-10", "Baja", "#FF0B0B", True),
+    ("Abandono na Velhice", "Idosos abandonados por filhos após uma vida de sacrifício. A revelação de herança secreta ou fortuna oculta inverte o jogo.", "$5-8", "Baja", "#8B0000", False),
+    ("Provedor(a) Traído(a)", "Maridos ou esposas que sustentam a família em silêncio e descobrem traição financeira ou emocional do parceiro.", "$5-9", "Media", "#D4AF37", False),
+    ("Humilhação Pública Revertida", "Protagonistas humilhados em eventos públicos (casamentos, jantares) que revelam documentos devastadores na frente de todos.", "$7-12", "Baja", "#FFE600", False),
+]
+
+_RELATOS_SEED_TITLES = [
+    ("Minha sogra me expulsou de casa no dia do meu aniversário. Ela não sabia que o terreno era meu", "Guerra Fria Sogra/Cunhada", "ALTA", 74000),
+    ("Eu ganho R$ 50.000 por mês e ninguém sabia disso. Nem a mulher que eu amava", "O Milionário Oculto", "ALTA", 90500),
+    ("Minha cunhada falsificou a escritura da casa da minha mãe. O cartório tinha uma surpresa", "Guerra Fria Sogra/Cunhada", "ALTA", 60500),
+    ("Uma costureira ganhando 1.700 por mês casou com um bilionário. A família dele tentou destruí-la", "O Milionário Oculto", "ALTA", 110000),
+    ("Meus filhos me mandaram para o asilo. Eles não sabiam que eu tinha 4 apartamentos no meu nome", "Abandono na Velhice", "ALTA", 49500),
+    ("Meu marido pediu o divórcio na frente da família inteira. Eu sorri e abri a pasta de documentos", "Provedor(a) Traído(a)", "ALTA", 74000),
+    ("A sogra mandou a nora embora com uma mala. 3 meses depois descobriu quem pagava todas as contas", "Guerra Fria Sogra/Cunhada", "ALTA", 40500),
+    ("Trabalhei 30 anos como zelador. Ninguém sabia que eu era dono do prédio inteiro", "O Milionário Oculto", "ALTA", 60500),
+    ("Minha esposa me chamou de fracassado no jantar de Natal. O advogado chegou no dia seguinte", "Provedor(a) Traído(a)", "ALTA", 33100),
+    ("Me humilharam no casamento do meu próprio filho. 6 meses depois eu comprei a empresa do genro", "Humilhação Pública Revertida", "ALTA", 49500),
+    ("A cunhada roubou a herança da sogra com procuração falsa. O tabelião guardava uma cópia", "Guerra Fria Sogra/Cunhada", "ALTA", 40500),
+    ("Fui babá dos netos por 15 anos. Quando fiquei doente me mandaram para um asilo público", "Abandono na Velhice", "ALTA", 33100),
+    ("Meu marido escondia uma família paralela. Eu escondia uma fortuna de 3 milhões", "O Milionário Oculto", "ALTA", 74000),
+    ("A sogra rasgou meu vestido de noiva na frente dos convidados. O padre parou a cerimônia", "Humilhação Pública Revertida", "ALTA", 49500),
+    ("Cuidei da minha sogra por 20 anos. No testamento ela deixou tudo para a cunhada que nunca apareceu", "Abandono na Velhice", "ALTA", 40500),
+    ("Meu pai me deserhou. O que ele não sabia é que eu tinha gravado tudo", "O Milionário Oculto", "ALTA", 27100),
+    ("A empregada doméstica que eles humilhavam era dona de 12 imóveis na cidade", "O Milionário Oculto", "ALTA", 60500),
+    ("Minha cunhada disse que eu era um peso para a família. No dia seguinte mostrei o extrato bancário", "Guerra Fria Sogra/Cunhada", "MEDIA", 22200),
+    ("Ele me traiu com a melhor amiga. Eu contratei o melhor advogado da cidade em segredo", "Provedor(a) Traído(a)", "ALTA", 40500),
+    ("Fui expulsa da herança do meu próprio pai. O cartório tinha um segundo testamento", "O Milionário Oculto", "ALTA", 33100),
+    ("Meus 3 filhos brigaram pela minha herança no hospital. Eu estava acordada ouvindo tudo", "Abandono na Velhice", "ALTA", 49500),
+    ("A sogra tentou me internar num asilo. O juiz leu o laudo e mandou prender ela", "Guerra Fria Sogra/Cunhada", "ALTA", 27100),
+    ("Meu marido transferiu todos os bens para a amante. O banco tinha um bloqueio judicial", "Provedor(a) Traído(a)", "ALTA", 33100),
+    ("Vivi 40 anos num quartinho dos fundos. No dia que saí levei a escritura da mansão", "O Milionário Oculto", "ALTA", 40500),
+    ("A nora que eles desprezavam pagou o hospital da sogra quando ninguém mais apareceu", "Guerra Fria Sogra/Cunhada", "MEDIA", 22200),
+    ("Minha filha me abandonou num asilo e vendeu minha casa. O corretor era meu amigo", "Abandono na Velhice", "ALTA", 27100),
+    ("No jantar de família ela jogou água no meu rosto. Eu coloquei o envelope na mesa e saí em silêncio", "Humilhação Pública Revertida", "ALTA", 33100),
+    ("Ele achava que eu mal conseguia pagar o aluguel. Eu tinha R$ 2 milhões na poupança", "O Milionário Oculto", "ALTA", 49500),
+    ("A cunhada se apossou da casa da mãe com documento falso. O perito encontrou a fraude em 48 horas", "Guerra Fria Sogra/Cunhada", "ALTA", 27100),
+    ("Passei 25 anos sendo chamada de incapaz. No divórcio o juiz leu meu patrimônio e o marido empalideceu", "Provedor(a) Traído(a)", "ALTA", 40500),
+]
+
+
+@router.get("/api/seed-relatos-familiares")
+async def seed_relatos_familiares(request: Request, force: int = 0):
+    """Seed the Relatos Familiares project with SOP, niches and titles."""
+    from database import (
+        get_projects, create_project, save_niche, save_idea,
+        save_file, log_activity, get_db, delete_project,
+    )
+    existing = [p for p in get_projects() if "RELATOS FAMILIARES" == p.get("name", "")]
+    if existing:
+        pid = existing[0]["id"]
+        with get_db() as conn:
+            nc = conn.execute("SELECT COUNT(*) FROM niches WHERE project_id=?", (pid,)).fetchone()[0]
+            ic = conn.execute("SELECT COUNT(*) FROM ideas WHERE project_id=?", (pid,)).fetchone()[0]
+        if nc > 0 and ic > 0 and not force:
+            return JSONResponse({
+                "ok": True,
+                "msg": "already seeded — pass ?force=1 to reseed",
+                "id": pid, "niches": nc, "ideas": ic,
+            })
+        delete_project(pid)
+
+    pid = create_project(
+        name="RELATOS FAMILIARES",
+        channel_original="",
+        niche_chosen="Relatos Familiares Dramáticos",
+        language="pt-BR",
+    )
+
+    # Load SOP from file
+    sop = _load_sop_file("SOP_RELATOS_FAMILIARES.md") or "# SOP RELATOS FAMILIARES\nFallback."
+    try:
+        save_file(pid, "analise", "SOP - RELATOS FAMILIARES (17 Seções)", f"sop_{pid}.md", sop)
+    except Exception as e:
+        logger.warning(f"SOP save skipped: {e}")
+
+    for name, desc, rpm, comp, color, chosen in _RELATOS_SEED_NICHES:
+        try:
+            save_niche(pid, name, desc, rpm, comp, color, chosen)
+        except Exception as e:
+            logger.warning(f"Niche save skipped ({name}): {e}")
+
+    saved = 0
+    for i, (title, pillar, pri, vol) in enumerate(_RELATOS_SEED_TITLES):
+        try:
+            save_idea(pid, i + 1, title, "", "", pillar, pri, search_volume=vol, trending=1)
+            saved += 1
+        except Exception as e:
+            logger.warning(f"Idea save skipped ({i+1}): {e}")
+
+    log_activity(pid, "project_seeded",
+                 f"RELATOS FAMILIARES seeded: {len(_RELATOS_SEED_NICHES)} niches, {saved} titles")
+
+    return JSONResponse({
+        "ok": True, "project_id": pid,
+        "niches": len(_RELATOS_SEED_NICHES),
+        "titles": saved, "forced": bool(force),
+    })
+
+
 
 
 @router.get("/api/ideas")
