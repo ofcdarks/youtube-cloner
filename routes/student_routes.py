@@ -640,7 +640,15 @@ O objetivo: alguem que conhece o canal original assiste e pensa "esse video e ai
 
 Escreva em {lang_label}. Seja EXTREMAMENTE detalhado. LEMBRE-SE: MINIMO {ov_min_words} palavras."""
 
-        system_msg = "Voce e um roteirista de elite para YouTube. Voce recebeu um SOP extraido de um canal real de sucesso como REFERENCIA. Seu trabalho NAO e copiar — e ELEVAR. Voce domina as mesmas tecnicas do canal original mas executa com maestria SUPERIOR. Cada hook mais afiado, cada open loop mais intrigante, cada spike mais intenso. Voce pega o que funciona e entrega uma versao MELHORADA. O resultado e um roteiro que honra o estilo do nicho mas surpreende ate quem conhece o canal original."
+        system_msg = """Voce e um roteirista de elite para YouTube. Voce recebeu um SOP extraido de um canal real de sucesso como REFERENCIA. Seu trabalho NAO e copiar — e ELEVAR. Voce domina as mesmas tecnicas do canal original mas executa com maestria SUPERIOR. Cada hook mais afiado, cada open loop mais intrigante, cada spike mais intenso. Voce pega o que funciona e entrega uma versao MELHORADA. O resultado e um roteiro que honra o estilo do nicho mas surpreende ate quem conhece o canal original.
+
+REGRAS ABSOLUTAS:
+- NUNCA comece com meta-comentarios como 'Claro!', 'Vamos construir', 'Segue o roteiro', 'Aqui esta' etc.
+- Comece DIRETAMENTE com a primeira frase do roteiro (narracao do protagonista).
+- NUNCA coloque o texto entre aspas — escreva como texto corrido de narracao.
+- NAO faca introducoes ou explicacoes sobre o que vai escrever.
+- O roteiro DEVE ter o numero de palavras solicitado. Se pediram 7000+ palavras, ESCREVA 7000+ palavras.
+- Se o roteiro ficou curto, EXPANDA cada ato com mais dialogos, detalhes de ambiente, e monologos internos."""
 
         import httpx
 
@@ -712,14 +720,34 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado. LEMBRE-SE: MINIMO {ov_min_
             logger.error(f"AI returned empty/short script ({len(script) if script else 0} chars) for progress_id={progress_id}")
             return JSONResponse({"error": "IA retornou roteiro vazio ou muito curto. Tente novamente."}, status_code=500)
 
-        # Post-generation: auto-clean forbidden words
+        # Post-generation: strip meta-commentary prefix
+        import re as _fre
+        # Remove common AI meta-commentary prefixes
+        _meta_patterns = [
+            r'^\s*(?:Claro|Certo|Ok|Aqui est[aá]|Vamos|Segue|Com certeza|Perfeito)[!.,]*\s*(?:Vamos\s+)?(?:construir|criar|escrever|elaborar|desenvolver)?[^\n]*\n+',
+            r'^\s*"',  # Remove opening quote if AI wrapped in quotes
+            r'^\s*(?:Segue o (?:texto|roteiro|script)[^\n]*\n+)',
+        ]
+        for _mp in _meta_patterns:
+            script = _fre.sub(_mp, '', script, count=1, flags=_fre.IGNORECASE)
+
+        # Fix encoding corruption: 'a...s' -> 'apenas', 'a...s ' patterns
+        # This happens when the forbidden word cleaner corrupts 'apenas' (contains no forbidden word)
+        # or tokenization issues create broken words
+        _corruption_fixes = [
+            (r'\ba\.\.\.s\b', 'apenas'),
+            (r'\ba\.\.\.\s', 'a... '),
+        ]
+        for _pat, _repl in _corruption_fixes:
+            script = _fre.sub(_pat, _repl, script)
+
+        # Post-generation: auto-clean forbidden words (with word boundaries to avoid corrupting 'apenas' etc)
         if ov_forbidden:
-            import re as _fre
             script_lower = script.lower()
             for fw in ov_forbidden:
-                if fw.lower() in script_lower:
+                if _fre.search(r'\b' + _fre.escape(fw.lower()) + r'\b', script_lower):
                     logger.warning(f"[SCRIPT] Forbidden word '{fw}' detected in student script. Auto-cleaning.")
-                    script = _fre.sub(_fre.escape(fw), '...', script, flags=_fre.IGNORECASE)
+                    script = _fre.sub(r'\b' + _fre.escape(fw) + r'\b', '...', script, flags=_fre.IGNORECASE)
 
         # Delete previous script/narration if re-generating
         from database import save_file

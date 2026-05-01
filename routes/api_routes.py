@@ -320,6 +320,271 @@ async def reseed_all_sops(request: Request):
     return JSONResponse({"ok": True, "results": results})
 
 
+@router.get("/api/admin/sop-pdf/{project_id}")
+async def download_sop_pdf(project_id: str, request: Request, user=Depends(require_admin)):
+    """Generate a styled, print-ready HTML version of the SOP for PDF download.
+    Opens in new tab — admin uses Ctrl+P → Save as PDF."""
+    from fastapi.responses import HTMLResponse
+    from database import get_project
+    from services import get_project_sop
+
+    project = get_project(project_id)
+    if not project:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    sop_text = get_project_sop(project_id)
+    if not sop_text or len(sop_text.strip()) < 100:
+        return JSONResponse({"error": "SOP nao encontrado ou vazio para este projeto"}, status_code=404)
+
+    import html as html_mod
+    project_name = html_mod.escape(project.get("name", "Projeto"))
+    channel = html_mod.escape(project.get("channel_original", ""))
+    from datetime import datetime
+    now = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    # Convert markdown to styled HTML
+    def md_to_html(md_text):
+        """Simple markdown to HTML converter for SOPs."""
+        lines = md_text.split("\n")
+        html_lines = []
+        in_list = False
+        for line in lines:
+            stripped = line.strip()
+            # Headers
+            if stripped.startswith("### "):
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                html_lines.append(f'<h3>{html_mod.escape(stripped[4:])}</h3>')
+            elif stripped.startswith("## "):
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                html_lines.append(f'<h2>{html_mod.escape(stripped[3:])}</h2>')
+            elif stripped.startswith("# "):
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                html_lines.append(f'<h1>{html_mod.escape(stripped[2:])}</h1>')
+            # Bold
+            elif stripped.startswith("**") and stripped.endswith("**"):
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                html_lines.append(f'<p class="bold">{html_mod.escape(stripped[2:-2])}</p>')
+            # List items
+            elif stripped.startswith("- ") or stripped.startswith("* "):
+                if not in_list:
+                    html_lines.append("<ul>")
+                    in_list = True
+                content = stripped[2:]
+                # Bold within list items
+                import re as _re
+                content = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_mod.escape(content))
+                html_lines.append(f"<li>{content}</li>")
+            # Numbered list
+            elif stripped and stripped[0].isdigit() and ". " in stripped[:5]:
+                if not in_list:
+                    html_lines.append("<ul>")
+                    in_list = True
+                content = stripped.split(". ", 1)[1] if ". " in stripped else stripped
+                import re as _re
+                content = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_mod.escape(content))
+                html_lines.append(f"<li>{content}</li>")
+            # Horizontal rule
+            elif stripped == "---" or stripped == "***":
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                html_lines.append("<hr>")
+            # Empty line
+            elif not stripped:
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                html_lines.append("<br>")
+            # Regular paragraph
+            else:
+                if in_list:
+                    html_lines.append("</ul>")
+                    in_list = False
+                import re as _re
+                content = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_mod.escape(stripped))
+                html_lines.append(f"<p>{content}</p>")
+        if in_list:
+            html_lines.append("</ul>")
+        return "\n".join(html_lines)
+
+    sop_html = md_to_html(sop_text)
+    word_count = len(sop_text.split())
+
+    page = f'''<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOP - {project_name}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0f0f14;
+    color: #e4e4e7;
+    padding: 40px;
+    line-height: 1.7;
+    font-size: 14px;
+  }}
+  .container {{ max-width: 900px; margin: 0 auto; }}
+  .header {{
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #7c3aed40;
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 32px;
+    text-align: center;
+  }}
+  .header h1 {{
+    font-size: 28px;
+    font-weight: 700;
+    color: #a78bfa;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }}
+  .header .meta {{
+    font-size: 12px;
+    color: #71717a;
+  }}
+  .header .meta a {{ color: #3b82f6; text-decoration: none; }}
+  .header .stats {{
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 16px;
+  }}
+  .header .stat {{
+    background: #ffffff08;
+    padding: 8px 20px;
+    border-radius: 8px;
+    text-align: center;
+  }}
+  .header .stat-val {{ font-size: 18px; font-weight: 700; color: #22c55e; }}
+  .header .stat-lbl {{ font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; }}
+  .print-btn {{
+    display: inline-block;
+    margin-top: 16px;
+    padding: 10px 28px;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }}
+  .print-btn:hover {{ background: #6d28d9; }}
+  .content {{
+    background: #1a1a24;
+    border: 1px solid #27272a;
+    border-radius: 12px;
+    padding: 40px;
+  }}
+  .content h1 {{
+    font-size: 22px;
+    color: #a78bfa;
+    border-bottom: 2px solid #7c3aed40;
+    padding-bottom: 8px;
+    margin: 28px 0 16px 0;
+  }}
+  .content h1:first-child {{ margin-top: 0; }}
+  .content h2 {{
+    font-size: 18px;
+    color: #3b82f6;
+    margin: 24px 0 12px 0;
+    padding-left: 12px;
+    border-left: 3px solid #3b82f6;
+  }}
+  .content h3 {{
+    font-size: 15px;
+    color: #22c55e;
+    margin: 20px 0 10px 0;
+  }}
+  .content p {{
+    margin: 8px 0;
+    color: #d4d4d8;
+  }}
+  .content p.bold {{
+    font-weight: 700;
+    color: #e4e4e7;
+    font-size: 15px;
+    margin: 16px 0 8px 0;
+  }}
+  .content ul {{
+    margin: 8px 0 8px 20px;
+    color: #d4d4d8;
+  }}
+  .content li {{
+    margin: 4px 0;
+    padding-left: 4px;
+  }}
+  .content li::marker {{ color: #7c3aed; }}
+  .content strong {{ color: #f59e0b; font-weight: 600; }}
+  .content hr {{
+    border: none;
+    border-top: 1px solid #27272a;
+    margin: 24px 0;
+  }}
+  .footer {{
+    text-align: center;
+    color: #3f3f46;
+    font-size: 11px;
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid #1a1a24;
+  }}
+  @media print {{
+    body {{ background: #fff; color: #1a1a1a; padding: 20px; font-size: 11px; line-height: 1.5; }}
+    .header {{ background: #f8f8ff; border-color: #7c3aed; page-break-after: avoid; }}
+    .header h1 {{ color: #5b21b6; font-size: 22px; }}
+    .header .stat-val {{ color: #16a34a; }}
+    .print-btn {{ display: none; }}
+    .content {{ background: #fff; border-color: #e5e7eb; padding: 20px; }}
+    .content h1 {{ color: #5b21b6; font-size: 16px; border-color: #7c3aed; page-break-after: avoid; }}
+    .content h2 {{ color: #2563eb; font-size: 14px; border-color: #2563eb; page-break-after: avoid; }}
+    .content h3 {{ color: #16a34a; font-size: 12px; page-break-after: avoid; }}
+    .content p, .content li {{ color: #1a1a1a; }}
+    .content strong {{ color: #b45309; }}
+    .content hr {{ border-color: #e5e7eb; }}
+    .footer {{ color: #9ca3af; }}
+  }}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>SOP — {project_name}</h1>
+    <div class="meta">
+      {f'Canal: <a href="{channel}" target="_blank">{channel}</a> | ' if channel else ''}
+      Gerado em {now}
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-val">{word_count:,}</div><div class="stat-lbl">Palavras</div></div>
+      <div class="stat"><div class="stat-val">{len(sop_text):,}</div><div class="stat-lbl">Caracteres</div></div>
+      <div class="stat"><div class="stat-val">{sop_text.count(chr(10)):,}</div><div class="stat-lbl">Linhas</div></div>
+    </div>
+    <button class="print-btn" onclick="window.print()">&#128424; Salvar como PDF (Ctrl+P)</button>
+  </div>
+  <div class="content">
+    {sop_html}
+  </div>
+  <div class="footer">SOP gerado por YouTube Channel Cloner | {project_name} | {now}</div>
+</div>
+</body>
+</html>'''
+
+    return HTMLResponse(content=page)
 _ROBOS_SEED_NICHES = [
     ("Miniature Village Cooking", "Tiny chibi folk making berry jam, baking acorn bread in stone ovens, brewing herbal tea in nutshell cups, preserving honey in glass jars, cooking mushroom soup by the fireplace", "$4-6", "Baja", "#8FB285", True),
     ("Cottagecore Crafts & Artisanry", "Chibi villagers weaving on miniature looms, painting with petal pigments, sewing linen aprons, shaping pottery from river clay, candle-making from beeswax, wood carving on tiny benches", "$4-6", "Baja", "#C9A961", True),

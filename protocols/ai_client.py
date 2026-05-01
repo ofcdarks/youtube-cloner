@@ -274,14 +274,14 @@ Escreva o roteiro completo agora. LEMBRE-SE: {min_words} palavras MINIMO."""
 
     # Post-generation validation for forbidden words
     if forbidden:
+        import re
         result_lower = result.lower()
-        violations = [w for w in forbidden if w.lower() in result_lower]
+        violations = [w for w in forbidden if re.search(r'\b' + re.escape(w.lower()) + r'\b', result_lower)]
         if violations:
             logger.warning(f"[SCRIPT] Forbidden words detected: {violations}. Auto-cleaning...")
             for word in violations:
-                # Replace forbidden words with SOP-approved alternatives
-                import re
-                result = re.sub(re.escape(word), "...", result, flags=re.IGNORECASE)
+                # Use word boundaries to avoid corrupting words like "apenas" when banning "pena"
+                result = re.sub(r'\b' + re.escape(word) + r'\b', "...", result, flags=re.IGNORECASE)
 
     return result
 
