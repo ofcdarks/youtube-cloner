@@ -150,23 +150,85 @@ def chat(prompt: str, system: str = "", model: str = None, max_tokens: int = 800
     raise Exception(f"API failed after {MAX_RETRIES} attempts. Last error: {last_error}")
 
 
-def generate_script(title: str, hook: str, sop: str, niche: str = "System Breakers", language: str = "pt-BR") -> str:
-    """Gera um roteiro completo para um titulo."""
+# ── Per-project script overrides ─────────────────────────────────────
+# Maps project name (uppercase) to script generation parameters.
+_SCRIPT_OVERRIDES = {
+    "RELATOS FAMILIARES": {
+        "duration_minutes": 50,
+        "min_words": 7000,
+        "max_words": 10000,
+        "max_tokens": 32000,
+        "temperature": 0.75,
+        "timeout": 300,
+        "forbidden_words": [
+            "berrei", "espancei", "surtei", "perdoei", "reconciliação",
+            "pena", "abraçamos", "voltamos", "esqueci", "perdi a cabeça",
+            "descontrole", "bati", "agressão", "choraminguei",
+        ],
+        "mandatory_vocab": [
+            "advogado", "silêncio", "pasta de documentos", "escritura",
+            "cartório", "extrato", "testamento", "herança", "patrimônio",
+            "provas irrefutáveis",
+        ],
+    },
+}
+
+
+def generate_script(title: str, hook: str, sop: str, niche: str = "System Breakers",
+                    language: str = "pt-BR", project_name: str = "") -> str:
+    """Gera um roteiro completo para um titulo.
+
+    Supports per-project overrides for duration, word count, and style rules
+    via the _SCRIPT_OVERRIDES dict.
+    """
 
     from config import LANG_LABELS
     lang_label = LANG_LABELS.get(language, language)
+
+    # Lookup per-project override
+    override = _SCRIPT_OVERRIDES.get(project_name.upper().strip(), {})
+    duration_min = override.get("duration_minutes", 12)
+    min_words = override.get("min_words", 1500)
+    max_words = override.get("max_words", 1800)
+    max_tok = override.get("max_tokens", 8000)
+    temp = override.get("temperature", 0.7)
+    tout = override.get("timeout", 120)
+    forbidden = override.get("forbidden_words", [])
+    mandatory = override.get("mandatory_vocab", [])
 
     system = f"""Voce e um roteirista profissional de YouTube especializado em canais faceless de storytelling.
 Voce escreve roteiros cinematicos, dramaticos, com narrativa envolvente que prende o espectador do inicio ao fim.
 Seus roteiros sao otimizados para narracao em voz (TTS) - sem marcacoes tecnicas no texto da narracao.
 Escreva SEMPRE em {lang_label}."""
 
-    prompt = f"""Escreva um roteiro COMPLETO de 10-12 minutos para o canal "{niche}".
+    # Build structure block — long-form vs standard
+    if duration_min >= 30:
+        structure_block = f"""O roteiro deve seguir este fluxo CORRIDO (NAO divida em cenas numeradas).
+Duracao alvo: {duration_min} MINUTOS ({min_words}-{max_words} palavras de narracao).
 
-TITULO: {title}
-HOOK: {hook}
+1. **HOOK** (0:00-0:30) - Frase de choque maximo. Sem introducoes.
+2. **HOOK EXPANDIDO** (0:30-2:00) - Aprofunde a dor. Open loop 1.
+3. **CONTEXTO** (2:00-5:00) - Nome, idade, rotina de sacrificio. Humanize o protagonista.
+4. **ATO 1 - A INOCENCIA TRAIDA** (5:00-12:00) - MINIMO 5 micro-humilhacoes detalhadas.
+   Cada humilhacao deve ser uma CENA completa com dialogo, ambiente e reacao interna.
+5. **ATO 2 - O SILENCIO ESTRATEGICO** (12:00-22:00) - Protagonista finge nao saber.
+   Contrata advogados em segredo. Reune provas. Open loops 2 e 3.
+   INCLUA: reunioes com advogado, visitas ao cartorio, obtencao de documentos.
+6. **ATO 3 - A ARMADILHA ARMADA** (22:00-32:00) - O antagonista tenta o golpe final.
+   Protagonista deixa acontecer. Tensao cresce a cada paragrafo.
+   Pattern Interrupt obrigatorio neste ponto.
+7. **CLIMAX - O CONFRONTO DOCUMENTADO** (32:00-42:00) - Humilhacao PUBLICA do antagonista.
+   OBRIGATORIO: acontece em ambiente PUBLICO (jantar, assembleia, cartorio, casamento).
+   Protagonista coloca pasta de documentos na mesa. Voz baixa. Frieza absoluta.
+   Antagonista empalidece. Silencio ensurdecedor.
+8. **RESOLUCAO** (42:00-47:00) - Destruicao financeira completa do antagonista.
+   Consequencias legais. O que perderam. Quem ficou sem nada.
+9. **REFLEXAO + CTA** (47:00-{duration_min}:00) - Licao moral fria.
+   "Se voce chegou ate aqui..." CTA organico. Filosofia do silencio."""
+    else:
+        structure_block = f"""O roteiro deve seguir este fluxo CORRIDO (NAO divida em cenas numeradas).
+Duracao alvo: {duration_min} MINUTOS ({min_words}-{max_words} palavras).
 
-O roteiro deve seguir este fluxo CORRIDO (NAO divida em cenas numeradas):
 1. **HOOK** (0:00-0:30) - Primeiros 30 segundos, capturar atencao imediata
 2. **CONTEXTO** (0:30-2:30) - Setup da historia, epoca, personagens
 3. **ATO 1 - A DESCOBERTA** (2:30-4:30) - Como tudo comecou
@@ -174,30 +236,64 @@ O roteiro deve seguir este fluxo CORRIDO (NAO divida em cenas numeradas):
 5. **ATO 3 - O CAOS** (6:30-8:00) - Consequencias, reacoes, perseguicao
 6. **CLIMAX** (8:00-9:30) - Momento mais impactante, revelacao final
 7. **RESOLUCAO** (9:30-10:30) - O que aconteceu depois, licoes
-8. **CTA** (10:30-11:00) - Call to action natural
+8. **CTA** (10:30-11:00) - Call to action natural"""
+
+    # Build forbidden/mandatory blocks
+    rules_extra = ""
+    if forbidden:
+        rules_extra += "\n\nPALAVRAS PROIBIDAS (NUNCA use — se aparecerem o roteiro sera REJEITADO):\n"
+        rules_extra += ", ".join(f'"{w}"' for w in forbidden)
+    if mandatory:
+        rules_extra += "\n\nVOCABULARIO OBRIGATORIO (use PELO MENOS 60% destas palavras no roteiro):\n"
+        rules_extra += ", ".join(mandatory)
+
+    prompt = f"""Escreva um roteiro COMPLETO de {duration_min} minutos para o canal "{niche}".
+
+TITULO: {title}
+HOOK: {hook}
+
+{structure_block}
 
 REGRAS OBRIGATORIAS (do SOP):
-- Use OPEN LOOPS (misterios que so se resolvem depois)
-- Use PATTERN INTERRUPTS (quebras de expectativa)
-- Use SPECIFIC SPIKES (momentos de pico de tensao)
+- Use OPEN LOOPS (misterios que so se resolvem depois) — MINIMO 4
+- Use PATTERN INTERRUPTS (quebras de expectativa) — MINIMO 2
+- Use SPECIFIC SPIKES (momentos de pico de tensao) a cada 3-5 minutos
 - Inclua [B-ROLL: descricao visual] para o animador
 - Inclua [PAUSA DRAMATICA] nos momentos certos
 - Numeros grandes devem causar impacto
 - Cada secao deve terminar com um gancho para a proxima
-- O roteiro deve ter aproximadamente 1500-1800 palavras de narracao
+- O roteiro deve ter aproximadamente {min_words}-{max_words} palavras de narracao
+- Escreva o roteiro como texto CORRIDO — NUNCA como lista de cenas{rules_extra}
 
 SOP DO CANAL:
-{sop[:6000]}
+{sop[:8000]}
 
-Escreva o roteiro completo agora."""
+Escreva o roteiro completo agora. LEMBRE-SE: {min_words} palavras MINIMO."""
 
-    return chat(prompt, system, max_tokens=8000)
+    result = chat(prompt, system, max_tokens=max_tok, temperature=temp, timeout=tout)
+
+    # Post-generation validation for forbidden words
+    if forbidden:
+        result_lower = result.lower()
+        violations = [w for w in forbidden if w.lower() in result_lower]
+        if violations:
+            logger.warning(f"[SCRIPT] Forbidden words detected: {violations}. Auto-cleaning...")
+            for word in violations:
+                # Replace forbidden words with SOP-approved alternatives
+                import re
+                result = re.sub(re.escape(word), "...", result, flags=re.IGNORECASE)
+
+    return result
 
 
-def generate_narration(script: str) -> str:
+def generate_narration(script: str, max_words: int = 0) -> str:
     """Converte roteiro em narracao limpa para ElevenLabs."""
 
     system = "Voce converte roteiros de YouTube em texto limpo para narracao TTS."
+
+    # Estimate word target from the script itself if not given
+    script_words = len(script.split())
+    target = max_words if max_words > 0 else max(1500, int(script_words * 0.85))
 
     prompt = f"""Converta este roteiro em texto de NARRACAO PURA para colar no ElevenLabs.
 
@@ -207,15 +303,18 @@ REGRAS:
 - Mantenha apenas o texto que sera FALADO pelo narrador
 - Use "..." para pausas dramaticas curtas
 - Escreva numeros por extenso (duzentos milhoes, nao $200M)
-- O resultado deve ter entre 1500-1800 palavras
+- O resultado deve ter aproximadamente {target} palavras
 - NAO adicione nada que nao esteja no roteiro original
+- NAO corte ou resuma o texto — mantenha o roteiro COMPLETO
 
 ROTEIRO:
 {script}
 
 Retorne APENAS o texto da narracao, nada mais."""
 
-    return chat(prompt, system, max_tokens=6000, temperature=0.3)
+    # Longer scripts need more tokens for narration
+    narr_tokens = min(32000, max(6000, int(script_words * 2)))
+    return chat(prompt, system, max_tokens=narr_tokens, temperature=0.3)
 
 
 if __name__ == "__main__":

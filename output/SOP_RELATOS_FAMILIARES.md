@@ -39,7 +39,7 @@ Gerado via NotebookLM Deep Analysis (7 prompts sequenciais)
 ### 2. FORMATO E PRODUÇÃO
 
 *   **Tipo:** **Faceless (Podcast narrado / Audiobook visual)**.
-*   **Duração MÉDIA:** 1 hora a 2 horas e meia.
+*   **Duração MÉDIA:** 40 minutos a 1 hora e meia.
 *   **Estilo visual dominante:** B-rolls genéricos, imagens de stock ou arte gerada por IA.
 *   **Edição:** Hooks e CTAs intermédios. Mid-Roll CTAs no ápice da tensão.
 *   **Música e Sound Design:** Nostálgicas/melancólicas → tensas → alívio e triunfo.
@@ -121,13 +121,14 @@ Gerado via NotebookLM Deep Analysis (7 prompts sequenciais)
 
 ### 15. SYSTEM PROMPT COMPLETO
 
-"Atue como um roteirista de elite especialista em storytelling de alta retenção para o YouTube. Seu objetivo é escrever um roteiro de 12 minutos (1.800-2.000 palavras) no sub-nicho de 'Relatos Familiares de Traição e Vingança Calculada'. Emule o estilo de um audiobook dramático onde o protagonista destrói seus antagonistas usando a lei, o silêncio e o dinheiro, nunca a violência.
+"Atue como um roteirista de elite especialista em storytelling de alta retenção para o YouTube. Seu objetivo é escrever um roteiro de 40-90 minutos (6.000-13.500 palavras) no sub-nicho de 'Relatos Familiares de Traição e Vingança Calculada'. Emule o estilo de um audiobook dramático onde o protagonista destrói seus antagonistas usando a lei, o silêncio e o dinheiro, nunca a violência.
 
 **PERSONA:** 'O Estrategista Silencioso'. Mulher ou homem 40-70 anos. Veio do nada, construiu riqueza com sacrifício. Foi subestimado e humilhado. Se calou, contratou advogados em segredo, reuniu provas. Fala em primeira pessoa. Observador cirúrgico.
 
 **TOM:** Melancólico, frio, implacável, detalhista e reflexivo. FAÇA: Descreva emoções como processos jurídicos. Demonstre superioridade pelo controle absoluto. NÃO FAÇA: Nunca use tom histérico. Nunca perdoe o antagonista. Nunca use agressão física.
 
-**ESTRUTURA:** 0:00-0:30 Hook chocante | 0:30-2:00 Contexto | 2:00-5:00 Ato 1 (micro-humilhações) | 5:00-8:00 Ato 2 (planejamento silencioso) | 8:00-10:00 Clímax (humilhação pública) | 10:00-11:00 Resolução | 11:00-12:00 Reflexão + CTA
+**ESTRUTURA LONGA (40-90 min):**
+0:00-0:30 Hook chocante | 0:30-2:00 Hook expandido | 2:00-5:00 Contexto (humanização) | 5:00-12:00 Ato 1 (MÍNIMO 5 micro-humilhações detalhadas com diálogo) | 12:00-22:00 Ato 2 (silêncio estratégico, advogados, provas) | 22:00-32:00 Ato 3 (armadilha armada, tensão crescente) | 32:00-42:00 Clímax (humilhação PÚBLICA obrigatória) | 42:00-47:00 Resolução (destruição financeira) | 47:00+ Reflexão + CTA
 
 **VOCABULÁRIO FREQUENTE (30):** Cartório, Escritura, Advogado, Testamento, Herança, Silêncio, Frio, Gelou, Assinatura, Extrato, Procuração, Patrimônio, Sorri com desdém, Humilhação, Prova irrefutável, Gravação, Pasta de documentos, Envelope, Transferência, Limites, Sacrifício, Asilo, Sogra, Cunhada, Divórcio unilateral, Justiça, Karma, Pálido, Burocracia, Auditoria.
 
@@ -136,17 +137,18 @@ Gerado via NotebookLM Deep Analysis (7 prompts sequenciais)
 ### 16. TEMPLATE DE ROTEIRO PREENCHÍVEL
 
 [HOOK 0:00-0:05] Traição brutal + Erro fatal do antagonista
-[HOOK EXPANDIDO 0:05-0:30] Aprofunde a dor + Open loop 1
-[CONTEXTO 0:30-2:00] Nome, idade, rotina de sacrifício
-[ATO 1 2:00-5:00] Rotina de abusos + Descoberta
-[ATO 2 5:00-8:00] Finge não saber + Advogados + Tensão
-[CLÍMAX 8:00-10:00] O vilão tenta golpe, protagonista joga a pasta
-[RESOLUÇÃO 10:00-11:00] Destruição financeira do antagonista
-[CTA 11:00-12:00] Lição moral fria + pedido orgânico
+[HOOK EXPANDIDO 0:05-2:00] Aprofunde a dor + Open loop 1 + Open loop 2
+[CONTEXTO 2:00-5:00] Nome, idade, rotina de sacrifício. Humanização completa.
+[ATO 1 5:00-12:00] MÍNIMO 5 micro-humilhações com diálogo + ambiente + reação interna
+[ATO 2 12:00-22:00] Finge não saber + Advogados em segredo + Reuniões no cartório + Open loops
+[ATO 3 22:00-32:00] Antagonista tenta golpe final + Protagonista deixa acontecer + Tensão
+[CLÍMAX 32:00-42:00] OBRIGATÓRIO: ambiente PÚBLICO. Pasta de documentos na mesa. Frieza.
+[RESOLUÇÃO 42:00-47:00] Destruição financeira completa do antagonista
+[CTA 47:00+] Lição moral fria + pedido orgânico
 
 ### 17. CHECKLIST — 15 SIM/NÃO
 
-1. Hook prende em 5s? 2. 3+ Open Loops? 3. Tom consistente? 4. Spikes a cada 2-3min? 5. CTA natural? 6. Vocabulário padrão? 7. Ritmo alterna? 8. 1.800+ palavras? 9. Antagonista humilhado publicamente? 10. Assimetria mantida? 11. Ações burocráticas reais? 12. Dignidade intacta? 13. Palavras proibidas evitadas? 14. Pattern Interrupt no meio? 15. Passaria por real?
+1. Hook prende em 5s? 2. 3+ Open Loops? 3. Tom consistente? 4. Spikes a cada 3-5min? 5. CTA natural? 6. Vocabulário padrão (60%+)? 7. Ritmo alterna? 8. 6.000+ palavras? 9. Antagonista humilhado PUBLICAMENTE? 10. Assimetria mantida? 11. Ações burocráticas reais? 12. Dignidade intacta? 13. Palavras proibidas evitadas? 14. Pattern Interrupt no meio? 15. Passaria por real?
 
 ---
 

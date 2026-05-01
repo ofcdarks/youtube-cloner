@@ -562,11 +562,36 @@ async def api_student_generate_script(request: Request, user=Depends(require_aut
         from services import get_project_sop
         sop = get_project_sop(project_id)
 
-        # The SOP contains a complete replication manual (17 sections) including:
-        # - Section 15: System prompt for AI to generate identical scripts
-        # - Section 16: Template with exact timestamps
-        # - Section 17: Quality checklist
-        # We feed the FULL SOP as context so the AI follows every pattern but ELEVATES
+        # Lookup per-project override for duration/wordcount
+        from protocols.ai_client import _SCRIPT_OVERRIDES
+        proj_name = (proj.get("name", "") if proj else "").upper().strip()
+        override = _SCRIPT_OVERRIDES.get(proj_name, {})
+        ov_duration = override.get("duration_minutes", 12)
+        ov_min_words = override.get("min_words", 1500)
+        ov_max_words = override.get("max_words", 1800)
+        ov_max_tokens = override.get("max_tokens", 8000)
+        ov_timeout = override.get("timeout", 120)
+        ov_forbidden = override.get("forbidden_words", [])
+
+        # Build duration-aware structure
+        if ov_duration >= 30:
+            structure_rules = f"""6. TAMANHO: {ov_min_words}-{ov_max_words} palavras de narracao ({ov_duration} minutos)
+7. ESTRUTURA LONGA OBRIGATORIA:
+   - HOOK (0:00-0:30) + HOOK EXPANDIDO (0:30-2:00)
+   - CONTEXTO (2:00-5:00) com humanizacao completa
+   - ATO 1 (5:00-12:00) MINIMO 5 micro-humilhacoes detalhadas com dialogo
+   - ATO 2 (12:00-22:00) planejamento silencioso, advogados, provas
+   - ATO 3 (22:00-32:00) armadilha armada, tensao crescente
+   - CLIMAX (32:00-42:00) humilhacao PUBLICA (jantar, assembleia, cartorio)
+   - RESOLUCAO (42:00-47:00) destruicao financeira
+   - REFLEXAO + CTA (47:00-{ov_duration}:00) licao moral fria"""
+        else:
+            structure_rules = f"6. TAMANHO: {ov_min_words}-{ov_max_words} palavras de narracao"
+
+        # Build forbidden words block
+        forbidden_block = ""
+        if ov_forbidden:
+            forbidden_block = "\n\nPALAVRAS PROIBIDAS (NUNCA use — roteiro sera REJEITADO):\n" + ", ".join(f'"{w}"' for w in ov_forbidden)
 
         prompt = f"""TITULO DO VIDEO: {title}
 HOOK SUGERIDO: {hook}
@@ -605,15 +630,15 @@ REGRAS DO SOP:
 3. USE o vocabulario da Secao 15 — tom, ritmo, formalidade
 4. APLIQUE hooks da Secao 4 — escolha um dos frameworks
 5. USE open loops da Secao 5 — setup explicito + resolucao tardia
-6. TAMANHO: 1500-1800 palavras de narracao
+{structure_rules}
 
 LIMITES DO YOUTUBE:
 - Titulo: MAXIMO 100 caracteres
-- Tags: MAXIMO 500 caracteres no total
+- Tags: MAXIMO 500 caracteres no total{forbidden_block}
 
 O objetivo: alguem que conhece o canal original assiste e pensa "esse video e ainda MELHOR que os outros".
 
-Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
+Escreva em {lang_label}. Seja EXTREMAMENTE detalhado. LEMBRE-SE: MINIMO {ov_min_words} palavras."""
 
         system_msg = "Voce e um roteirista de elite para YouTube. Voce recebeu um SOP extraido de um canal real de sucesso como REFERENCIA. Seu trabalho NAO e copiar — e ELEVAR. Voce domina as mesmas tecnicas do canal original mas executa com maestria SUPERIOR. Cada hook mais afiado, cada open loop mais intrigante, cada spike mais intenso. Voce pega o que funciona e entrega uma versao MELHORADA. O resultado e um roteiro que honra o estilo do nicho mas surpreende ate quem conhece o canal original."
 
@@ -624,11 +649,11 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
         if provider in ("laozhang", "openai"):
             api_url = "https://api.laozhang.ai/v1/chat/completions" if provider == "laozhang" else "https://api.openai.com/v1/chat/completions"
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=ov_timeout) as client:
                 resp = await client.post(api_url, json={
                     "model": ai_model,
                     "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
-                    "max_tokens": 8000,
+                    "max_tokens": ov_max_tokens,
                 }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
                 data = resp.json()
                 if "error" in data:
@@ -638,10 +663,10 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
                 script = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=ov_timeout) as client:
                 resp = await client.post("https://api.anthropic.com/v1/messages", json={
                     "model": ai_model,
-                    "max_tokens": 8000,
+                    "max_tokens": ov_max_tokens,
                     "system": system_msg,
                     "messages": [{"role": "user", "content": prompt}],
                 }, headers={"x-api-key": api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"})
@@ -654,7 +679,7 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
 
         elif provider == "google":
             api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=ov_timeout) as client:
                 resp = await client.post(f"{api_url}?key={api_key}", json={
                     "contents": [{"parts": [{"text": prompt}]}],
                 })
@@ -671,6 +696,15 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado."""
         if not script or len(script.strip()) < 200:
             logger.error(f"AI returned empty/short script ({len(script) if script else 0} chars) for progress_id={progress_id}")
             return JSONResponse({"error": "IA retornou roteiro vazio ou muito curto. Tente novamente."}, status_code=500)
+
+        # Post-generation: auto-clean forbidden words
+        if ov_forbidden:
+            import re as _fre
+            script_lower = script.lower()
+            for fw in ov_forbidden:
+                if fw.lower() in script_lower:
+                    logger.warning(f"[SCRIPT] Forbidden word '{fw}' detected in student script. Auto-cleaning.")
+                    script = _fre.sub(_fre.escape(fw), '...', script, flags=_fre.IGNORECASE)
 
         # Delete previous script/narration if re-generating
         from database import save_file

@@ -1098,8 +1098,10 @@ async def api_generate_script(request: Request, user=Depends(require_auth)):
         sop = get_project_sop(pid)
 
         # 1. Generate full script (with markers, sections, etc.)
+        project_name = (proj or {}).get("name", "")
         script = generate_script(
-            idea["title"], idea.get("hook", ""), sop, language=lang
+            idea["title"], idea.get("hook", ""), sop, language=lang,
+            project_name=project_name,
         )
 
         # 2. Generate clean narration (text-only, ready for the agent / TTS)
@@ -1110,7 +1112,9 @@ async def api_generate_script(request: Request, user=Depends(require_auth)):
             narration = script
 
         # 3. Persist script in scripts table (legacy)
-        save_script(pid, idea["title"], script, int(idea_id), "10-12 min")
+        words = len(script.split())
+        duration_est = f"~{round(words / 140, 1)} min"
+        save_script(pid, idea["title"], script, int(idea_id), duration_est)
 
         # 4. Also persist as files so they show up in the project's
         #    "Arquivos do Projeto" panel under Roteiros + Narracoes
