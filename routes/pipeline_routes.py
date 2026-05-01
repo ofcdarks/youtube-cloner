@@ -1104,6 +1104,69 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
 
         # QUALITY GATE — score each title for viral potential and map volume
         from protocols.viral_engine import filter_best_titles, score_viral_title
+
+        # Per-project char range for scoring
+        _proj_char_range = (50, 80)  # default
+        _proj_no_excl = False
+        _proj_word_limits = {}
+        try:
+            from protocols.viral_engine import build_viral_prompt as _bvp_ref
+            # Access the overrides dict defined inside build_viral_prompt
+            _po_map = {
+                "RELATOS FAMILIARES": {"char_range": (85, 100), "no_exclamation": True,
+                                       "forbidden_title_words": ["SEGREDO"], "max_same_word": 2},
+            }
+            _proj_key = _pname.strip()
+            if _proj_key in _po_map:
+                _proj_char_range = _po_map[_proj_key].get("char_range", (50, 80))
+                _proj_no_excl = _po_map[_proj_key].get("no_exclamation", False)
+                for fw in _po_map[_proj_key].get("forbidden_title_words", []):
+                    _proj_word_limits[fw.upper()] = _po_map[_proj_key].get("max_same_word", 2)
+        except Exception:
+            pass
+
+        # CHAR RANGE GATE — trim/reject titles outside project char range
+        char_min, char_max = _proj_char_range
+        if char_min > 50 or char_max != 80:  # non-default range
+            before = len(new_ideas)
+            valid_ideas = []
+            for idea in new_ideas:
+                t = idea.get("title", "")
+                tlen = len(t)
+                # Auto-fix: strip "!" if project forbids exclamation
+                if _proj_no_excl and "!" in t:
+                    t = t.replace("!", ".").rstrip(". ") + "."
+                    idea["title"] = t
+                    tlen = len(t)
+                # Allow within +/-15 chars tolerance (AI isn't perfect)
+                if (char_min - 15) <= tlen <= (char_max + 15):
+                    valid_ideas.append(idea)
+                else:
+                    logger.info(f"Char-range gate: rejected '{t[:50]}...' ({tlen} chars, need {char_min}-{char_max})")
+            new_ideas = valid_ideas
+            if before != len(new_ideas):
+                logger.info(f"Char-range gate: {before} -> {len(new_ideas)}")
+
+        # WORD FREQUENCY GATE — cap specific words (e.g. "SEGREDO" max 2x)
+        if _proj_word_limits:
+            word_counts = {}
+            filtered_ideas = []
+            for idea in new_ideas:
+                t_upper = idea.get("title", "").upper()
+                should_keep = True
+                for word, max_count in _proj_word_limits.items():
+                    if word in t_upper:
+                        word_counts[word] = word_counts.get(word, 0) + 1
+                        if word_counts[word] > max_count:
+                            logger.info(f"Word-freq gate: rejected '{idea.get('title', '')[:60]}' ({word} #{word_counts[word]}, max {max_count})")
+                            should_keep = False
+                            break
+                if should_keep:
+                    filtered_ideas.append(idea)
+            if len(filtered_ideas) != len(new_ideas):
+                logger.info(f"Word-freq gate: {len(new_ideas)} -> {len(filtered_ideas)}")
+                new_ideas = filtered_ideas
+
         from protocols.keywords_everywhere import _strip_accents, _GENERIC_SINGLE_WORDS, match_keyword_in_title
 
         # Map volume using keyword matching
@@ -1155,7 +1218,7 @@ CADA titulo DEVE:
 - Conter keyword de volume: {', '.join(f'"{kw["keyword"]}"' for kw in niche_keywords[:10])}
 - Ter POWER WORD em CAPS
 - Criar CURIOSITY GAP
-- MINIMO 70 caracteres, MAXIMO 100 caracteres
+- MINIMO {char_min} caracteres, MAXIMO {char_max} caracteres
 - Seguir o estilo do SOP
 - Distribuir entre os sub-nichos: {', '.join([n['name'] for n in chosen])}
 

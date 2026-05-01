@@ -564,9 +564,79 @@ Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 3 regras apos a formula:
 1. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
 2. Pelo menos 1 POWER WORD em CAPS (emocao)
-3. CURIOSITY GAP — prometa sem revelar
+3. CURIOSITY GAP — prometa sem revelar"""
 
-Idioma: {lang_label}. MINIMO 50 caracteres, MAXIMO 80 caracteres por titulo."""
+    # ═══ PER-PROJECT TITLE OVERRIDES ═══
+    _TITLE_PROJECT_OVERRIDES = {
+        "RELATOS FAMILIARES": {
+            "char_range": (85, 100),
+            "forbidden_title_words": ["SEGREDO"],
+            "max_same_word": 2,
+            "no_exclamation": True,
+            "required_pillar_distribution": {
+                "O Milionário Oculto": 6,
+                "Guerra Fria Sogra/Cunhada": 8,
+                "Abandono na Velhice": 6,
+                "Provedor(a) Traído(a)": 5,
+                "Humilhação Pública com Reviravolta": 5,
+            },
+            "power_words": [
+                "TESTAMENTO", "ESCRITURA", "CARTÓRIO", "HERANÇA", "ADVOGADO",
+                "PROVA", "CONTRATO", "PATRIMÔNIO", "EXTRATO", "DESPEJADA",
+                "HUMILHAÇÃO", "REVIRAVOLTA", "DONO", "CHOQUE", "PASTA",
+            ],
+            "formulas": [
+                "[AGRESSÃO familiar]. [CITAÇÃO/tempo]. [REVELAÇÃO burocrática]",
+                "[Parente] me [humilhou]. [Tempo depois], [consequência legal]",
+                "[Sacrifício por X anos]. [Quando Y aconteceu], [revelação]",
+                "[Fui X]. [Parente fez Y]. [Resultado frio Z]",
+            ],
+            "tone": "FRIO, calculista, 1a pessoa. NUNCA use '!' no titulo. Tom de quem ja venceu.",
+            "extra_rules": [
+                "CADA titulo DEVE ter entre 85 e 100 caracteres. NEM MAIS, NEM MENOS.",
+                "Conte os caracteres ANTES de retornar. Se tiver menos que 85, EXPANDA com detalhes. Se tiver mais que 100, CORTE.",
+                "NUNCA use '!' (exclamação) — tom frio, ponto final apenas.",
+                "A palavra SEGREDO so pode aparecer em NO MAXIMO 2 titulos de 30.",
+                "Use palavras de poder BUROCRATICAS: testamento, escritura, cartório, herança, advogado, contrato, extrato, pasta de documentos.",
+                "PROIBIDO repetir a mesma palavra-chave em CAPS em mais de 3 titulos.",
+                "Distribua os titulos entre TODOS os 5 pilares conforme quota abaixo.",
+                "Antagonistas PERMITIDOS: sogra, cunhada, nora, marido, esposa, irmão, filha, filho. PROIBIDO: chefe, colega, vizinho.",
+                "Formula do titulo: [AGRESSÃO] + [TEMPO/CITAÇÃO] + [REVELAÇÃO BUROCRÁTICA]",
+            ],
+        },
+    }
+    _proj_override = _TITLE_PROJECT_OVERRIDES.get(channel_name.upper().strip(), {})
+
+    if _proj_override:
+        _override_lines = ["\n═══ REGRAS ESPECIFICAS DESTE PROJETO (OBRIGATORIAS) ═══"]
+        if _proj_override.get("tone"):
+            _override_lines.append(f"TOM: {_proj_override['tone']}")
+        if _proj_override.get("char_range"):
+            cmin, cmax = _proj_override["char_range"]
+            _override_lines.append(f"TAMANHO DO TITULO: MINIMO {cmin} caracteres, MAXIMO {cmax} caracteres. OBRIGATORIO.")
+        if _proj_override.get("power_words"):
+            _override_lines.append(f"POWER WORDS DESTE CANAL (use estas em CAPS): {', '.join(_proj_override['power_words'])}")
+        if _proj_override.get("formulas"):
+            _override_lines.append("FORMULAS DE TITULO DESTE CANAL:")
+            for f in _proj_override["formulas"]:
+                _override_lines.append(f"  - {f}")
+        if _proj_override.get("required_pillar_distribution"):
+            _override_lines.append("DISTRIBUICAO POR PILAR (OBRIGATORIA):")
+            for pilar, qty in _proj_override["required_pillar_distribution"].items():
+                _override_lines.append(f"  - \"{pilar}\": {qty} titulos")
+        for rule in _proj_override.get("extra_rules", []):
+            _override_lines.append(f"REGRA: {rule}")
+        if _proj_override.get("forbidden_title_words"):
+            fw = _proj_override["forbidden_title_words"]
+            mx = _proj_override.get("max_same_word", 2)
+            _override_lines.append(f"PALAVRAS COM LIMITE: {', '.join(fw)} — MAX {mx}x em {count} titulos. Se ultrapassar, SUBSTITUA por sinonimo burocrático.")
+        _override_lines.append("═══════════════════════════════════════════════════════")
+        system_prompt += "\n" + "\n".join(_override_lines)
+
+    # Override char range in instructions
+    _char_min, _char_max = _proj_override.get("char_range", (50, 80))
+
+    system_prompt += f"\n\nIdioma: {lang_label}. MINIMO {_char_min} caracteres, MAXIMO {_char_max} caracteres por titulo."
 
     # ═══════════════════════════════════════════════════
     # USER PROMPT — structured data, SOP as foundation
@@ -664,7 +734,7 @@ QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Con
 6. Para os 10 primeiros (ALTA prioridade), inclua variante B (title_b)
 7. O campo "pillar" = nome do sub-nicho
 8. Mix: ~10 ALTA, ~12 MEDIA, ~{count - 22} BAIXA = {count} TOTAL
-9. MINIMO 50 caracteres, MAXIMO 80 caracteres por titulo — titulos curtos NAO performam, use frases completas com numeros, emocao e open loops
+9. MINIMO {_char_min} caracteres, MAXIMO {_char_max} caracteres por titulo — conte os caracteres de CADA titulo antes de retornar. Rejeite e reescreva qualquer titulo fora deste range.
 {f'10. PROIBIDO: NUNCA comecar titulo com "POV:" ou "POV " — este canal NAO e um canal POV. Use o estilo do SOP.' if not _is_pov_channel else ''}
 
 Retorne APENAS JSON válido:
@@ -698,6 +768,7 @@ def score_viral_title(
     title: str,
     keywords_with_volume: list[dict],
     lang: str = "es",
+    char_range: tuple = (50, 80),
 ) -> dict:
     """
     Score a title for viral potential BEFORE saving.
@@ -710,18 +781,20 @@ def score_viral_title(
     issues = []
     score = 0
 
-    # 1. Length check (ideal: 50-80 chars) — max 15 points
+    char_min, char_max = char_range
+
+    # 1. Length check — max 15 points
     length = len(title)
-    if 50 <= length <= 80:
+    if char_min <= length <= char_max:
         score += 15
-    elif 40 <= length <= 90:
+    elif (char_min - 10) <= length <= (char_max + 10):
         score += 10
-    elif length > 100:
+    elif length > (char_max + 20):
         score += 0
-        issues.append("titulo muito longo")
+        issues.append(f"titulo muito longo ({length} chars, max {char_max})")
     else:
         score += 5
-        issues.append("titulo muito curto")
+        issues.append(f"titulo fora do range ({length} chars, ideal {char_min}-{char_max})")
 
     # 2. Contains high-volume keyword — max 30 points
     best_vol = 0
