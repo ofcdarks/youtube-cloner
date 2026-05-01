@@ -658,8 +658,23 @@ Escreva em {lang_label}. Seja EXTREMAMENTE detalhado. LEMBRE-SE: MINIMO {ov_min_
                 data = resp.json()
                 if "error" in data:
                     error_msg = data["error"].get("message", "") if isinstance(data["error"], dict) else str(data["error"])
-                    logger.error(f"AI API error ({provider}): {error_msg[:200]}")
-                    return JSONResponse({"error": f"Erro na API ({provider}): verifique sua chave API."}, status_code=400)
+                    logger.error(f"AI API error ({provider}): {error_msg[:500]}")
+                    # If max_tokens too high, auto-retry with lower value
+                    if "max_tokens" in error_msg.lower() or "too large" in error_msg.lower() or "maximum" in error_msg.lower():
+                        logger.warning(f"Retrying with reduced max_tokens: {ov_max_tokens} -> {min(ov_max_tokens, 8000)}")
+                        reduced_tokens = min(ov_max_tokens, 8000)
+                        resp2 = await client.post(api_url, json={
+                            "model": ai_model,
+                            "messages": [{"role": "system", "content": system_msg}, {"role": "user", "content": prompt}],
+                            "max_tokens": reduced_tokens,
+                        }, headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"})
+                        data2 = resp2.json()
+                        if "error" not in data2:
+                            script = data2.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        else:
+                            return JSONResponse({"error": f"Erro na API ({provider}): {error_msg[:200]}"}, status_code=400)
+                    else:
+                        return JSONResponse({"error": f"Erro na API ({provider}): {error_msg[:200]}"}, status_code=400)
                 script = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
         elif provider == "anthropic":

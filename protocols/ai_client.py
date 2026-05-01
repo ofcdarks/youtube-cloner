@@ -157,7 +157,7 @@ _SCRIPT_OVERRIDES = {
         "duration_minutes": 50,
         "min_words": 7000,
         "max_words": 10000,
-        "max_tokens": 32000,
+        "max_tokens": 16000,
         "temperature": 0.75,
         "timeout": 300,
         "forbidden_words": [
