@@ -731,6 +731,18 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
     if not chosen:
         return JSONResponse({"error": "Nenhum nicho selecionado"}, status_code=400)
 
+    # If frontend sent specific niche_names, filter chosen to ONLY those
+    requested_niche_names = body.get("niche_names", [])
+    if requested_niche_names and isinstance(requested_niche_names, list):
+        requested_set = set(n.strip() for n in requested_niche_names if n.strip())
+        if requested_set:
+            filtered = [n for n in chosen if n.get("name", "").strip() in requested_set]
+            if filtered:
+                logger.info(f"[REGENERATE] Filtered to {len(filtered)} requested niches: {[n['name'] for n in filtered]}")
+                chosen = filtered
+            else:
+                logger.warning(f"[REGENERATE] Requested niches {requested_set} not found in chosen niches, using all {len(chosen)} chosen")
+
     lang = project.get("language", "en")
     from config import LANG_LABELS
     lang_label = LANG_LABELS.get(lang, lang)

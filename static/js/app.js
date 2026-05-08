@@ -450,12 +450,29 @@ function generateMoreIdeas() {
 }
 
 function regenerateFromNiches() {
+    // Detect selected niches from the DOM (cards with 'ESCOLHIDO' badge)
+    var selectedCards = document.querySelectorAll('.niche-selected .niche-name');
+    var selectedNicheNames = [];
+    selectedCards.forEach(function(el) {
+        var name = el.childNodes[0] ? el.childNodes[0].textContent.trim() : el.textContent.trim();
+        name = name.replace('ESCOLHIDO', '').replace('RECOMENDADO', '').trim();
+        if (name) selectedNicheNames.push(name);
+    });
+
+    // Block if no niches are selected
+    if (selectedNicheNames.length === 0) {
+        showToast('Selecione pelo menos 1 nicho (clique no card do nicho) antes de refazer.', 'warning', 5000);
+        return;
+    }
+
+    var nichesList = selectedNicheNames.map(function(n) { return '<br>• <strong>' + n + '</strong>'; }).join('');
+
     showConfirm(
         'Refazer Titulos pelos Nichos',
-        'Isso vai <strong>APAGAR todos os titulos atuais</strong> e gerar 30 novos baseados nos nichos escolhidos (marcados como ESCOLHIDO).<br><br>O SOP original sera usado como referencia de tom e estilo.<br><br>Continuar?',
+        'Isso vai <strong>APAGAR todos os titulos atuais</strong> e gerar 30 novos baseados <u>somente</u> nos nichos selecionados:' + nichesList + '<br><br>O SOP original sera usado como referencia de tom e estilo.<br><br>Continuar?',
         function() {
             showProgressModal('Refazendo Titulos');
-            updateProgress(5, 'Iniciando regeneracao...');
+            updateProgress(5, 'Iniciando regeneracao com ' + selectedNicheNames.length + ' nicho(s)...');
 
             // Real elapsed timer — gives user feedback during long AI calls
             var startTime = Date.now();
@@ -477,6 +494,7 @@ function regenerateFromNiches() {
 
             apiPost('/api/admin/regenerate-titles', {
                 project_id: window.__CURRENT_PROJECT_ID || '',
+                niche_names: selectedNicheNames,
             })
             .then(function(r) {
                 if (!r.ok) {
