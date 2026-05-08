@@ -493,10 +493,23 @@ def build_viral_prompt(
 
     # Build data blocks
     niche_names_list = [n['name'] for n in niches]
+    niche_descriptions = {n['name']: n.get('description', '') for n in niches}
     niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in niches])
-    niches_text += f"\n\nREGRA CRITICA: Gere titulos APENAS sobre os {len(niches)} nicho(s) listados acima."
+    niches_text += f"\n\n{'=' * 50}"
+    niches_text += f"\nREGRA CRITICA — FOCO TEMATICO OBRIGATORIO:"
+    niches_text += f"\n{'=' * 50}"
+    niches_text += f"\nGere titulos APENAS sobre os {len(niches)} nicho(s) listados acima."
     niches_text += f"\nO campo 'pillar' DEVE ser EXATAMENTE um destes: {', '.join(niche_names_list)}."
     niches_text += f"\nNAO invente outros pilares. PROIBIDO usar pilar que nao esteja nesta lista."
+    # Add explicit thematic guidance for each niche
+    for n in niches:
+        desc = n.get('description', '')
+        if desc:
+            niches_text += f"\n\nTEMA OBRIGATORIO para '{n['name']}':"
+            niches_text += f"\n  {desc}"
+            niches_text += f"\n  100% dos titulos DEVEM ser sobre este tema especifico."
+            niches_text += f"\n  Se o nicho fala de narcisistas, TODOS os titulos devem envolver narcisismo/manipulacao/abuso."
+            niches_text += f"\n  NAO gere historias genericas de familia (sogra, cunhada, heranca) que NAO envolvam o tema central do nicho."
 
     kw_lines = []
     for kw in keywords_with_volume[:30]:
@@ -550,9 +563,32 @@ def build_viral_prompt(
     if _sop_formulas:
         _formula_examples = '\n'.join([f'  - "{t}"' for t in _sop_formulas[:12]])
 
-    system_prompt = f"""Voce E o dono do canal "{channel_name}". Voce nao esta ajudando — voce esta ESCREVENDO seus proprios titulos.
+    # Build niche-focused identity for system prompt
+    _niche_identity = ""
+    if len(niches) <= 2:
+        _niche_themes = []
+        for n in niches:
+            desc = n.get('description', '')
+            _niche_themes.append(f'"{n["name"]}" -- {desc}' if desc else f'"{n["name"]}"')
+        _niche_identity = f"""
 
-═══ REFERENCIA DE ESTILO (NAO COPIAR LITERALMENTE) ═══
+========== FOCO TEMATICO DO CANAL (REGRA MAIS IMPORTANTE) ==========
+Voce esta gerando titulos EXCLUSIVAMENTE sobre:
+{chr(10).join('  * ' + t for t in _niche_themes)}
+
+TODOS os {count} titulos devem orbitar em torno DESTE tema especifico.
+Se o nicho eh sobre narcisistas: TODOS os titulos devem envolver narcisismo, manipulacao, gaslighting, abuso emocional, controle toxico, vinganca contra narcisistas.
+Se o nicho eh sobre sogras: TODOS devem envolver conflitos com sogra/cunhada.
+Se o nicho eh sobre herancas: TODOS devem envolver testamentos, fortunas, disputas.
+NAO misture temas de outros nichos. Um titulo sobre sogra/cunhada NAO pertence ao nicho de narcisistas (a menos que a sogra SEJA a narcisista).
+Um titulo sobre heranca NAO pertence ao nicho de narcisistas (a menos que envolva narcisismo).
+FOCO TOTAL no tema do nicho selecionado. Historias genericas de familia NAO servem.
+===================================================================="""
+
+    system_prompt = f"""Voce E o dono do canal "{channel_name}". Voce nao esta ajudando -- voce esta ESCREVENDO seus proprios titulos.
+{_niche_identity}
+
+=== REFERENCIA DE ESTILO (NAO COPIAR LITERALMENTE) ===
 Estes sao exemplos de titulos do canal de REFERENCIA que performaram bem:
 {_formula_examples if _formula_examples else '(ver SOP abaixo)'}
 
@@ -565,14 +601,14 @@ esses ja existem nos canais de referencia.
 Use TEMAS FRESCOS que ninguem fez ainda.
 NAO invente formulas genericas como "The FORBIDDEN...", "The DARK...", "The INCREDIBLE..."
 USE APENAS as formulas do SOP com temas novos.
-═══════════════════════════════════════════════════════════════════════════════
+================================================================
 
 Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
 
 3 regras apos a formula:
 1. Keyword de ALTO VOLUME nos primeiros 40 caracteres (SEO)
 2. Pelo menos 1 POWER WORD em CAPS (emocao)
-3. CURIOSITY GAP — prometa sem revelar"""
+3. CURIOSITY GAP -- prometa sem revelar"""
 
     # ═══ PER-PROJECT TITLE OVERRIDES ═══
     _TITLE_PROJECT_OVERRIDES = {
