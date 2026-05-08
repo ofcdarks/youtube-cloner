@@ -492,7 +492,11 @@ def build_viral_prompt(
         ]
 
     # Build data blocks
+    niche_names_list = [n['name'] for n in niches]
     niches_text = "\n".join([f"- {n['name']}: {n.get('description', '')}" for n in niches])
+    niches_text += f"\n\nREGRA CRITICA: Gere titulos APENAS sobre os {len(niches)} nicho(s) listados acima."
+    niches_text += f"\nO campo 'pillar' DEVE ser EXATAMENTE um destes: {', '.join(niche_names_list)}."
+    niches_text += f"\nNAO invente outros pilares. PROIBIDO usar pilar que nao esteja nesta lista."
 
     kw_lines = []
     for kw in keywords_with_volume[:30]:
@@ -577,13 +581,7 @@ Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
             "forbidden_title_words": ["SEGREDO"],
             "max_same_word": 2,
             "no_exclamation": True,
-            "required_pillar_distribution": {
-                "O Milionário Oculto": 6,
-                "Guerra Fria Sogra/Cunhada": 8,
-                "Abandono na Velhice": 6,
-                "Provedor(a) Traído(a)": 5,
-                "Humilhação Pública com Reviravolta": 5,
-            },
+            # NOTE: pillar distribution is now dynamic — see below
             "power_words": [
                 "TESTAMENTO", "ESCRITURA", "CARTÓRIO", "HERANÇA", "ADVOGADO",
                 "PROVA", "CONTRATO", "PATRIMÔNIO", "EXTRATO", "DESPEJADA",
@@ -603,7 +601,7 @@ Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
                 "A palavra SEGREDO so pode aparecer em NO MAXIMO 2 titulos de 30.",
                 "Use palavras de poder BUROCRATICAS: testamento, escritura, cartório, herança, advogado, contrato, extrato, pasta de documentos.",
                 "PROIBIDO repetir a mesma palavra-chave em CAPS em mais de 3 titulos.",
-                "Distribua os titulos entre TODOS os 5 pilares conforme quota abaixo.",
+                "Distribua os titulos IGUALMENTE entre TODOS os nichos selecionados.",
                 "Antagonistas PERMITIDOS: sogra, cunhada, nora, marido, esposa, irmão, filha, filho. PROIBIDO: chefe, colega, vizinho.",
                 "Formula do titulo: [AGRESSÃO] + [TEMPO/CITAÇÃO] + [REVELAÇÃO BUROCRÁTICA]",
             ],
@@ -624,10 +622,13 @@ Suas power words favoritas: {', '.join(formulas['power_words'][:15])}
             _override_lines.append("FORMULAS DE TITULO DESTE CANAL:")
             for f in _proj_override["formulas"]:
                 _override_lines.append(f"  - {f}")
-        if _proj_override.get("required_pillar_distribution"):
-            _override_lines.append("DISTRIBUICAO POR PILAR (OBRIGATORIA):")
-            for pilar, qty in _proj_override["required_pillar_distribution"].items():
-                _override_lines.append(f"  - \"{pilar}\": {qty} titulos")
+        # Dynamic pillar distribution based on actually selected niches
+        if niche_names_list:
+            titles_per_niche = max(1, count // len(niche_names_list))
+            _override_lines.append(f"DISTRIBUICAO POR PILAR (OBRIGATORIA — APENAS ESTES {len(niche_names_list)} PILAR(ES)):")
+            for niche_name in niche_names_list:
+                _override_lines.append(f"  - \"{niche_name}\": {titles_per_niche} titulos")
+            _override_lines.append(f"PROIBIDO gerar titulos para pilares que NAO estejam listados acima.")
         for rule in _proj_override.get("extra_rules", []):
             _override_lines.append(f"REGRA: {rule}")
         if _proj_override.get("forbidden_title_words"):
@@ -734,9 +735,9 @@ QUANTIDADE: Voce DEVE gerar EXATAMENTE {count} titulos. Nem mais, nem menos. Con
 2. Keyword nos PRIMEIROS 40 caracteres
 3. 1+ POWER WORD em CAPS (use as MINHAS: {', '.join(formulas['power_words'][:8])})
 4. CURIOSITY GAP em cada titulo
-5. Distribua igualmente entre os sub-nichos
+5. TODOS os titulos devem ser sobre os {len(niche_names_list)} nicho(s) selecionados: {', '.join(niche_names_list)}
 6. Para os 10 primeiros (ALTA prioridade), inclua variante B (title_b)
-7. O campo "pillar" = nome do sub-nicho
+7. O campo "pillar" DEVE ser EXATAMENTE um destes: {', '.join(niche_names_list)}. PROIBIDO inventar outros pilares.
 8. Mix: ~10 ALTA, ~12 MEDIA, ~{count - 22} BAIXA = {count} TOTAL
 9. MINIMO {_char_min} caracteres, MAXIMO {_char_max} caracteres por titulo — conte os caracteres de CADA titulo antes de retornar. Rejeite e reescreva qualquer titulo fora deste range.
 {f'10. PROIBIDO: NUNCA comecar titulo com "POV:" ou "POV " — este canal NAO e um canal POV. Use o estilo do SOP.' if not _is_pov_channel else ''}

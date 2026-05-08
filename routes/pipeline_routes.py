@@ -1084,6 +1084,29 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
                     f"(removidos {before - len(new_ideas)} com prefixos {forbidden_prefixes})"
                 )
 
+        # PILLAR GATE — force pillar to match selected niches only
+        chosen_niche_names = {n.get("name", "").strip() for n in chosen if n.get("name")}
+        if chosen_niche_names:
+            before = len(new_ideas)
+            for idea in new_ideas:
+                pillar = (idea.get("pillar") or "").strip()
+                if pillar not in chosen_niche_names:
+                    # If only 1 niche selected, auto-assign to it
+                    if len(chosen_niche_names) == 1:
+                        idea["pillar"] = list(chosen_niche_names)[0]
+                    else:
+                        # Try fuzzy match (partial)
+                        matched = False
+                        for cn in chosen_niche_names:
+                            if cn.lower() in pillar.lower() or pillar.lower() in cn.lower():
+                                idea["pillar"] = cn
+                                matched = True
+                                break
+                        if not matched:
+                            # Assign to first selected niche as fallback
+                            idea["pillar"] = list(chosen_niche_names)[0]
+            logger.info(f"Pillar gate: forced all {len(new_ideas)} titles to use only selected niches: {sorted(chosen_niche_names)}")
+
         # DIVERSITY GATE — se muitos titulos comecam com o mesmo prefixo, mantem
         # apenas os 2 primeiros e rejeita o resto. Melhor ter 15 titulos variados
         # do que 30 clones.
