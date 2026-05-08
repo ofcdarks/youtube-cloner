@@ -94,20 +94,31 @@ async def api_upload_resource(request: Request, user=Depends(require_admin)):
 @limiter.limit("20/minute")
 async def api_delete_resource(request: Request, user=Depends(require_admin)):
     """Delete a resource."""
-    body = await request.json()
-    resource_id = body.get("resource_id")
-    if not resource_id:
-        return JSONResponse({"error": "resource_id obrigatorio"}, status_code=400)
+    try:
+        body = await request.json()
+        resource_id = body.get("resource_id")
+        if not resource_id:
+            return JSONResponse({"error": "resource_id obrigatorio"}, status_code=400)
 
-    from database import get_db
-    with get_db() as conn:
-        row = conn.execute("SELECT file_path FROM admin_resources WHERE id=?", (int(resource_id),)).fetchone()
-        if row:
-            fpath = OUTPUT_DIR / "resources" / row["file_path"]
-            if fpath.exists():
-                fpath.unlink()
+        from database import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT file_path FROM admin_resources WHERE id=?", (int(resource_id),)).fetchone()
+            if not row:
+                return JSONResponse({"error": f"Recurso {resource_id} nao encontrado"}, status_code=404)
+            file_path = row["file_path"]
+            if file_path:
+                fpath = OUTPUT_DIR / "resources" / file_path
+                if fpath.exists():
+                    fpath.unlink()
+                    logger.info(f"[DELETE-RESOURCE] File deleted: {fpath}")
+                else:
+                    logger.warning(f"[DELETE-RESOURCE] File not found on disk: {fpath}")
             conn.execute("DELETE FROM admin_resources WHERE id=?", (int(resource_id),))
-    return JSONResponse({"ok": True})
+            logger.info(f"[DELETE-RESOURCE] DB record deleted: id={resource_id}")
+        return JSONResponse({"ok": True})
+    except Exception as e:
+        logger.error(f"[DELETE-RESOURCE] Error deleting resource {body.get('resource_id', '?')}: {e}", exc_info=True)
+        return JSONResponse({"ok": False, "error": str(e)[:200]}, status_code=500)
 
 
 @router.get("/api/resource/download/{resource_id}")

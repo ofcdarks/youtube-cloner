@@ -974,6 +974,16 @@ async def api_toggle_niche_chosen(request: Request, user=Depends(require_auth)):
             return JSONResponse({"error": "Maximo 2 nichos escolhidos"}, status_code=400)
 
     update_niche_chosen(target["id"], chosen)
+
+    # Invalidate keyword cache — chosen niches changed, old keywords would mislead AI
+    try:
+        from database import get_db as _gdb
+        with _gdb() as conn:
+            conn.execute("DELETE FROM keyword_cache WHERE project_id=?", (project_id,))
+        logger.info(f"[TOGGLE-NICHE] Keyword cache invalidated for project {project_id} (niche '{niche_name}' → chosen={chosen})")
+    except Exception as e:
+        logger.warning(f"[TOGGLE-NICHE] Failed to invalidate keyword cache: {e}")
+
     return JSONResponse({"ok": True, "name": niche_name, "chosen": chosen})
 
 
@@ -1224,10 +1234,20 @@ async def api_generate_ideas(request: Request, user=Depends(require_auth)):
         # When chosen niches exist, make them the PRIMARY focus of the prompt
         if chosen_niches:
             chosen_names = ", ".join([n["name"] for n in chosen_niches])
-            prompt_header = f"""Gere {count} novas ideias de videos para o canal "{niche}".
-FOCO OBRIGATORIO: Todos os titulos devem ser sobre os sub-nichos escolhidos: {chosen_names}.
+            chosen_descriptions = "\n".join([f'  - "{n["name"]}": {n.get("description", "")}' for n in chosen_niches])
+            logger.info(f"[GENERATE-IDEAS] Using {len(chosen_niches)} chosen niches: {chosen_names}")
+            prompt_header = f"""Gere {count} novas ideias de videos.
+
+=== NICHOS OBRIGATORIOS (GERE APENAS SOBRE ESTES) ===
+{chosen_descriptions}
+===
+
+REGRA CRITICA: 100% dos titulos devem ser EXCLUSIVAMENTE sobre os nichos acima.
+NAO gere titulos sobre outros temas. Se o nicho eh "{chosen_names}", TODOS os titulos devem estar nesse universo tematico.
+O campo "pillar" DEVE ser exatamente um dos nichos escolhidos: {chosen_names}.
 {niches_instruction}"""
         else:
+            logger.info(f"[GENERATE-IDEAS] No chosen niches found, using niche from frontend: {niche}")
             prompt_header = f"""Gere {count} novas ideias de videos para o canal "{niche}"."""
 
         prompt = f"""{prompt_header}
@@ -1239,7 +1259,7 @@ REGRAS:
 - Siga a mesma estrutura do SOP (hook forte, numeros impactantes, historia real)
 - Inclua para cada ideia: titulo viral, hook dos primeiros 30s, resumo de 2 linhas, pilar de conteudo, prioridade (ALTA/MEDIA/BAIXA)
 - COMPRIMENTO DO TITULO: MINIMO 50 caracteres, MAXIMO 80 caracteres. Use frases completas, numeros, emocao e curiosidade.
-{f'- Distribua igualmente entre os sub-nichos escolhidos. O campo pillar DEVE ser um dos nichos escolhidos.' if chosen_niches else ''}
+{f'- OBRIGATORIO: O campo "pillar" deve ser EXATAMENTE um dos nichos: {chosen_names}. Distribua igualmente.' if chosen_niches else ''}
 
 TITULOS JA EXISTENTES (NAO REPETIR):
 {chr(10).join(f'- {t}' for t in existing_titles[:30])}
@@ -1252,7 +1272,11 @@ Retorne em formato JSON valido:
 
 Retorne APENAS o JSON.{lang_instruction}"""
 
-        response = chat(prompt, max_tokens=MAX_TOKENS_MEDIUM, temperature=0.8)
+        system_msg = ""
+        if chosen_niches:
+            system_msg = f"Voce eh um gerador de titulos virais para YouTube. Gere APENAS titulos sobre: {chosen_names}. Nao gere titulos sobre outros temas."
+
+        response = chat(prompt, system=system_msg, max_tokens=MAX_TOKENS_MEDIUM, temperature=0.8)
         json_match = re.search(r'\[.*\]', response, re.DOTALL)
         if not json_match:
             return JSONResponse({"error": "IA nao retornou JSON valido"}, status_code=500)
