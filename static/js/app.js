@@ -397,9 +397,22 @@ function closeProgressModal() {
 /* ── Generate More Ideas ─────────────────────────────── */
 
 function generateMoreIdeas() {
-    const currentNiche = (window.__CURRENT_PROJECT_ID || '').replace(/_/g, ' ').replace(/^\d+\s*/, '');
+    // Use chosen niches from the UI (badges with 'ESCOLHIDO')
+    var chosenBadges = document.querySelectorAll('.niche-selected .niche-name');
+    var chosenNicheNames = [];
+    chosenBadges.forEach(function(el) {
+        // Get the text content excluding badges
+        var name = el.childNodes[0] ? el.childNodes[0].textContent.trim() : el.textContent.trim();
+        // Remove badge text that may be included
+        name = name.replace('ESCOLHIDO', '').replace('RECOMENDADO', '').trim();
+        if (name) chosenNicheNames.push(name);
+    });
+    var defaultNiche = chosenNicheNames.length > 0
+        ? chosenNicheNames.join(' + ')
+        : (window.__CURRENT_PROJECT_ID || '').replace(/_/g, ' ').replace(/^\d+\s*/, '');
+
     showInput('Gerar Novos Titulos', [
-        {name: 'niche', label: 'Nicho', default: currentNiche || 'System Breakers', placeholder: 'Ex: Dark Deals, Heist Architects...'},
+        {name: 'niche', label: 'Nicho(s) ' + (chosenNicheNames.length > 0 ? '(dos nichos escolhidos)' : ''), default: defaultNiche || 'System Breakers', placeholder: 'Ex: Dark Deals, Heist Architects...'},
         {name: 'count', label: 'Quantidade', type: 'number', default: '10', placeholder: '10'},
     ], (values) => {
         const btn = document.getElementById('ideas-btn');
@@ -490,6 +503,33 @@ function regenerateFromNiches() {
                 var msg = e.name === 'AbortError' ? 'Timeout (5min). Tente novamente.' : (e.message || 'Erro desconhecido');
                 showToast('Erro: ' + msg, 'error', 8000);
                 console.error('[regenerateFromNiches] error:', e);
+            });
+        }
+    );
+}
+
+function deleteAllTitles() {
+    showConfirm(
+        'Excluir Todos os Titulos',
+        'Isso vai <strong>APAGAR TODOS os titulos</strong> deste projeto permanentemente.<br><br>Scripts e SEO packs associados tambem serao removidos.<br><br>Continuar?',
+        function() {
+            var loading = showToast('Excluindo todos os titulos...', 'loading');
+            apiPost('/api/admin/delete-all-titles', {
+                project_id: window.__CURRENT_PROJECT_ID || '',
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                removeToast(loading);
+                if (data.ok) {
+                    showToast(data.deleted + ' titulos excluidos com sucesso!', 'success');
+                    setTimeout(function() { reloadWithProject(); }, 1200);
+                } else {
+                    showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+                }
+            })
+            .catch(function(e) {
+                removeToast(loading);
+                showToast('Erro: ' + e.message, 'error');
             });
         }
     );

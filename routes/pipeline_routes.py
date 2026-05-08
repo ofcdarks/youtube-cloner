@@ -722,9 +722,9 @@ async def api_regenerate_titles(request: Request, user=Depends(require_admin)):
     if not project:
         return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
 
-    sop = get_project_sop(project_id)
+    sop = get_project_sop(project_id) or ""
     if not sop:
-        return JSONResponse({"error": "SOP nao encontrado"}, status_code=400)
+        logger.warning(f"[REGENERATE] No SOP found for project {project_id} — proceeding with empty SOP")
 
     niches = get_niches(project_id)
     chosen = [n for n in niches if n.get("chosen")]

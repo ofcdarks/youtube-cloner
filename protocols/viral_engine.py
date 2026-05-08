@@ -470,6 +470,10 @@ def build_viral_prompt(
     lang_code = lang[:2]
     formulas = get_viral_formulas(lang_code)
 
+    # Ensure sop_text is never None (projects without SOP)
+    if not sop_text:
+        sop_text = ""
+
     lang_labels = {
         "es": "Español", "pt": "Português (BR)", "en": "English",
         "fr": "Français", "de": "Deutsch",

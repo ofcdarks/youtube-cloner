@@ -364,7 +364,7 @@
 
 {% block scripts %}
 <script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
-<script src="/static/js/app.js?v=20260411"></script>
+<script src="/static/js/app.js?v=20260508"></script>
 <script>
 function removeTitle(progressId, title) {
     showConfirm('Remover Titulo', 'Remover titulo do aluno:<br><br><strong>"' + title + '"</strong><br><br>O titulo volta a ficar disponivel para atribuicao.', function() {
@@ -558,11 +558,19 @@ function uploadResource() {
 
 function deleteResource(resourceId) {
     showConfirm('Remover Recurso', 'Remover este recurso?', function() {
+        var loading = showToast('Excluindo recurso...', 'loading');
         apiPost('/api/admin/delete-resource', {resource_id: resourceId})
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.ok) { showToast('Removido!', 'success'); setTimeout(function() { location.reload(); }, 1000); }
-        });
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Recurso excluido!', 'success', 2000);
+                setTimeout(function() { location.reload(); }, 1000);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
     });
 }
 

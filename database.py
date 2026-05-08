@@ -734,6 +734,25 @@ def delete_idea(idea_id: int):
         conn.execute("DELETE FROM ideas WHERE id=?", (idea_id,))
 
 
+def delete_all_ideas(project_id: str) -> int:
+    """Delete ALL ideas for a project (cascade to seo_packs, progress, scripts).
+    Returns count of deleted ideas."""
+    with get_db() as conn:
+        # Get all idea IDs for this project
+        idea_rows = conn.execute(
+            "SELECT id FROM ideas WHERE project_id=?", (project_id,)
+        ).fetchall()
+        idea_ids = [r["id"] for r in idea_rows]
+        if not idea_ids:
+            return 0
+        placeholders = ",".join("?" * len(idea_ids))
+        conn.execute(f"DELETE FROM seo_packs WHERE idea_id IN ({placeholders})", idea_ids)
+        conn.execute(f"DELETE FROM progress WHERE idea_id IN ({placeholders})", idea_ids)
+        conn.execute(f"DELETE FROM scripts WHERE idea_id IN ({placeholders})", idea_ids)
+        conn.execute("DELETE FROM ideas WHERE project_id=?", (project_id,))
+        return len(idea_ids)
+
+
 # ── Niches ───────────────────────────────────────────────
 
 def save_niche(

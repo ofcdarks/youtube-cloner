@@ -503,22 +503,32 @@
     <!-- RECURSOS DO ADMIN -->
     {% if resources %}
     <div class="section">
-        <div class="section-title"><span class="sec-icon">&#128230;</span> Recursos Disponibilizados</div>
+        <div class="section-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span><span class="sec-icon">&#128230;</span> Recursos Disponibilizados</span>
+            {% if real_user and real_user.role == 'admin' %}
+            <button type="button" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="deleteAllResources()" title="Excluir todos os recursos deste aluno">&#128465; Excluir Todos</button>
+            {% endif %}
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px">
             {% for res in resources %}
-            <a href="/api/resource/download/{{ res.id }}" style="display:flex;align-items:center;gap:10px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;text-decoration:none;min-width:220px;transition:border-color .2s" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
-                <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
-                <div>
-                    <div style="font-size:13px;font-weight:600;color:#fff">{{ res.label }}</div>
-                    {% if res.description %}<div style="font-size:11px;color:#888;margin-top:2px">{{ res.description[:60] }}</div>{% endif %}
-                    <div style="display:flex;gap:6px;margin-top:4px">
-                        <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:{{ res.badge_color }}20;color:{{ res.badge_color }}">{{ res.category }}</span>
-                        <span style="font-size:10px;color:#666">{% if res.file_size >= 1048576 %}{{ "%.1f"|format(res.file_size / 1048576) }}MB{% elif res.file_size >= 1024 %}{{ "%.1f"|format(res.file_size / 1024) }}KB{% else %}{{ res.file_size }}B{% endif %}</span>
-                        <span style="font-size:10px;color:#666">{{ res.downloads }} downloads</span>
+            <div style="display:flex;align-items:center;gap:10px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:12px 16px;min-width:220px;transition:border-color .2s;position:relative" onmouseover="this.style.borderColor='{{ res.badge_color }}'" onmouseout="this.style.borderColor='#1e293b'">
+                <a href="/api/resource/download/{{ res.id }}" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex:1">
+                    <span style="font-size:28px">{{ res.badge_icon|safe }}</span>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#fff">{{ res.label }}</div>
+                        {% if res.description %}<div style="font-size:11px;color:#888;margin-top:2px">{{ res.description[:60] }}</div>{% endif %}
+                        <div style="display:flex;gap:6px;margin-top:4px">
+                            <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:{{ res.badge_color }}20;color:{{ res.badge_color }}">{{ res.category }}</span>
+                            <span style="font-size:10px;color:#666">{% if res.file_size >= 1048576 %}{{ "%.1f"|format(res.file_size / 1048576) }}MB{% elif res.file_size >= 1024 %}{{ "%.1f"|format(res.file_size / 1024) }}KB{% else %}{{ res.file_size }}B{% endif %}</span>
+                            <span style="font-size:10px;color:#666">{{ res.downloads }} downloads</span>
+                        </div>
                     </div>
-                </div>
-                <span style="color:#22c55e;font-size:18px;margin-left:auto">&#8615;</span>
-            </a>
+                    <span style="color:#22c55e;font-size:18px;margin-left:auto">&#8615;</span>
+                </a>
+                {% if real_user and real_user.role == 'admin' %}
+                <button type="button" onclick="event.stopPropagation();deleteResource({{ res.id }})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:4px;position:absolute;top:4px;right:6px" title="Excluir recurso">&#128465;</button>
+                {% endif %}
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -630,8 +640,50 @@
 
 {% block scripts %}
 <script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
-<script src="/static/js/app.js?v=20260411"></script>
+<script src="/static/js/app.js?v=20260508"></script>
 <script>
+
+/* ── Admin: Resource deletion (only available when admin is viewing student dashboard) ── */
+function deleteResource(resourceId) {
+    showConfirm('Excluir Recurso', 'Tem certeza que deseja excluir este recurso?', function() {
+        var loading = showToast('Excluindo recurso...', 'loading');
+        apiPost('/api/admin/delete-resource', {resource_id: resourceId})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            removeToast(loading);
+            if (data.ok) {
+                showToast('Recurso excluido!', 'success', 2000);
+                setTimeout(function() { location.reload(); }, 1000);
+            } else {
+                showToast('Erro: ' + (data.error || 'desconhecido'), 'error');
+            }
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
+function deleteAllResources() {
+    var resourceIds = [];
+    {% for res in resources %}
+    resourceIds.push({{ res.id }});
+    {% endfor %}
+    if (resourceIds.length === 0) { showToast('Nenhum recurso para excluir', 'warning'); return; }
+    showConfirm('Excluir TODOS os Recursos', 'Tem certeza que deseja excluir <strong>' + resourceIds.length + ' recursos</strong> deste aluno?<br><br>Acao irreversivel.', function() {
+        var loading = showToast('Excluindo ' + resourceIds.length + ' recursos...', 'loading');
+        var promises = resourceIds.map(function(rid) {
+            return apiPost('/api/admin/delete-resource', {resource_id: rid}).then(function(r) { return r.json(); });
+        });
+        Promise.all(promises)
+        .then(function(results) {
+            removeToast(loading);
+            var ok = results.filter(function(r) { return r.ok; }).length;
+            showToast(ok + '/' + resourceIds.length + ' recursos excluidos!', 'success', 3000);
+            setTimeout(function() { location.reload(); }, 1500);
+        })
+        .catch(function(e) { removeToast(loading); showToast('Erro: ' + e.message, 'error'); });
+    });
+}
+
 /* Drag & Drop */
 let dragData = null;
 

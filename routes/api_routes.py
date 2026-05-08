@@ -1089,6 +1089,27 @@ async def api_score_title(request: Request, user=Depends(require_auth)):
     return JSONResponse({"ok": True, "score": result["final_score"], "rating": result["rating"], "details": result})
 
 
+@router.post("/api/admin/delete-all-titles")
+@limiter.limit("5/minute")
+async def api_delete_all_titles(request: Request, user=Depends(require_admin)):
+    """Delete ALL titles (ideas) for a project."""
+    body = await request.json()
+    project_id = body.get("project_id", "").strip()
+    if not project_id:
+        return JSONResponse({"error": "project_id obrigatorio"}, status_code=400)
+
+    from database import get_project, delete_all_ideas, log_activity
+    project = get_project(project_id)
+    if not project:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+
+    deleted = delete_all_ideas(project_id)
+    log_activity(project_id, "titles_deleted_all", f"{deleted} titulos excluidos em massa")
+    logger.info(f"[DELETE-ALL-TITLES] {deleted} ideas deleted for project {project_id}")
+
+    return JSONResponse({"ok": True, "deleted": deleted})
+
+
 @router.post("/api/generate-ideas")
 @limiter.limit("10/minute")
 async def api_generate_ideas(request: Request, user=Depends(require_auth)):
@@ -1224,7 +1245,7 @@ TITULOS JA EXISTENTES (NAO REPETIR):
 {chr(10).join(f'- {t}' for t in existing_titles[:30])}
 
 SOP (referencia de tom e estilo):
-{sop[:4000]}
+{(sop or '')[:4000]}
 
 Retorne em formato JSON valido:
 [{{"title": "...", "hook": "...", "summary": "...", "pillar": "...", "priority": "ALTA"}}]

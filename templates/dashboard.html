@@ -281,6 +281,9 @@
                         <button type="button" class="score-btn" onclick="scoreAll()" id="score-btn">Pontuar Todos</button>
                         <button type="button" class="score-btn score-btn-green" onclick="generateMoreIdeas()" id="ideas-btn">+ Gerar Titulos</button>
                         <button type="button" style="background:#f59e0b;color:#000;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="regenerateFromNiches()" title="Apagar titulos atuais e re-gerar 30 baseados nos nichos escolhidos">&#128260; Refazer pelos Nichos</button>
+                        {% if user and user.role == 'admin' %}
+                        <button type="button" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600" onclick="deleteAllTitles()" title="Excluir todos os titulos do projeto">&#128465; Excluir Todos</button>
+                        {% endif %}
                     </div>
                 </div>
                 <!-- Score Legend -->
@@ -433,7 +436,7 @@
 {% block scripts %}
 <script>window.__SESSION_TOKEN = "{{ session_token|default('') }}";</script>
 <script>window.__CURRENT_PROJECT_ID = "{{ current_project_id|default('') }}";</script>
-<script src="/static/js/app.js?v=20260411"></script>
+<script src="/static/js/app.js?v=20260508"></script>
 <script>
 function regenerateMindmap() {
     const pid = window.__CURRENT_PROJECT_ID;
