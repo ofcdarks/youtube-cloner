@@ -276,6 +276,9 @@ app.include_router(mockup_router)
 from routes.import_routes import router as import_router
 app.include_router(import_router)
 
+from routes.resources_routes import router as resources_router
+app.include_router(resources_router)
+
 # ── M17: Health Check ────────────────────────────────────
 import time as _time
 _cloner_start_time = _time.time()
