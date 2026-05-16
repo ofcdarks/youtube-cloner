@@ -37,6 +37,57 @@ def get_project_sop(project_id: str) -> str:
     return ""
 
 
+# titulo de secao relevante p/ roteiro (secoes 15 e 16 do SOP)
+_ROTEIRO_KEEP = re.compile(
+    r"(system\s*prompt|instru[cç][õo]es?\s+para\s+ia|template\s+de\s+roteiro|"
+    r"prompt\s+completo|gera[cç][aã]o\s+de\s+roteiro)",
+    re.IGNORECASE,
+)
+# titulo que NAO deve entrar (imagem/seo/lancamento/etc)
+_ROTEIRO_STOP = re.compile(
+    r"(imagefx|midjourney|prompt\s+base|\bseo\b|launch|lan[cç]amento|monetiz|"
+    r"thumbnail|channel\s+identity|identidade)",
+    re.IGNORECASE,
+)
+_MD_HEADER = re.compile(r"^(#{1,4})\s+(.*)$")
+
+
+def extract_roteiro_prompt(sop_text: str) -> str:
+    """Extrai so as secoes de roteiro de um SOP (System Prompt + Template).
+
+    Mantem blocos cujo header casa _ROTEIRO_KEEP e descarta os que casam
+    _ROTEIRO_STOP. Retorna "" se nada relevante for encontrado.
+    """
+    if not sop_text:
+        return ""
+    lines = sop_text.splitlines()
+    blocks: list[list[str]] = []
+    titles: list[str] = []
+    cur_body: list[str] | None = None
+    cur_title = ""
+    for ln in lines:
+        m = _MD_HEADER.match(ln)
+        if m:
+            if cur_body is not None:
+                blocks.append(cur_body)
+                titles.append(cur_title)
+            cur_title = m.group(2).strip()
+            cur_body = [ln]
+        elif cur_body is not None:
+            cur_body.append(ln)
+    if cur_body is not None:
+        blocks.append(cur_body)
+        titles.append(cur_title)
+
+    out: list[str] = []
+    for title, body in zip(titles, blocks):
+        if _ROTEIRO_STOP.search(title):
+            continue
+        if _ROTEIRO_KEEP.search(title):
+            out.append("\n".join(body).rstrip())
+    return "\n\n".join(out).strip()
+
+
 # ── Data Helpers ─────────────────────────────────────────
 
 def get_filesystem_projects() -> list[dict]:

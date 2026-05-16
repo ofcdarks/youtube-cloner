@@ -3,6 +3,7 @@ Student routes — dashboard, progress tracking, script generation, file managem
 """
 
 import logging
+import re
 
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -943,6 +944,66 @@ async def api_student_delete_file(request: Request, user=Depends(require_auth)):
 
 
 # ── Student Channels ─────────────────────────────────────
+
+@router.get("/api/student/download-roteiro-prompt")
+@limiter.limit("20/minute")
+async def api_student_download_roteiro_prompt(
+    request: Request, project_id: str = "", user=Depends(require_auth)
+):
+    """Baixa so o prompt do agente de roteiro (System Prompt + Template) do SOP
+    do projeto do aluno. project_id opcional — se vazio, usa a 1a assignment
+    do aluno que tenha projeto."""
+    from fastapi.responses import Response
+    from database import get_assignments, get_project
+    from services import get_project_sop, extract_roteiro_prompt
+
+    pid = (project_id or "").strip()
+    niche = ""
+    if not pid:
+        for a in get_assignments(user["id"]):
+            if a.get("project_id"):
+                pid = a["project_id"]
+                niche = a.get("niche", "")
+                break
+    if not pid:
+        return JSONResponse(
+            {"error": "Nenhum projeto atribuido a voce ainda."}, status_code=404
+        )
+
+    proj = get_project(pid)
+    if not proj:
+        return JSONResponse({"error": "Projeto nao encontrado"}, status_code=404)
+    if not niche:
+        niche = proj.get("niche_chosen", "") or proj.get("name", "roteiro")
+
+    sop = get_project_sop(pid)
+    if not sop:
+        return JSONResponse(
+            {"error": "SOP do projeto ainda nao foi gerado."}, status_code=404
+        )
+
+    body = extract_roteiro_prompt(sop)
+    if not body:
+        return JSONResponse(
+            {"error": "SOP nao tem secao de roteiro (System Prompt / Template)."},
+            status_code=404,
+        )
+
+    slug = re.sub(r"[^a-z0-9]+", "_", niche.lower()).strip("_") or "roteiro"
+    header = (
+        f"# Agente de Roteiro — {niche}\n\n"
+        f"> Cole o SYSTEM PROMPT em System Instructions da sua IA "
+        f"e use o TEMPLATE como esqueleto do roteiro.\n\n---\n\n"
+    )
+    md = header + body + "\n"
+    return Response(
+        content=md.encode("utf-8"),
+        media_type="text/markdown; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="agente_roteiro_{slug}.md"'
+        },
+    )
+
 
 @router.get("/api/student/channels")
 async def api_student_channels(request: Request, user=Depends(require_auth)):

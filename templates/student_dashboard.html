@@ -500,6 +500,23 @@
     </div>
     {% endif %}
 
+    <!-- PROMPT DO AGENTE DE ROTEIRO -->
+    {% if current_project %}
+    <div class="section">
+        <div class="section-title"><span class="sec-icon">&#9998;</span> Agente de Roteiro</div>
+        <div style="display:flex;align-items:center;gap:14px;background:#131a2e;border:1px solid #1e293b;border-radius:10px;padding:14px 18px;flex-wrap:wrap">
+            <div style="flex:1;min-width:220px">
+                <div style="font-size:13px;font-weight:600;color:#fff">Prompt do agente de roteiro &mdash; {{ current_project.niche or current_project.name }}</div>
+                <div style="font-size:11px;color:#888;margin-top:2px">System Prompt + Template extraidos do SOP. Cole em System Instructions da sua IA.</div>
+            </div>
+            <a href="/api/student/download-roteiro-prompt?project_id={{ current_project.id }}" download
+               style="background:#7c3aed;color:#fff;text-decoration:none;padding:8px 18px;border-radius:6px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px">
+               &#8615; Baixar Prompt
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- RECURSOS DO ADMIN -->
     {% if resources %}
     <div class="section">
