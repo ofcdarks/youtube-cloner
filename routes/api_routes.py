@@ -20,12 +20,12 @@ router = APIRouter(tags=["api"])
 
 
 @router.get("/api/deploy-check-9ab")
-async def deploy_check(request: Request):
+async def deploy_check(request: Request, user=Depends(require_admin)):
     return JSONResponse({"deployed": "9ab9872", "ts": "2026-04-06"})
 
 
 @router.get("/api/admin/fix-long-titles")
-async def fix_long_titles(request: Request, dry_run: bool = False):
+async def fix_long_titles(request: Request, dry_run: bool = False, user=Depends(require_admin)):
     """Find and fix all titles exceeding 100 chars across all projects.
 
     Query params:
@@ -286,7 +286,7 @@ def _load_sop_file(filename: str) -> str | None:
 
 
 @router.get("/api/reseed-all-sops")
-async def reseed_all_sops(request: Request):
+async def reseed_all_sops(request: Request, user=Depends(require_admin)):
     """Update SOPs for all projects from output/ files — idempotent, safe to rerun."""
     from database import get_projects, save_file, get_db
     results = {}
@@ -643,7 +643,7 @@ _ROBOS_SEED_TITLES = [
 
 
 @router.get("/api/seed-robos-encantados")
-async def seed_robos_encantados(request: Request, force: int = 0):
+async def seed_robos_encantados(request: Request, force: int = 0, user=Depends(require_admin)):
     """Seed/reseed the miniature enchanted village project.
 
     Keeps the legacy endpoint name and project key "ROBOS ENCANTADOS" for
@@ -810,7 +810,7 @@ _RELATOS_SEED_TITLES = [
 
 
 @router.get("/api/seed-relatos-familiares")
-async def seed_relatos_familiares(request: Request, force: int = 0):
+async def seed_relatos_familiares(request: Request, force: int = 0, user=Depends(require_admin)):
     """Seed the Relatos Familiares project with SOP, niches and titles."""
     from database import (
         get_projects, create_project, save_niche, save_idea,
@@ -872,7 +872,26 @@ async def seed_relatos_familiares(request: Request, force: int = 0):
 
 @router.get("/api/ideas")
 async def api_ideas(request: Request, project: str = "", user=Depends(require_auth)):
-    from database import get_ideas, get_projects as db_projects
+    from database import get_ideas, get_projects as db_projects, get_db
+    # Students may only read ideas from projects they are assigned to
+    if user.get("role") != "admin":
+        with get_db() as conn:
+            if project:
+                allowed = conn.execute(
+                    "SELECT id FROM assignments WHERE student_id=? AND project_id=?",
+                    (user["id"], project),
+                ).fetchone()
+                if not allowed:
+                    return JSONResponse({"error": "Sem permissao"}, status_code=403)
+            else:
+                row = conn.execute(
+                    "SELECT project_id FROM assignments WHERE student_id=? LIMIT 1",
+                    (user["id"],),
+                ).fetchone()
+                if not row:
+                    return JSONResponse([])
+                project = row["project_id"]
+        return JSONResponse(get_ideas(project))
     if project:
         ideas = get_ideas(project)
     else:
@@ -882,7 +901,7 @@ async def api_ideas(request: Request, project: str = "", user=Depends(require_au
 
 
 @router.get("/api/apply-chibi-override")
-async def apply_chibi_override(request: Request):
+async def apply_chibi_override(request: Request, user=Depends(require_admin)):
     """Atualiza meta do projeto ROBOS ENCANTADOS com concept_override + forbidden_prefixes
     SEM apagar nichos/ideias/roteiros. Use quando ja houver conteudo que voce quer
     manter e so precisa injetar as guards pra proximas geracoes."""
@@ -929,10 +948,19 @@ async def apply_chibi_override(request: Request):
 async def api_idea_details(request: Request, id: str = "", user=Depends(require_auth)):
     if not id:
         return JSONResponse({"error": "id obrigatorio"}, status_code=400)
-    from database import get_idea, get_seo
+    from database import get_idea, get_seo, get_db
     idea = get_idea(int(id))
     if not idea:
         return JSONResponse({"error": "Ideia nao encontrada"}, status_code=404)
+    # Students may only read ideas from projects they are assigned to
+    if user.get("role") != "admin":
+        with get_db() as conn:
+            allowed = conn.execute(
+                "SELECT id FROM assignments WHERE student_id=? AND project_id=?",
+                (user["id"], idea.get("project_id")),
+            ).fetchone()
+        if not allowed:
+            return JSONResponse({"error": "Sem permissao"}, status_code=403)
     seo = get_seo(int(id))
     return JSONResponse({"idea": idea, "seo": seo})
 
@@ -1369,11 +1397,10 @@ Solo JSON."""
         return JSONResponse({"ok": True, "generated": len(saved), "ideas": saved})
     except ValueError as e:
         logger.error(f"generate-ideas config error: {e}")
-        return JSONResponse({"error": f"Configuracao: {str(e)}"}, status_code=400)
+        return JSONResponse({"error": "Configuracao invalida. Verifique os parametros."}, status_code=400)
     except Exception as e:
-        error_msg = str(e)[:300] if str(e) else "Erro desconhecido"
         logger.error(f"generate-ideas error: {e}", exc_info=True)
-        return JSONResponse({"error": f"Falha ao gerar ideias: {error_msg}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao gerar ideias. Tente novamente."}, status_code=500)
 
 
 @router.post("/api/generate-script")

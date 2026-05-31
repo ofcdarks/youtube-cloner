@@ -273,7 +273,7 @@ async def api_update_project_channel(request: Request, user=Depends(require_admi
             value = validate_url(raw)
         except Exception:
             return JSONResponse({"error": "URL invalida"}, status_code=400)
-        if "youtube.com" not in value and "youtu.be" not in value:
+        if not value:
             return JSONResponse({"error": "URL deve ser do YouTube"}, status_code=400)
 
     from database import get_project, update_project

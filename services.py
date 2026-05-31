@@ -346,16 +346,46 @@ def sanitize_niche_name(name: str) -> str:
 
 
 def validate_url(url: str) -> str | None:
-    """Validate a URL. Returns cleaned URL or None if invalid."""
+    """Validate a YouTube URL. Returns cleaned URL or None if invalid/unsafe.
+
+    Enforces a domain allowlist (youtube.com / youtu.be) and rejects literal
+    IPs and internal/metadata hosts to prevent SSRF (cloud metadata, private
+    ranges, loopback, link-local, IPv6 loopback, etc.).
+    """
+    from urllib.parse import urlparse
+    import ipaddress
+
     url = url.strip()
     if not url or not url.startswith(("http://", "https://")):
         return None
     if len(url) > 500:
         return None
-    dangerous = ["javascript:", "data:", "file://", "<script", "localhost", "127.0.0.1", "0.0.0.0"]
-    if any(bad in url.lower() for bad in dangerous):
+    lowered = url.lower()
+    dangerous = ["javascript:", "data:", "file://", "<script", "\\"]
+    if any(bad in lowered for bad in dangerous):
         return None
-    return url
+
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except Exception:
+        return None
+    if not host:
+        return None
+
+    # Reject internal hostnames and any literal IP (YouTube is always a domain)
+    if host in {"localhost", "metadata", "metadata.google.internal"}:
+        return None
+    try:
+        ipaddress.ip_address(host)
+        return None  # literal IP — never valid for a YouTube channel URL
+    except ValueError:
+        pass
+
+    # Domain allowlist — only YouTube
+    allowed = ("youtube.com", "youtu.be")
+    if host in allowed or any(host.endswith("." + d) for d in allowed):
+        return url
+    return None
 
 
 # ── Mind Map Generation ──────────────────────────────────

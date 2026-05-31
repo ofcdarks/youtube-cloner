@@ -1323,6 +1323,15 @@ async def api_improve_script(request: Request, user=Depends(require_auth)):
             return JSONResponse({"error": "Arquivo nao encontrado"}, status_code=404)
         f = dict(f)
 
+        # Verify student owns this file's project
+        if user.get("role") != "admin":
+            assignment = conn.execute(
+                "SELECT id FROM assignments WHERE student_id=? AND project_id=?",
+                (user["id"], f["project_id"]),
+            ).fetchone()
+            if not assignment:
+                return JSONResponse({"error": "Sem permissao"}, status_code=403)
+
     roteiro = f.get("content", "")
     score_json = f.get("score_json", "")
     if not roteiro or len(roteiro) < 200:
@@ -2485,7 +2494,7 @@ Retorne APENAS o titulo B, sem aspas, sem prefixo, sem markdown."""
         return JSONResponse({"ok": True, "title_b": result, "already_existed": False})
     except Exception as e:
         logging.getLogger("ytcloner").error(f"generate-title-b error: {e}", exc_info=True)
-        return JSONResponse({"error": f"Falha ao gerar titulo B: {str(e)[:120]}"}, status_code=500)
+        return JSONResponse({"error": "Falha ao gerar titulo B. Tente novamente."}, status_code=500)
 
 
 @router.post("/api/student/ab-decision")

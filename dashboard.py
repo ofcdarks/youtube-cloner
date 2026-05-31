@@ -849,6 +849,7 @@ async def admin_bent_ideas(request: Request, project: str = "", user=Depends(req
 
 
 @app.post("/api/admin/delete-bent-idea")
+@limiter.limit("20/minute")
 async def api_delete_bent_idea(request: Request, user=Depends(require_admin)):
     """Delete a saved bent idea."""
     from database import get_db
@@ -862,10 +863,11 @@ async def api_delete_bent_idea(request: Request, user=Depends(require_admin)):
         return JSONResponse({"ok": True})
     except Exception as e:
         logger.exception(f"delete-bent-idea error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Erro interno. Tente novamente."}, status_code=500)
 
 
 @app.post("/api/admin/star-bent-variation")
+@limiter.limit("30/minute")
 async def api_star_bent_variation(request: Request, user=Depends(require_admin)):
     """Mark a specific variation within a bent idea as 'starred' for later formalization.
 
@@ -901,7 +903,7 @@ async def api_star_bent_variation(request: Request, user=Depends(require_admin))
         return JSONResponse({"ok": True, "starred": starred})
     except Exception as e:
         logger.exception(f"star-bent-variation error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Erro interno. Tente novamente."}, status_code=500)
 
 
 @app.get("/admin/niches-lab", response_class=HTMLResponse)
@@ -915,6 +917,7 @@ async def admin_niches_lab(request: Request, user=Depends(require_admin)):
 
 
 @app.post("/api/admin/niches-lab/enrich")
+@limiter.limit("5/minute")
 async def api_niches_lab_enrich(request: Request, user=Depends(require_admin)):
     """Enriquece a lista curada de Top Niches com dados ao vivo do DataForSEO."""
     from protocols.niches_lab import enrich_top_niches
@@ -933,10 +936,11 @@ async def api_niches_lab_enrich(request: Request, user=Depends(require_admin)):
         })
     except Exception as e:
         logger.exception(f"niches-lab/enrich error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Erro interno. Tente novamente."}, status_code=500)
 
 
 @app.post("/api/admin/niches-lab/regional")
+@limiter.limit("3/minute")
 async def api_niches_lab_regional(request: Request, user=Depends(require_admin)):
     """
     Generate validated regional niches per (country, language) via AI.
@@ -959,10 +963,11 @@ async def api_niches_lab_regional(request: Request, user=Depends(require_admin))
         })
     except Exception as e:
         logger.exception(f"niches-lab/regional error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Erro interno. Tente novamente."}, status_code=500)
 
 
 @app.post("/api/admin/niches-lab/clear-cache")
+@limiter.limit("10/minute")
 async def api_niches_lab_clear_cache(request: Request, user=Depends(require_admin)):
     """Clear the regional niches cache (useful if AI generated bad data)."""
     from protocols.niches_lab import clear_regional_cache
@@ -974,10 +979,11 @@ async def api_niches_lab_clear_cache(request: Request, user=Depends(require_admi
         return JSONResponse({"ok": True, "cleared": cleared})
     except Exception as e:
         logger.exception(f"niches-lab/clear-cache error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Erro interno. Tente novamente."}, status_code=500)
 
 
 @app.post("/api/admin/niches-lab/deep-dive")
+@limiter.limit("5/minute")
 async def api_niches_lab_deep_dive(request: Request, user=Depends(require_admin)):
     """Deep Dive de um nicho — sub-niches reais via DataForSEO Labs + plano 30 dias."""
     from protocols.niches_lab import deep_dive_niche
@@ -992,7 +998,7 @@ async def api_niches_lab_deep_dive(request: Request, user=Depends(require_admin)
         return JSONResponse(result)
     except Exception as e:
         logger.exception(f"niches-lab/deep-dive error: {e}")
-        return JSONResponse({"error": str(e)[:200]}, status_code=500)
+        return JSONResponse({"error": "Erro interno. Tente novamente."}, status_code=500)
 
 
 @app.get("/admin/radar", response_class=HTMLResponse)

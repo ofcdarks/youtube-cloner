@@ -36,7 +36,7 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
     """
     body = await request.json()
     template_mode = bool(body.get("template_mode", False))
-    url = validate_url(body.get("url", "")) if body.get("url") else ""
+    url = validate_url(body.get("url", "")) or ""
     niche_name = sanitize_niche_name(body.get("niche_name", ""))
     nlm_sop = (body.get("nlm_sop") or "").strip()
     language = (body.get("language") or "pt-BR").strip()
@@ -61,6 +61,8 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
 
     import asyncio
 
+    _created = {"project_id": None}
+
     def _run_pipeline():
         """Run the entire pipeline in a thread so health checks keep responding."""
         from database import create_project, save_niche, save_idea, save_file, log_activity, update_project
@@ -80,6 +82,7 @@ async def api_admin_analyze_channel(request: Request, user=Depends(require_admin
         project_id = create_project(name=niche_name, channel_original=url, niche_chosen=niche_name,
                                      meta={"channel_url": url, "niche": niche_name, "created_by": user["id"], "language": language},
                                      language=language)
+        _created["project_id"] = project_id
 
         # Step 1b: Google Drive folder
         drive_folder_id = ""
@@ -700,6 +703,13 @@ INSTRUCOES:
         logger.error(f"analyze-channel error: {e}")
         from progress_store import clear_progress as _cp
         _cp(f"pipeline_{niche_name}")
+        # Mark the partially-created project as failed so it doesn't pollute the active list
+        if _created.get("project_id"):
+            try:
+                from database import update_project as _up
+                _up(_created["project_id"], status="failed")
+            except Exception as _e:
+                logger.error(f"Failed to mark project as failed: {_e}")
         return JSONResponse({"error": "Falha na analise. Tente novamente ou contate o administrador."}, status_code=500)
 
 
