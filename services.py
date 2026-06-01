@@ -388,6 +388,15 @@ def validate_url(url: str) -> str | None:
     return None
 
 
+def is_valid_youtube_channel_id(cid: str) -> bool:
+    """True if cid looks like a real YouTube channel ID (UC + 22 url-safe chars).
+
+    Used to reject garbage derived from URL string-splitting before it is sent
+    as the `id` query param to the YouTube Data API.
+    """
+    return bool(re.fullmatch(r"UC[A-Za-z0-9_-]{22}", (cid or "").strip()))
+
+
 # ── Mind Map Generation ──────────────────────────────────
 
 def generate_mindmap_html(

@@ -142,6 +142,11 @@ async def api_bend_idea(request: Request, user=Depends(require_auth)):
         url = (body.get("youtube_url") or "").strip()
         if not url:
             return JSONResponse({"error": "youtube_url required for external mode"}, status_code=400)
+        # SSRF guard: only allow YouTube URLs to reach yt-dlp
+        from services import validate_url
+        url = validate_url(url)
+        if not url:
+            return JSONResponse({"error": "youtube_url deve ser uma URL valida do YouTube"}, status_code=400)
         meta = fetch_youtube_metadata(url)
         if "error" in meta:
             return JSONResponse({"error": meta["error"]}, status_code=400)

@@ -631,6 +631,15 @@ class TestSecurityRegressions:
         r = admin_client.get(f"/api/ideas?project={foreign_data['project_id']}")
         assert r.status_code == 200
 
+    def test_bend_idea_external_blocks_non_youtube_url(self, admin_client, admin_csrf):
+        """SSRF guard: yt-dlp must never receive a non-YouTube URL."""
+        r = admin_client.post(
+            "/api/admin/bend-idea",
+            json={"mode": "external", "youtube_url": "http://169.254.169.254/latest/meta-data/"},
+            headers={"x-csrf-token": admin_csrf},
+        )
+        assert r.status_code == 400, f"non-YouTube URL reached yt-dlp: {r.status_code}"
+
 
 class TestValidateURL:
     """SSRF allowlist for YouTube channel URLs (services.validate_url)."""
@@ -662,6 +671,15 @@ class TestValidateURL:
             "",
         ]:
             assert validate_url(u) is None, u
+
+    def test_channel_id_validator(self):
+        from services import is_valid_youtube_channel_id
+
+        assert is_valid_youtube_channel_id("UC" + "a" * 22)
+        assert is_valid_youtube_channel_id("UCX-_123456789012345678a")
+        for bad in ["", "UCshort", "UC" + "a" * 23, "not-an-id",
+                    "https://youtube.com/channel/UC", "../../etc"]:
+            assert not is_valid_youtube_channel_id(bad), bad
 
 
 class TestSeedDataIntegrity:

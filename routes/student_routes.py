@@ -807,6 +807,13 @@ async def api_fetch_channel_stats(request: Request, user=Depends(require_auth)):
         # Try as direct channel ID
         channel_id = channel_url.strip()
 
+    from services import is_valid_youtube_channel_id
+    if not is_valid_youtube_channel_id(channel_id):
+        return JSONResponse(
+            {"error": "Nao foi possivel resolver um channel ID valido do YouTube (use a URL do canal)"},
+            status_code=400,
+        )
+
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             # Get channel stats
@@ -1014,7 +1021,8 @@ async def api_evolve_sop(request: Request, user=Depends(require_auth)):
                 elif "/channel/" in channel_url:
                     ch_id = channel_url.split("/channel/")[-1].split("/")[0]
 
-                if not ch_id:
+                from services import is_valid_youtube_channel_id
+                if not is_valid_youtube_channel_id(ch_id):
                     return {"error": f"Nao conseguiu resolver o canal: {channel_url[:60]}"}
 
                 # Get uploads playlist
