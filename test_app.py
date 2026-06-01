@@ -697,11 +697,12 @@ class TestNewTitlesData:
         for name, titles in NEW_TITLES.items():
             assert titles, f"{name} has no titles"
             for entry in titles:
-                assert len(entry) == 3, f"{name}: {entry}"
-                title, pillar, priority = entry
+                assert len(entry) == 4, f"{name}: {entry}"
+                title, pillar, priority, volume = entry
                 assert isinstance(title, str) and title.strip()
                 assert isinstance(pillar, str) and pillar.strip()
                 assert priority in ("ALTA", "MEDIA"), f"{name}: {priority}"
+                assert isinstance(volume, int) and volume >= 0, f"{name}: {volume}"
 
     def test_refresh_titles_rejects_bad_mode(self, admin_client):
         r = admin_client.get("/api/admin/refresh-titles?mode=wipe")

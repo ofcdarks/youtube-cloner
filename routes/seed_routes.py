@@ -403,8 +403,11 @@ async def refresh_titles(request: Request, channel: str = "", mode: str = "repla
             next_num = (row[0] or 0) + 1
 
         added = 0
-        for title, pillar, priority in titles:
-            save_idea(pid, next_num, title, pillar=pillar, priority=priority)
+        for entry in titles:
+            title, pillar, priority = entry[0], entry[1], entry[2]
+            volume = entry[3] if len(entry) > 3 else 0
+            save_idea(pid, next_num, title, pillar=pillar, priority=priority,
+                      search_volume=volume)
             next_num += 1
             added += 1
 
