@@ -740,5 +740,76 @@ class TestGenerationContracts:
         assert r.status_code in (401, 403), f"{path} reachable anon: {r.status_code}"
 
 
+class TestPipeline:
+    """Characterization of the analyze-channel pipeline in TEMPLATE mode with
+    AI / trend-research / Drive mocked. Guards _run_pipeline wiring and the
+    failure-rollback path so a future breakup of that function is safe."""
+
+    @staticmethod
+    def _patch_externals(monkeypatch, chat_impl):
+        import protocols.ai_client as aimod
+        import protocols.trend_research as trmod
+        import protocols.google_export as gemod
+
+        monkeypatch.setattr(aimod, "chat", chat_impl)
+        monkeypatch.setattr(trmod, "research_niche_demand", lambda *a, **k: {})
+
+        def _no_drive(*a, **k):
+            raise RuntimeError("drive disabled in test")
+
+        monkeypatch.setattr(gemod, "get_or_create_project_folder", _no_drive)
+
+    def test_template_mode_happy_path(self, admin_client, admin_csrf, monkeypatch):
+        niche_json = (
+            '[{"name":"Sub A","description":"d","rpm_range":"$5-10",'
+            '"competition":"Low","color":"#ffffff","pillars":["x"],'
+            '"recommended":true,"recommended_reason":"r"}]'
+        )
+
+        def fake_chat(prompt, *a, **k):
+            if "Retorne APENAS o JSON" in prompt:
+                return niche_json
+            return "# SOP de teste\n" + ("conteudo detalhado de teste. " * 80)
+
+        self._patch_externals(monkeypatch, fake_chat)
+
+        r = admin_client.post(
+            "/api/admin/analyze-channel",
+            json={"template_mode": True, "niche_name": "PIPELINE TEST NICHE", "language": "pt-BR"},
+            headers={"x-csrf-token": admin_csrf},
+        )
+        assert r.status_code == 200, r.text
+        pid = r.json().get("project_id")
+        assert pid, r.json()
+
+        from database import get_project, get_files
+
+        proj = get_project(pid)
+        assert proj and proj.get("status") != "failed"
+        assert get_files(pid, "analise"), "SOP file was not saved"
+
+    def test_rollback_on_ai_failure(self, admin_client, admin_csrf, monkeypatch):
+        def boom(*a, **k):
+            raise RuntimeError("AI down")
+
+        self._patch_externals(monkeypatch, boom)
+
+        r = admin_client.post(
+            "/api/admin/analyze-channel",
+            json={"template_mode": True, "niche_name": "PIPELINE FAIL NICHE", "language": "pt-BR"},
+            headers={"x-csrf-token": admin_csrf},
+        )
+        assert r.status_code == 500
+
+        from database import get_projects
+
+        # rollback marks the partial project failed -> it must NOT be in the active
+        # list but MUST exist under status='failed'
+        active = [p for p in get_projects() if p["name"] == "PIPELINE FAIL NICHE"]
+        assert not active, "failed project still pollutes the active list"
+        failed = [p for p in get_projects(status="failed") if p["name"] == "PIPELINE FAIL NICHE"]
+        assert failed, "rollback did not create+mark the project as failed"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
