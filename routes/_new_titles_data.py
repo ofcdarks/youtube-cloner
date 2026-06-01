@@ -1,0 +1,117 @@
+"""
+Curated replacement titles per channel (Jun/2026), generated from each
+channel's SOP title formula + its proven top-performers. Loaded by the
+/api/admin/refresh-titles endpoint to refresh the ideas of each project.
+
+Format: { project_name: [ (title, pillar, priority), ... ] }
+priority: "ALTA" | "MEDIA"
+Matching is by exact project name (same names in dev and prod).
+"""
+
+NEW_TITLES: dict[str, list[tuple[str, str, str]]] = {
+    # ── POV ATUALIZADO 2 (EN) — POV crime/espionage ─────────────────────────
+    "POV ATUALIZADO 2": [
+        ("Your Life as Every Rank in a Mexican Cartel", "Underworld Ranks", "ALTA"),
+        ("Your Life at Every Level of Witness Protection", "Ghost Lives", "ALTA"),
+        ("Your Life as Every Rank of a CIA Black Ops Agent", "Shadow Protocol", "ALTA"),
+        ("Your Life as Every Name on the FBI Most Wanted List", "Shadow Protocol", "ALTA"),
+        ("Your Life as Every Level of an Undercover Cartel Informant", "Underworld Ranks", "ALTA"),
+        ("Your Life as Every Rank in the Yakuza", "Underworld Ranks", "ALTA"),
+        ("Your Life at Every Stage of Faking Your Own Death", "Ghost Lives", "ALTA"),
+        ("Your Life as Every Level of a Prison Drug Empire", "Broken Badge", "ALTA"),
+        ("Your Life as Every Rank of an Elite Black-Site Interrogator", "Shadow Protocol", "ALTA"),
+        ("Your Life at Every Level of an International Manhunt", "Shadow Protocol", "ALTA"),
+        ("POV: You're the CIA's Only Asset Left Behind Enemy Lines", "Shadow Protocol", "MEDIA"),
+        ("POV: You're a Hitman Who Just Got a Contract on Yourself", "Underworld Ranks", "MEDIA"),
+        ("POV: You're the Accountant Who Knows Where the Cartel Buried Everything", "Underworld Ranks", "MEDIA"),
+        ("POV: You Win $500M and the Lottery Board Wants You Erased", "Dark Fortune", "MEDIA"),
+        ("POV: You're a Federal Witness and the Marshals Stopped Answering", "Ghost Lives", "MEDIA"),
+        ("POV: You're the Cartel's Surgeon and the Boss Is on Your Table", "Underworld Ranks", "MEDIA"),
+        ("POV: You're a Sleeper Agent Who Forgot Which Side Activated You", "Shadow Protocol", "MEDIA"),
+        ("POV: You Run the Black Site That Officially Doesn't Exist", "Shadow Protocol", "MEDIA"),
+        ("POV: You're the Only Honest Cop in a City the Cartel Owns", "Broken Badge", "MEDIA"),
+        ("POV: You Faked Being a Navy SEAL for 20 Years — Until a Real One Showed Up", "Ghost Lives", "MEDIA"),
+    ],
+    # ── Ghibli Cozy Life (EN) — cozy ASMR cooking ───────────────────────────
+    "Ghibli Cozy Life": [
+        ("The Sound of Rain on an Old Tin Roof: Slow-Cooking Ramen by Candlelight | Ghibli-Style ASMR", "Raindrop Hearth", "ALTA"),
+        ("A Blizzard Outside, a Fire Inside: Baking Cinnamon Bread in a Mountain Cabin | Ghibli-Style ASMR", "Raindrop Hearth", "ALTA"),
+        ("First Snow of the Year: A Quiet Night of Hot Cocoa & Apple Pie | Ghibli Cozy Life", "Raindrop Hearth", "ALTA"),
+        ("Trapped by a Thunderstorm in a Lighthouse: Warm Clam Chowder & Candlelight | Ghibli-Style ASMR", "Raindrop Hearth", "ALTA"),
+        ("Midnight Snow at a Hidden Hot Spring: Warm Sake & Steaming Dumplings | Ghibli-Style ASMR", "Raindrop Hearth", "ALTA"),
+        ("Going Back to Grandma's House: Making the Soup I Never Forgot | Ghibli Cozy Life", "Grandma's Seasons", "ALTA"),
+        ("The Last Autumn We Spent Together: Picking Persimmons & Making Jam | Ghibli Cozy Life", "Grandma's Seasons", "ALTA"),
+        ("A Letter Found in Dad's Old Recipe Book: Cooking His Curry on a Rainy Day | Ghibli-Style Video", "Grandma's Seasons", "ALTA"),
+        ("Winters at the Wood Stove: Grandma's Sweet Potato Soup, Just Like Before | Ghibli Cozy Life", "Grandma's Seasons", "ALTA"),
+        ("The Christmas She Brought Us All Home: Baking Cookies One Last Time | Ghibli Cozy Life", "Grandma's Seasons", "MEDIA"),
+        ("We Built a Bamboo Kitchen From Nothing: Our First Meal in the Forest | Ghibli-Style ASMR", "Wilderness Kitchen", "MEDIA"),
+        ("Cooking Inside an Abandoned Plane on a Cliff: Noodle Soup & Mountain Wind | Ghibli-Style ASMR", "Wilderness Kitchen", "MEDIA"),
+        ("Snowed In on a Frozen Lake: Ice Fishing & Cooking the Catch in a Warm Tent | Ghibli-Style ASMR", "Wilderness Kitchen", "MEDIA"),
+        ("A Night in a Desert Cave: Clay-Oven Flatbread & Mint Tea Under the Stars | Ghibli-Style ASMR", "Wilderness Kitchen", "MEDIA"),
+        ("A Quiet Week Living Alone: Slow Mornings & Cooking for One | Ghibli Cozy Life", "Solitude Rituals", "MEDIA"),
+        ("Moving to the Countryside: My First Morning in a Simpler Life | Ghibli Cozy Life", "Solitude Rituals", "MEDIA"),
+        ("A Rainy Evening Alone With My Cat: Making Onigiri by Candlelight | Ghibli Cozy Life", "Solitude Rituals", "MEDIA"),
+        ("Reorganizing My Tiny Kitchen on a Rainy Sunday: Comfort Pasta for One | Ghibli Cozy Life", "Solitude Rituals", "MEDIA"),
+    ],
+    # ── ANACRON (ES) — historia oscura / crimen ─────────────────────────────
+    "ANACRON": [
+        ("El UNICO Hombre que Engano a la CIA y al Cartel al Mismo Tiempo", "Espionaje y Agentes Encubiertos", "ALTA"),
+        ("La UNICA Mujer que Salio Viva de la Mafia Rusa", "Espionaje y Agentes Encubiertos", "ALTA"),
+        ("El UNICO Preso que Escapo del Campo 14 de Corea del Norte", "Geopolitica y Regimenes Oscuros", "ALTA"),
+        ("El UNICO Hacker que el FBI JAMAS Logro Identificar", "Cibercrimen y Hackers", "ALTA"),
+        ("El Cartero que Destruyo a la Mafia Mas Poderosa de Italia", "Crimen Organizado y Carteles", "ALTA"),
+        ("La Nina de 12 Anos que Hundio a un Cartel Entero", "Crimen Organizado y Carteles", "ALTA"),
+        ("El Contador que Derribo al Capo que Ningun Ejercito Pudo Tocar", "Crimen Organizado y Carteles", "ALTA"),
+        ("El Mendigo que Sabia el Secreto que Mataria a un Presidente", "Asesinatos Politicos e Historia Sombria", "MEDIA"),
+        ("Como un Agente Solitario Infiltro 3 Carteles en 5 Anos", "Espionaje y Agentes Encubiertos", "ALTA"),
+        ("Como la DEA Perdio 2,000 Millones en una Sola Noche", "Crimen Organizado y Carteles", "MEDIA"),
+        ("Como un Adolescente Hackeo al Banco Mas Seguro del Mundo", "Cibercrimen y Hackers", "MEDIA"),
+        ("Como Escapo el Diplomatico que Sabia Demasiado de Corea del Norte", "Geopolitica y Regimenes Oscuros", "MEDIA"),
+        ("Los 7 Tuneles del Cartel que la DEA Nunca Pudo Cerrar", "Crimen Organizado y Carteles", "ALTA"),
+        ("700 Dias Infiltrado: El Agente que se Convirtio en Mafioso", "Espionaje y Agentes Encubiertos", "ALTA"),
+        ("Minuto a Minuto: La Fuga de Prision Mas Imposible de la Historia", "Crimen Organizado y Carteles", "MEDIA"),
+        ("Las 5 Ciudades Sovieticas que el Mundo Decidio Olvidar", "Geopolitica y Regimenes Oscuros", "MEDIA"),
+    ],
+    # ── POV RUDY (EN) — POV gaming/history/crime ────────────────────────────
+    "POV RUDY": [
+        ("Your life as Genghis Khan (The Empire Years)", "POV Historical Figures & Empires", "ALTA"),
+        ("Your life as a Roman Gladiator, i guess", "POV Historical Figures & Empires", "ALTA"),
+        ("Your life as Miyamoto Musashi's Last Student", "POV Historical Figures & Empires", "ALTA"),
+        ("Your life as a Necron Lord (Warhammer 40k)", "POV Dark Sci-Fi / Gaming Lore", "ALTA"),
+        ("Your life as a Viking Raider in His Final Winter", "POV Historical Figures & Empires", "ALTA"),
+        ("Your life as Every Mexican Cartel Rank", "POV Criminal Underworld / Factions", "ALTA"),
+        ("Your life as a Space Marine Who Survived His First War", "POV Dark Sci-Fi / Gaming Lore", "ALTA"),
+        ("Your life as the Last Samurai of a Dead Clan", "POV Historical Figures & Empires", "MEDIA"),
+        ("The Most Epic Last Stands in History", "POV Historical Figures & Empires", "ALTA"),
+        ("The Most Extreme Punishments Genghis Khan Ever Ordered", "POV Historical Figures & Empires", "ALTA"),
+        ("The Most Disturbing Ways Empires Collapsed in History", "POV Historical Figures & Empires", "MEDIA"),
+        ("The Craziest Prison Escapes in History, i guess", "POV Criminal Underworld / Factions", "MEDIA"),
+        ("The Worst Things That Happened Inside the Roman Colosseum", "POV Historical Figures & Empires", "MEDIA"),
+        ("The entire story of Elden Ring, i guess", "POV Dark Sci-Fi / Gaming Lore", "ALTA"),
+        ("The entire story of the Mongol Empire, i guess", "POV Historical Figures & Empires", "MEDIA"),
+        ("The entire story of Dark Souls, i guess", "POV Dark Sci-Fi / Gaming Lore", "ALTA"),
+        ("The entire story of Rome's Fall, i guess", "POV Historical Figures & Empires", "MEDIA"),
+        ("What It's Like to be Every MS-13 Rank", "POV Criminal Underworld / Factions", "ALTA"),
+        ("What It's Like to be Every Rank in a Roman Legion", "POV Historical Figures & Empires", "MEDIA"),
+        ("What It's Like to be Every Rank of a Warhammer Space Marine", "POV Dark Sci-Fi / Gaming Lore", "ALTA"),
+    ],
+    # ── Sacred Lessons on Wealth (ES) — parabolas de riqueza ────────────────
+    "Sacred Lessons on Wealth": [
+        ("Su Jefe le Pago con una Casa \"Vieja\"... Nunca Imagino lo que Habia en el Sotano 🥺", "Ancestral Wealth Parables", "ALTA"),
+        ("La Rica le Regalo una Biblia \"Vieja\" a su Sirvienta... Sin Saber lo que Guardaba Dentro 💰", "Ancestral Wealth Parables", "ALTA"),
+        ("El Patron le Dejo un Reloj \"Inutil\" al Jardinero... y Cambio el Destino de su Familia 🤑", "Ancestral Wealth Parables", "ALTA"),
+        ("La Anciana \"Pobre\" Vendio su Ultima Gallina... Lo que Recibio Despues lo Cambio Todo 💔", "Ancestral Wealth Parables", "ALTA"),
+        ("Los 5 LUGARES Donde NUNCA Debes Guardar Tu DINERO — Alejan la Abundancia", "Sacred Laws of Prosperity", "ALTA"),
+        ("Las 7 PALABRAS que las Personas POBRES Repiten Sin Saber que Espantan la Riqueza", "Sacred Laws of Prosperity", "ALTA"),
+        ("Los 3 COLORES PROHIBIDOS en tu Casa que EXPULSAN el Dinero 💰", "Sacred Laws of Prosperity", "ALTA"),
+        ("60 ANOS y SIN AHORROS: La REGLA de los 7 Dias que lo Cambio TODO", "Dignified Aging & Abundance", "ALTA"),
+        ("La Verdad DOLOROSA que Nadie te Dice de Por Que las Personas Buenas Viven Pobres 🥺", "Sacred Money Healing", "ALTA"),
+        ("Por Que el Dinero SIEMPRE te Abandona Antes del Dia 15 — La Leccion que Sana esa Herida", "Sacred Money Healing", "ALTA"),
+        ("El Dia que Dejo de Pedir Perdon por Querer Tener Dinero... y TODO Cambio 💔", "Sacred Money Healing", "MEDIA"),
+        ("Si Sientes que NO Mereces Tener Dinero, Este Video Sana Esa Herida que Cargas", "Sacred Money Healing", "MEDIA"),
+        ("El Secreto que una Abuela de 74 Anos Guardo en su Biblia Durante 30 Anos de Abundancia 💰", "Ancestral Wealth Parables", "ALTA"),
+        ("Una Anciana le Dijo a su Nieta 5 Palabras... y Cambio su Destino Financiero Para Siempre", "Ancestral Wealth Parables", "MEDIA"),
+        ("La Mujer que Limpio Casas 35 Anos y Murio con MAS Dinero que sus Patrones 🤑", "Working Class Spiritual Wealth", "ALTA"),
+        ("El Ritual del Primer Dia del Mes que los Abuelos Hacian para Atraer Abundancia", "Sacred Laws of Prosperity", "MEDIA"),
+    ],
+}

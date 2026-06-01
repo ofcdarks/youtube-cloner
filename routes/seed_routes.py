@@ -352,3 +352,64 @@ async def apply_chibi_override(request: Request, user=Depends(require_admin)):
         "msg": "Concept override aplicado. Agora pode clicar 'Refazer pelos Nichos' que os prefixos proibidos sao filtrados.",
         "meta": existing_meta,
     })
+
+
+@router.get("/api/admin/refresh-titles")
+@limiter.limit("5/minute")
+async def refresh_titles(request: Request, channel: str = "", mode: str = "replace",
+                         user=Depends(require_admin)):
+    """Insert curated replacement titles into each channel's project.
+
+    Query params:
+    - channel: exact project name (empty = all channels in the curated set)
+    - mode: "replace" (default) deletes unused titles (used=0 AND not started by
+      any student) then appends the new ones; "add" only appends.
+
+    Titles a student already started (linked to progress) or marked used are
+    NEVER deleted. Source: routes/_new_titles_data.NEW_TITLES.
+    """
+    from routes._new_titles_data import NEW_TITLES
+    from database import get_projects, get_db, save_idea, log_activity
+
+    if mode not in ("replace", "add"):
+        return JSONResponse({"error": "mode deve ser 'replace' ou 'add'"}, status_code=400)
+
+    targets = [channel] if channel else list(NEW_TITLES.keys())
+    results: dict = {}
+
+    for name in targets:
+        titles = NEW_TITLES.get(name)
+        if not titles:
+            results[name] = "sem titulos curados para este canal"
+            continue
+        projs = [p for p in get_projects() if (p.get("name") or "") == name]
+        if not projs:
+            results[name] = "projeto nao encontrado"
+            continue
+        pid = projs[0]["id"]
+
+        deleted = 0
+        with get_db() as conn:
+            if mode == "replace":
+                cur = conn.execute(
+                    "DELETE FROM ideas WHERE project_id=? AND COALESCE(used,0)=0 "
+                    "AND id NOT IN (SELECT idea_id FROM progress WHERE idea_id IS NOT NULL)",
+                    (pid,),
+                )
+                deleted = cur.rowcount or 0
+            row = conn.execute(
+                "SELECT COALESCE(MAX(num), 0) FROM ideas WHERE project_id=?", (pid,)
+            ).fetchone()
+            next_num = (row[0] or 0) + 1
+
+        added = 0
+        for title, pillar, priority in titles:
+            save_idea(pid, next_num, title, pillar=pillar, priority=priority)
+            next_num += 1
+            added += 1
+
+        log_activity(pid, "titles_refreshed",
+                     f"{added} novos titulos curados (mode={mode}, removidos={deleted})")
+        results[name] = {"added": added, "deleted_unused": deleted}
+
+    return JSONResponse({"ok": True, "mode": mode, "results": results})

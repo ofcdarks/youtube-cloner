@@ -598,6 +598,7 @@ _PROTECTED_GET_ROUTES = [
     "/api/seed-relatos-familiares",
     "/api/apply-chibi-override",
     "/api/deploy-check-9ab",
+    "/api/admin/refresh-titles",
 ]
 
 
@@ -684,6 +685,27 @@ class TestValidateURL:
         for bad in ["", "UCshort", "UC" + "a" * 23, "not-an-id",
                     "https://youtube.com/channel/UC", "../../etc"]:
             assert not is_valid_youtube_channel_id(bad), bad
+
+
+class TestNewTitlesData:
+    """Guards routes/_new_titles_data used by /api/admin/refresh-titles."""
+
+    def test_curated_titles_wellformed(self):
+        from routes._new_titles_data import NEW_TITLES
+
+        assert len(NEW_TITLES) == 5
+        for name, titles in NEW_TITLES.items():
+            assert titles, f"{name} has no titles"
+            for entry in titles:
+                assert len(entry) == 3, f"{name}: {entry}"
+                title, pillar, priority = entry
+                assert isinstance(title, str) and title.strip()
+                assert isinstance(pillar, str) and pillar.strip()
+                assert priority in ("ALTA", "MEDIA"), f"{name}: {priority}"
+
+    def test_refresh_titles_rejects_bad_mode(self, admin_client):
+        r = admin_client.get("/api/admin/refresh-titles?mode=wipe")
+        assert r.status_code == 400
 
 
 class TestSeedDataIntegrity:
