@@ -258,6 +258,9 @@ app.include_router(gdrive_router)
 from routes.api_routes import router as api_router
 app.include_router(api_router)
 
+from routes.seed_routes import router as seed_router
+app.include_router(seed_router)
+
 from routes.student_routes import router as student_router
 app.include_router(student_router)
 

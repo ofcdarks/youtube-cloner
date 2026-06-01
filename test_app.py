@@ -686,7 +686,7 @@ class TestSeedDataIntegrity:
     """Guards the api_routes.py -> routes/_seed_data.py extraction."""
 
     def test_seed_constants_present_and_shaped(self):
-        from routes.api_routes import (
+        from routes._seed_data import (
             _ROBOS_SEED_NICHES,
             _ROBOS_SEED_TITLES,
             _RELATOS_SEED_NICHES,
