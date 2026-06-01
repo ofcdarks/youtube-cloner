@@ -687,5 +687,40 @@ class TestSeedDataIntegrity:
         assert all(len(t) == 4 for t in _RELATOS_SEED_TITLES)
 
 
+class TestGenerationContracts:
+    """Contract tests (auth + input validation) for AI generation routes.
+    These early-return BEFORE any AI/network call, so they are fast and
+    deterministic — and catch a botched route move during refactoring."""
+
+    VALIDATION_CASES = [
+        ("/api/generate-ideas", {"count": 0}, 400),
+        ("/api/generate-ideas", {"count": 99999}, 400),
+        ("/api/generate-script", {}, 400),          # no idea_id
+        ("/api/student/generate-script", {}, 400),  # no progress_id
+        ("/api/student/score-script", {}, 400),     # no file_id
+        ("/api/student/improve-script", {}, 400),   # no file_id
+    ]
+
+    @pytest.mark.parametrize("path,body,expected", VALIDATION_CASES)
+    def test_input_validation(self, admin_client, admin_csrf, path, body, expected):
+        r = admin_client.post(path, json=body, headers={"x-csrf-token": admin_csrf})
+        assert r.status_code == expected, f"{path} -> {r.status_code} (expected {expected})"
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/api/generate-ideas",
+            "/api/generate-script",
+            "/api/student/generate-script",
+            "/api/student/score-script",
+            "/api/student/improve-script",
+        ],
+    )
+    def test_blocked_for_anonymous(self, anon_client, path):
+        # No session + no CSRF: must be blocked (401 auth or 403 CSRF), never reach logic
+        r = anon_client.post(path, json={})
+        assert r.status_code in (401, 403), f"{path} reachable anon: {r.status_code}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
