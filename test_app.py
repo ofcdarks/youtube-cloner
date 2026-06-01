@@ -343,6 +343,10 @@ class TestSecurityHeaders:
         csp = r.headers.get("content-security-policy", "")
         assert "default-src" in csp
         assert "frame-ancestors 'none'" in csp
+        # injection vectors that don't depend on inline script/style must be locked
+        assert "object-src 'none'" in csp
+        assert "base-uri 'self'" in csp
+        assert "form-action 'self'" in csp
 
 
 # ══════════════════════════════════════════════════════════

@@ -147,7 +147,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # HSTS only when running behind HTTPS (COOKIE_SECURE=true)
         if os.environ.get("COOKIE_SECURE", "true").lower() == "true":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        # CSP: allow inline scripts/styles (needed for Jinja2 templates) but block everything else
+        # CSP. NOTE: 'unsafe-inline' on script/style is required by the current
+        # templates (~190 inline event handlers + ~1270 inline style attributes).
+        # Switching to nonces would disable 'unsafe-inline' and break every inline
+        # handler — a full frontend refactor. Until then we tighten everything else:
+        # object-src/base-uri/form-action/frame-ancestors block the high-impact
+        # injection vectors that don't depend on inline script/style.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "
@@ -155,6 +160,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https:; "
             "connect-src 'self'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
             "frame-ancestors 'none'"
         )
         return response
