@@ -261,6 +261,9 @@ app.include_router(api_router)
 from routes.student_routes import router as student_router
 app.include_router(student_router)
 
+from routes.student_ai_routes import router as student_ai_router
+app.include_router(student_ai_router)
+
 from routes.admin_routes import router as admin_router
 app.include_router(admin_router)
 
