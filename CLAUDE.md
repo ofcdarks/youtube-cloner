@@ -16,62 +16,73 @@
 
 ## 2. ARQUITETURA DE ARQUIVOS
 
+> Contagens de linhas aproximadas (mai/2026). Os arquivos legados grandes (dashboard.py, database.py, *_routes.py) ainda excedem o limite de 800 linhas — refactor pendente.
+
 ```
 youtube-cloner/
-├── dashboard.py           # App FastAPI principal (~1879 linhas)
-│                          # Rotas admin, pipeline 12-step, SSE progress, file serving
-├── database.py            # SQLite: 18 tabelas, bcrypt, Fernet, migrations (~1222 linhas)
-├── services.py            # Transcript analysis, mindmap HTML, validators (~493 linhas)
-├── config.py              # Env vars, constantes, startup validation (~147 linhas)
-├── auth.py                # Session auth (memory+DB), require_admin/require_auth (~126 linhas)
-├── middleware.py           # CSRF (HMAC-SHA256), safe errors, request logging (~143 linhas)
-├── rate_limit.py           # Shared SlowAPI Limiter instance (~8 linhas)
-├── progress_store.py       # Thread-safe dict para SSE pipeline progress (~47 linhas)
-├── run.py                  # CLI: full/clerk/niche/script/export (4 stages)
+├── dashboard.py           # App FastAPI principal (~1190 linhas)
+│                          # Registra 10 routers, pipeline-progress SSE, file serving,
+│                          # rotas niches-lab + bent-ideas, paginas admin HTML
+├── database.py            # SQLite: 21 tabelas, bcrypt, Fernet, _run_migrations (~1570 linhas)
+├── services.py            # Transcript analysis, mindmap HTML, validate_url (SSRF allowlist) (~640 linhas)
+├── config.py              # Env vars, constantes, startup validation (~159 linhas)
+├── auth.py                # Session auth (memory+DB), require_admin/require_auth (~125 linhas)
+├── middleware.py          # CSRF (HMAC-SHA256), safe errors, security headers, request log (~178 linhas)
+├── rate_limit.py          # Shared SlowAPI Limiter instance (~8 linhas)
+├── progress_store.py      # Thread-safe dict para SSE pipeline progress (~46 linhas)
+├── run.py                 # CLI: full/clerk/niche/script/export
+├── export_*.py / migrate_to_db.py / extract_roteiro_prompts.py  # scripts CLI one-off (nao usados pelo app)
 │
-├── protocols/
-│   ├── ai_client.py        # chat(), generate_script(), generate_narration()
-│   │                       # Retry 3x exponential, token tracking, cost estimation
-│   ├── google_export.py    # create_folder(), create_doc(), create_sheet(), export_project()
-│   │                       # OAuth credentials com auto-refresh
-│   └── title_scorer.py     # score_title(): YouTube competition + Google Trends
-│                            # Formula: (yt_score * 0.6) + (trends_avg * 0.4)
+├── protocols/             # 15 modulos
+│   ├── ai_client.py        # chat(), generate_script(), generate_narration() — retry 3x, token/cost
+│   ├── google_export.py    # create_folder/doc/sheet, export_project() — OAuth auto-refresh
+│   ├── title_scorer.py     # score_title(): YouTube + Google Trends (0.6/0.4)
+│   ├── viral_engine.py     # geracao de titulos virais / hooks
+│   ├── idea_bender.py      # Niche/Idea Bender (dobra de nichos)
+│   ├── niches_lab.py       # Niches Lab + DataForSEO (cache em memoria)
+│   ├── keywords_everywhere.py / trend_research.py  # volume de busca, tendencias
+│   ├── channel_mockup.py   # mockup de canal (mockup_routes)
+│   ├── creative_prompts.py / seo_generator.py      # usados por export_complete.py (CLI)
+│   ├── clerk.py / niche_bender.py / script_stealer.py  # usados por run.py (CLI)
+│   └── imagefx_client.py   # ImageFX (thumbnails)
 │
-├── routes/
-│   ├── api_routes.py       # Ideas, scoring, script gen, trend radar, multi-lang clone
+├── routes/                # 10 routers registrados no dashboard.py
 │   ├── auth_routes.py      # Login POST/GET, logout, /api/health
-│   ├── gdrive_routes.py    # Google Drive OAuth web flow (PKCE fix)
-│   └── student_routes.py   # Painel aluno, script gen, score judge, analytics, SOP evolution
+│   ├── api_routes.py       # Ideas, scoring, script gen, idea-bender, clone-language, seeds
+│   ├── student_routes.py   # Painel aluno, script gen, score/improve judge, analytics  (~2660 linhas)
+│   ├── admin_routes.py     # CRUD projetos/alunos, release-titles, channel ops
+│   ├── pipeline_routes.py  # Pipeline 12-step analyze-channel + regenerate-titles  (~1520 linhas)
+│   ├── drive_admin_routes.py / gdrive_routes.py  # Google Drive admin ops + OAuth web flow
+│   ├── mockup_routes.py     # geracao de mockups de canal
+│   ├── resources_routes.py  # recursos compartilhados com alunos (upload/delete/agent)
+│   └── import_routes.py     # import de projeto via JSON seed
 │
-├── templates/              # Jinja2 HTML (9 templates)
-│   ├── base.html           # Layout base: topbar, CSRF/session injection, apiFetch(), toast
-│   ├── login.html          # Form login dark theme
-│   ├── dashboard.html      # Admin hub: pipeline, niches grid, ideas, YouTube stats
-│   ├── student_dashboard.html  # Aluno: kanban, channels, analytics, API config
-│   ├── admin_panel.html    # Stats, API keys, AI analytics, users, activity log
-│   ├── admin_students.html # CRUD alunos, progress bars, create modal
-│   ├── admin_students_detail.html  # Detalhe aluno: assignments, channels, titles
-│   ├── admin_projects.html # Projetos: Drive sync, clone language, mindmap
-│   ├── admin_nlm_auth.html # NotebookLM bookmarklet credential capture
-│   └── admin_nlm_receive.html # Callback page do bookmarklet
+├── templates/              # Jinja2 HTML (15 templates)
+│   ├── base.html / login.html / change_password.html
+│   ├── dashboard.html / student_dashboard.html
+│   ├── admin_panel.html / admin_projects.html / admin_students.html / admin_student_detail.html
+│   ├── admin_niches_lab.html / admin_bent_ideas.html / admin_radar.html / admin_sop_analysis.html
+│   └── _ab_title_block.html / _card_extras.html  (partials)
 │
 ├── static/
 │   ├── css/main.css        # Design system dark: #020617 bg, #7c3aed accent, Inter/JetBrains
 │   └── js/app.js           # apiFetch, showToast, showConfirm, selectNiche, toggleUsed
 │
-├── migrations/versions/
-│   ├── 001_initial_schema.py  # Tabelas base (projects, files, ideas, niches, scripts...)
-│   └── 002_add_analytics.py   # views_estimate, ctr_estimate, video_analytics
+├── migrations/versions/    # Alembic-style INERTE — o sistema real e _run_migrations() em database.py
+│   ├── 001_initial_schema.py
+│   └── 002_add_analytics.py
 │
-├── Dockerfile              # Multi-stage: python:3.11-slim, ffmpeg, yt-dlp, non-root
-├── entrypoint.sh           # Fix permissions + uvicorn as appuser
-├── test_app.py             # Smoke + DB + security tests (pytest)
+├── Dockerfile              # python:3.11-slim, ffmpeg, yt-dlp, non-root appuser
+├── entrypoint.sh           # Fix permissions (/app/output) + uvicorn as appuser
+├── test_app.py             # Smoke + DB + security tests (pytest) — 40 testes
 └── tests/test_e2e.py       # Playwright E2E (login, nav, security headers)
 ```
 
+> **Removido em mai/2026** (dead code): `gdrive_routes.py` na raiz, `protocols/narration_export.py`, e todo o subsistema NotebookLM de auto-captura (`nlm_routes.py`, `nlm_api_routes.py`, `channel_strategist.py`, `notebooklm_client.py`, `notebooklm_auth.py`, templates `admin_nlm_*`). O fluxo manual de colar o SOP do NotebookLM no pipeline (`nlm_sop`) **continua ativo**.
+
 ---
 
-## 3. BANCO DE DADOS (18 tabelas SQLite)
+## 3. BANCO DE DADOS (21 tabelas SQLite)
 
 ### Tabelas Principais
 
@@ -104,7 +115,10 @@ youtube-cloner/
 | **student_drive_files** | id | student_id, file_id, drive_file_id, drive_folder_id, filename, category |
 | **ai_usage** | id | project_id, user_id, model, prompt_tokens, completion_tokens, estimated_cost, operation |
 | **video_performance** | id | student_id, channel_id, video_id, title, views, likes, comments, published_at |
-| **_migrations** | id | Controle de migrations executadas |
+| **keyword_cache** | id | keyword, country, language, volume, cpc, competition, cached_at (TTL 7 dias) |
+| **admin_resources** | id | filename, category, content, visible_to_students, uploaded_by |
+| **bent_ideas** | id | project_id, source, variations_json, starred (historico do Niche/Idea Bender) |
+| **_migrations** | id | Controle de migrations executadas (via _run_migrations em database.py) |
 
 ### Padroes DB
 - **Context manager**: `with get_db() as conn` (auto-commit/rollback)
@@ -153,9 +167,11 @@ Step 12: Pipeline concluido (SSE envia "done")
 
 ---
 
-## 5. ROTAS API (63 total)
+## 5. ROTAS API (~110 endpoints em 10 routers)
 
-### Admin (21 rotas)
+> As tabelas abaixo cobrem as rotas principais documentadas; o numero real cresceu (idea-bender, niches-lab, mockups, resources, drive-admin). Para a lista autoritativa, ver os `@router`/`@app` em `routes/*.py` e `dashboard.py`.
+
+### Admin (principais)
 | Metodo | Rota | Rate | Funcao |
 |--------|------|------|--------|
 | POST | /api/admin/analyze-channel | 3/min | Pipeline completo 12 steps |
@@ -255,9 +271,13 @@ Formula: `final = (youtube_score * 0.6) + (avg_trends * 0.4)`
 | **CSRF** | HMAC-SHA256 (timestamp.signature), 24h validade, X-CSRF-Token header |
 | **Rate limit** | SlowAPI por IP, 35 rotas protegidas |
 | **Path traversal** | Block "..", "\", javascript:, data:, file://, localhost |
-| **Roles** | require_admin vs require_auth decorators |
-| **Erros** | SafeErrorMiddleware: generic messages + error_id, stack trace so server-side |
+| **SSRF** | `validate_url` (services.py): allowlist youtube.com/youtu.be, rejeita IPs literais + metadata/loopback/privados |
+| **IDOR** | Rotas de aluno (ideas, idea-details, improve-script, score-script) checam assignment do projeto |
+| **Roles** | require_admin vs require_auth decorators (TODAS as rotas mutaveis exigem auth) |
+| **Erros** | SafeErrorMiddleware: generic messages + error_id, stack trace so server-side; sem `str(e)` em respostas |
 | **Drive** | Isolamento: aluno tem pasta propria, nao ve pasta do projeto |
+
+> **Hardening mai/2026** (commit c369ca7): fechadas 5 rotas GET mutaveis sem auth, IDOR em rotas de aluno, SSRF via allowlist, rate-limit em 6 POST admin, fim de vazamento de `str(e)`. **Pendente (manual no EasyPanel):** rotacionar `DASH_PASS` (era 6 digitos), `LAOZHANG_API_KEY`, `CSRF_SECRET`; CSP ainda usa `unsafe-inline` (templates com JS inline).
 
 ---
 
@@ -316,16 +336,18 @@ Formula: `final = (youtube_score * 0.6) + (avg_trends * 0.4)`
 - `toggleUsed(id)` — Strikethrough titulo usado
 - `showIdeaDetails(id)` — Modal score breakdown por regiao
 
-### Templates (9)
+### Templates (15)
 - **base.html**: Layout + CSRF/session injection + global JS
+- **login.html / change_password.html**: Auth
 - **dashboard.html**: Admin hub (pipeline, niches, ideas, YouTube stats)
 - **student_dashboard.html**: Kanban + channels + analytics + API config
 - **admin_panel.html**: System stats + API keys + AI analytics + users
-- **admin_students.html**: CRUD alunos + progress bars + create modal
-- **admin_students_detail.html**: Detalhe aluno + assignments + channels
+- **admin_students.html / admin_student_detail.html**: CRUD alunos + detalhe (assignments, channels)
 - **admin_projects.html**: Projetos + Drive sync + clone language
-- **admin_nlm_auth.html**: NotebookLM bookmarklet setup
-- **admin_nlm_receive.html**: Bookmarklet callback
+- **admin_niches_lab.html**: Niches Lab (Top Niches + Deep Dive DataForSEO)
+- **admin_bent_ideas.html**: Historico do Niche/Idea Bender
+- **admin_radar.html / admin_sop_analysis.html**: Radar de tendencias + analise SOP Vivo
+- **_ab_title_block.html / _card_extras.html**: partials
 
 ---
 
