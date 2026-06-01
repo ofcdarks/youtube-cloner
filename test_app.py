@@ -555,5 +555,137 @@ class TestErrorHandling:
             assert len(leaks) == 0, f"Error leak in {filepath}: {leaks[:3]}"
 
 
+# ══════════════════════════════════════════════════════════
+# SECURITY REGRESSIONS — locks in the 2026-05 hardening so a
+# future refactor of these large route files cannot silently
+# undo the auth / IDOR / SSRF fixes.
+# ══════════════════════════════════════════════════════════
+
+
+@pytest.fixture(scope="session")
+def anon_client():
+    """A fresh TestClient with no session cookie (truly anonymous)."""
+    from dashboard import app
+
+    return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def foreign_data(client):
+    """A project NOT assigned to the test student, with one file and one idea.
+    Used to assert students cannot reach other projects' resources (IDOR)."""
+    from database import create_project, save_file, save_idea, get_db
+
+    pid = create_project(name="FOREIGN PROJECT", niche_chosen="x")
+    save_file(pid, "roteiro", "Foreign Script", "roteiro_foreign.md", "x" * 500)
+    with get_db() as conn:
+        fid = conn.execute(
+            "SELECT id FROM files WHERE project_id=? ORDER BY id DESC LIMIT 1", (pid,)
+        ).fetchone()["id"]
+    iid = save_idea(pid, 1, "Foreign idea title")
+    return {"project_id": pid, "file_id": fid, "idea_id": iid}
+
+
+# Mutating/seed GET routes that must never be reachable without admin auth
+_PROTECTED_GET_ROUTES = [
+    "/api/admin/fix-long-titles",
+    "/api/reseed-all-sops",
+    "/api/seed-robos-encantados",
+    "/api/seed-relatos-familiares",
+    "/api/apply-chibi-override",
+    "/api/deploy-check-9ab",
+]
+
+
+class TestSecurityRegressions:
+    @pytest.mark.parametrize("path", _PROTECTED_GET_ROUTES)
+    def test_protected_get_blocks_anonymous(self, anon_client, path):
+        r = anon_client.get(path)
+        assert r.status_code != 200, f"{path} reachable anonymously"
+        assert r.status_code in (401, 403)
+
+    @pytest.mark.parametrize("path", _PROTECTED_GET_ROUTES)
+    def test_protected_get_blocks_student(self, student_client, path):
+        r = student_client.get(path)
+        assert r.status_code == 403, f"{path} reachable by student: {r.status_code}"
+
+    def test_student_ideas_requires_assignment(self, student_client, foreign_data):
+        r = student_client.get(f"/api/ideas?project={foreign_data['project_id']}")
+        assert r.status_code == 403
+
+    def test_student_idea_details_requires_assignment(self, student_client, foreign_data):
+        r = student_client.get(f"/api/idea-details?id={foreign_data['idea_id']}")
+        assert r.status_code == 403
+
+    def test_student_improve_script_requires_ownership(
+        self, student_client, student_csrf, foreign_data
+    ):
+        r = student_client.post(
+            "/api/student/improve-script",
+            json={"file_id": foreign_data["file_id"]},
+            headers={"x-csrf-token": student_csrf},
+        )
+        assert r.status_code == 403, f"student reached foreign script: {r.status_code}"
+
+    def test_admin_ideas_not_restricted(self, admin_client, foreign_data):
+        r = admin_client.get(f"/api/ideas?project={foreign_data['project_id']}")
+        assert r.status_code == 200
+
+
+class TestValidateURL:
+    """SSRF allowlist for YouTube channel URLs (services.validate_url)."""
+
+    def test_accepts_legit_youtube(self):
+        from services import validate_url
+
+        for u in [
+            "https://www.youtube.com/@MrBeast",
+            "https://youtube.com/channel/UCabc",
+            "https://youtu.be/abc123",
+            "https://m.youtube.com/watch?v=x",
+        ]:
+            assert validate_url(u) == u, u
+
+    def test_rejects_ssrf_and_non_youtube(self):
+        from services import validate_url
+
+        for u in [
+            "http://youtube.com@evil.com/",       # userinfo trick
+            "https://evil.com/@youtube.com",
+            "http://169.254.169.254/latest/meta-data/",  # cloud metadata
+            "http://127.0.0.1:8888/admin",
+            "http://localhost/x",
+            "http://[::1]/x",                      # IPv6 loopback
+            "http://10.0.0.5/x",                   # private range
+            "ftp://youtube.com/x",
+            "https://notyoutube.com.evil.com/x",
+            "",
+        ]:
+            assert validate_url(u) is None, u
+
+
+class TestSeedDataIntegrity:
+    """Guards the api_routes.py -> routes/_seed_data.py extraction."""
+
+    def test_seed_constants_present_and_shaped(self):
+        from routes.api_routes import (
+            _ROBOS_SEED_NICHES,
+            _ROBOS_SEED_TITLES,
+            _RELATOS_SEED_NICHES,
+            _RELATOS_SEED_TITLES,
+        )
+
+        assert len(_ROBOS_SEED_NICHES) == 5
+        assert len(_ROBOS_SEED_TITLES) == 30
+        assert len(_RELATOS_SEED_NICHES) == 5
+        assert len(_RELATOS_SEED_TITLES) == 30
+        # niches are 6-tuples (name, desc, rpm, comp, color, chosen)
+        assert all(len(n) == 6 for n in _ROBOS_SEED_NICHES)
+        assert all(len(n) == 6 for n in _RELATOS_SEED_NICHES)
+        # titles are 4-tuples (title, pillar, priority, volume)
+        assert all(len(t) == 4 for t in _ROBOS_SEED_TITLES)
+        assert all(len(t) == 4 for t in _RELATOS_SEED_TITLES)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
