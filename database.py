@@ -72,6 +72,7 @@ def init_db():
                 content TEXT,
                 drive_url TEXT,
                 created_at TEXT NOT NULL,
+                visible_to_students INTEGER DEFAULT 0,
                 FOREIGN KEY (project_id) REFERENCES projects(id)
             );
 

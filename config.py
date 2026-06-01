@@ -22,7 +22,10 @@ logger = logging.getLogger("ytcloner.config")
 
 # ── Paths ─────────────────────────────────────────────────
 PROJECT_DIR = Path(__file__).parent
-OUTPUT_DIR = PROJECT_DIR / "output"
+# OUTPUT_DIR honors the OUTPUT_DIR env var so tests can point at a temp dir
+# (keeps the test DB isolated from the real output/ytcloner.db). Production
+# does not set this var, so it falls back to the bundled output/ folder.
+OUTPUT_DIR = Path(os.environ.get("OUTPUT_DIR") or (PROJECT_DIR / "output"))
 PROJECTS_DIR = OUTPUT_DIR / "projects"
 DB_PATH = OUTPUT_DIR / "ytcloner.db"
 
